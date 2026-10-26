@@ -1,0 +1,432 @@
+---
+description: Persistence, Stockfish analysis, player analytics and local LLM correctness rules
+globs:
+  - "src/chess_coach/domain/**/*.py"
+  - "src/chess_coach/application/**/*.py"
+  - "src/chess_coach/analytics/**/*.py"
+  - "src/chess_coach/infrastructure/**/*.py"
+  - "migrations/**/*.py"
+alwaysApply: false
+---
+
+# Chess Intelligence Pipeline
+
+The trusted pipeline is:
+
+raw game
+→ deterministic parsing
+→ Stockfish
+→ deterministic features
+→ longitudinal analytics
+→ evidence package
+→ local LLM
+→ coaching
+
+The LLM is downstream from trusted evidence.
+
+Do not reverse this relationship.
+
+---
+
+# Persistence
+
+SQLite is the primary database.
+
+Use SQLAlchemy 2.x patterns.
+
+Database schema changes require Alembic migrations.
+
+A fresh database must be constructible using:
+
+alembic upgrade head
+
+Do not rely on Base.metadata.create_all() as the long-term migration
+strategy.
+
+---
+
+# Raw source preservation
+
+Preserve imported PGN.
+
+Raw source data should remain available even when derived analysis is
+regenerated.
+
+---
+
+# Game identity and idempotency
+
+Use a stable platform identifier when available.
+
+Primary identity should generally include:
+
+platform
+external_id
+
+If no stable external identifier exists, use a deterministic normalized
+PGN hash.
+
+Re-importing an existing game must not create another game record.
+
+Duplicate imports are normal and should be handled safely.
+
+---
+
+# Transactions and states
+
+Operations that must remain consistent should occur transactionally.
+
+Analysis should use explicit states such as:
+
+PENDING
+ANALYZING
+DONE
+FAILED
+
+Do not mark an analysis DONE before all required results are persisted.
+
+Interrupted analysis must be recoverable.
+
+---
+
+# Analysis provenance
+
+Store enough information to reproduce or invalidate derived results.
+
+For engine analysis preserve:
+
+- engine version
+- analysis version
+- configuration hash
+- node/depth budget where applicable
+
+For LLM output preserve:
+
+- model
+- prompt version
+- evidence hash
+
+For analytics whose meaning changes materially, preserve an analytics
+version.
+
+---
+
+# Stockfish authority
+
+Stockfish is authoritative for engine-derived chess evaluation.
+
+The LLM may never replace or overwrite Stockfish facts.
+
+---
+
+# Evaluation convention
+
+Canonical persisted evaluation:
+
+positive = White advantage
+negative = Black advantage
+
+This convention must be explicit.
+
+When computing loss for a player's move:
+
+1. determine the mover
+2. normalize before-evaluation to mover perspective
+3. normalize after-evaluation to mover perspective
+4. calculate deterioration
+
+Do not rely on implicit score orientation.
+
+This is a critical correctness requirement.
+
+---
+
+# Mate scores
+
+Mate is not an ordinary centipawn evaluation.
+
+Represent mate explicitly.
+
+Do not silently map mate to arbitrary centipawn values without a
+centralized documented policy and tests.
+
+---
+
+# Engine lifecycle
+
+Do not launch Stockfish separately for every move.
+
+Reuse an engine process across a batch.
+
+Ensure proper shutdown on both success and failure paths.
+
+Initial M5 Air configuration:
+
+Threads = 4
+Hash = 512 MB
+
+Do not increase concurrency merely because additional cores exist.
+
+Benchmark sustained throughput before changing defaults.
+
+---
+
+# Engine analysis strategy
+
+Prefer a two-pass approach.
+
+Fast pass:
+
+analyze broad game history economically
+
+Deep pass:
+
+reanalyze only interesting or critical positions
+
+Do not run expensive MultiPV analysis over every position by default.
+
+Prefer reproducible analysis budgets where possible.
+
+Do not claim an engine configuration is optimal without benchmark
+evidence.
+
+---
+
+# Engine cache
+
+Check compatible cached analysis before running Stockfish.
+
+Cache identity must include enough information to prevent incompatible
+reuse.
+
+At minimum consider:
+
+- FEN
+- engine version
+- analysis configuration
+
+A valid cache hit should avoid repeated Stockfish computation.
+
+---
+
+# Move correctness
+
+Engine best moves and principal variations must correspond to the board
+position being analyzed.
+
+Returned best moves should be legal.
+
+If an impossible state is detected, fail visibly rather than silently
+persisting corrupted analysis.
+
+---
+
+# Deterministic feature extraction
+
+Compute facts deterministically whenever practical.
+
+Examples:
+
+- material change
+- capture
+- check
+- mate
+- castling
+- side to move
+- phase
+- time usage
+- advantage changes
+- piece development indicators
+
+Do not ask the LLM to calculate something simple deterministic code can
+calculate reliably.
+
+---
+
+# Analytics
+
+Analytics must be reproducible from persisted evidence.
+
+Prefer rates over raw counts when comparing populations of different
+sizes.
+
+For example:
+
+critical errors per 100 player moves
+
+is generally more comparable than:
+
+total critical errors
+
+---
+
+# Segmentation
+
+Preserve meaningful distinctions such as:
+
+- White vs Black
+- rapid vs blitz
+- opening vs middlegame vs endgame
+- opening family
+- recent vs historical performance
+
+Do not combine incompatible populations merely to increase sample size.
+
+---
+
+# Sample size
+
+Every statistical coaching conclusion should know its sample size.
+
+Suppress conclusions when evidence is insufficient.
+
+Represent insufficient evidence explicitly instead of generating a weak
+confident claim.
+
+Never present two games in an opening as proof of a persistent opening
+weakness.
+
+---
+
+# Pattern ranking
+
+Weakness ranking may consider:
+
+- frequency
+- average severity
+- recency
+- sample confidence
+
+The formula should be understandable and versioned.
+
+Do not create opaque ranking logic that cannot be explained.
+
+---
+
+# Provenance
+
+A reported pattern should be traceable to supporting evidence.
+
+Where practical retain:
+
+- game IDs
+- move IDs
+- representative positions
+- sample size
+- relevant aggregate metric
+
+A user should eventually be able to answer:
+
+"Why does the system think this is one of my weaknesses?"
+
+---
+
+# Statistical caution
+
+Do not present correlation as causation.
+
+Acceptable:
+
+"Your error rate was higher when less than 60 seconds remained."
+
+Not automatically acceptable:
+
+"Time pressure caused your errors."
+
+---
+
+# Local LLM role
+
+The LLM is used for:
+
+- explanation
+- summarization
+- constrained theme classification
+- training recommendations
+
+The following are immutable when supplied to the model:
+
+- played move
+- legal moves
+- best move
+- engine score
+- mate state
+- principal variation
+- game result
+- numeric statistics
+- historical frequencies
+
+The model must not change them.
+
+---
+
+# LLM inputs
+
+Prefer compact structured evidence.
+
+Do not send thousands of raw games when deterministic analytics can
+produce a smaller relevant summary.
+
+---
+
+# LLM outputs
+
+Prefer Pydantic-validated structured outputs.
+
+Schemas should permit an explicit insufficient-evidence outcome where
+appropriate.
+
+Prompts must tell the model:
+
+- engine evidence is authoritative
+- do not invent moves
+- do not invent statistics
+- do not change supplied evaluations
+- do not make unsupported historical claims
+
+Use low temperature for evaluation, classification and grounded
+coaching tasks unless benchmarks demonstrate another setting is better.
+
+---
+
+# LLM failure behavior
+
+Ollama failure must not invalidate deterministic analysis.
+
+If:
+
+Stockfish succeeds
+and
+Ollama fails
+
+then engine analysis remains successful and coaching generation may be
+marked separately as pending/failed.
+
+---
+
+# LLM caching
+
+Outputs may be cached based on:
+
+model
+prompt version
+evidence hash
+
+Do not repeatedly regenerate identical coaching unnecessarily.
+
+---
+
+# Required correctness coverage
+
+Maintain tests for at least:
+
+- duplicate import
+- White blunder
+- Black blunder
+- mate handling
+- position cache hit
+- incompatible cache configuration
+- low-sample suppression
+- known synthetic analytics pattern
+- invalid LLM schema
+- immutable-fact preservation

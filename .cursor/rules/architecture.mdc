@@ -1,0 +1,270 @@
+---
+description: Application architecture, backend/API boundaries and Svelte frontend rules
+alwaysApply: true
+---
+
+# Architecture
+
+## Overall architecture
+
+The application is:
+
+SvelteKit frontend
+↓ HTTP/JSON
+FastAPI API
+↓
+Application services
+↓
+Domain / Analytics
+↓
+Infrastructure
+
+External infrastructure includes:
+
+- SQLite
+- Chess.com
+- Stockfish
+- Ollama
+
+Dependencies should generally point inward.
+
+Business logic belongs closer to the domain/application layers.
+
+Technical integrations belong in infrastructure.
+
+---
+
+# Backend structure
+
+Preferred backend structure:
+
+src/chess_coach/
+domain/
+application/
+analytics/
+infrastructure/
+api/
+
+## Domain
+
+Domain code may contain:
+
+- domain models
+- enums
+- value objects
+- protocols
+- pure domain behavior
+
+Domain code must not import:
+
+- FastAPI
+- SQLAlchemy
+- httpx
+- Ollama
+- Svelte
+- frontend code
+
+## Application
+
+Application services orchestrate use cases.
+
+Examples:
+
+- synchronize games
+- analyze pending games
+- generate player report
+- create training queue
+
+Application services should depend on abstractions for external systems
+where doing so improves testability.
+
+Do not create unnecessary abstractions for code that has only one
+simple implementation.
+
+## Infrastructure
+
+Infrastructure contains concrete integrations:
+
+- SQLAlchemy repositories
+- Chess.com API client
+- Stockfish adapter
+- Ollama adapter
+
+Infrastructure may depend on domain/application contracts.
+
+Domain must not depend on infrastructure.
+
+---
+
+# FastAPI
+
+FastAPI is a transport layer.
+
+All product endpoints should live under:
+
+/api/v1
+
+Route handlers should normally:
+
+1. validate request data
+2. resolve dependencies
+3. call an application service
+4. serialize the result
+5. translate known errors into HTTP responses
+
+Route handlers must not directly:
+
+- perform SQL queries
+- launch Stockfish
+- call Ollama
+- calculate chess metrics
+- loop through entire game histories
+
+Use explicit Pydantic request and response schemas.
+
+Do not expose SQLAlchemy models directly through the API.
+
+Do not expose:
+
+- stack traces
+- database errors
+- filesystem paths
+- internal process details
+
+Use appropriate status codes.
+
+Do not return HTTP 200 for known failures.
+
+Long-running historical analysis should not permanently remain a
+minutes-long blocking HTTP request.
+
+Prefer persisted analysis/run state as the feature matures.
+
+---
+
+# Svelte frontend
+
+Use:
+
+- Svelte 5
+- SvelteKit 3
+- TypeScript
+
+The frontend is a presentation layer.
+
+Do not reproduce authoritative chess calculations in TypeScript.
+
+Backend communication must be centralized under:
+
+frontend/src/lib/api/
+
+Do not scatter raw fetch() calls throughout page components.
+
+Prefer relative API paths such as:
+
+/api/v1/games
+
+through a development proxy rather than hardcoding backend hostnames.
+
+---
+
+# Frontend components
+
+Routes should orchestrate screens.
+
+Reusable presentation belongs in:
+
+frontend/src/lib/components/
+
+Avoid giant page components.
+
+Split components when they have meaningfully different responsibilities.
+
+Do not split components merely to reduce line count.
+
+---
+
+# Frontend state
+
+Use component-local state for local concerns.
+
+Introduce shared state only when multiple parts of the application need
+the same state.
+
+Do not create global stores for every value.
+
+Every asynchronous UI must explicitly support:
+
+- loading
+- success
+- empty
+- error
+
+Avoid duplicate submission of expensive operations.
+
+Disable or guard actions while equivalent work is already running.
+
+---
+
+# Type safety
+
+Avoid TypeScript `any`.
+
+Prefer explicit API types.
+
+When the backend API becomes sufficiently stable, generate TypeScript
+types from FastAPI OpenAPI instead of manually duplicating large API
+schemas.
+
+Generated files must not be manually edited.
+
+---
+
+# Accessibility
+
+Use semantic HTML.
+
+Buttons should be buttons.
+
+Inputs should have labels.
+
+Interactive controls should be keyboard accessible.
+
+Do not create custom clickable divs when native controls are
+appropriate.
+
+---
+
+# Styling
+
+Use simple component-scoped CSS initially.
+
+Do not introduce a UI framework or CSS framework unless there is a
+clear reason.
+
+UI polish is secondary to application correctness.
+
+---
+
+# Dependency discipline
+
+Before adding a dependency:
+
+1. identify the requirement
+2. check whether current dependencies already solve it
+3. consider maintenance cost
+4. add it only if justified
+
+Do not build abstractions or infrastructure solely for hypothetical
+future scaling.
+
+---
+
+# Architecture review trigger
+
+Ask the reviewer agent to inspect changes when:
+
+- introducing a new infrastructure dependency
+- changing layer boundaries
+- changing API architecture
+- moving significant responsibilities between frontend and backend
