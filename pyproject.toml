@@ -1,7 +1,7 @@
 [project]
 name = "chess-coach"
 version = "0.1.0"
-description = "Add your description here"
+description = "Local-first post-game chess analysis and coaching"
 readme = "README.md"
 authors = [
     { name = "Pratik Jaiswal", email = "jaiswalpratik49@gmail.com" }
@@ -10,17 +10,11 @@ requires-python = ">=3.14"
 dependencies = [
     "alembic>=1.20.1",
     "chess>=1.11.2",
-    "fastapi[standard]>=0.162.0",
+    "fastapi>=0.162.0",
     "httpx>=0.28.1",
     "ollama>=0.6.3",
-    "psutil>=7.2.2",
     "pydantic>=2.14.1",
-    "pydantic-settings>=2.16.1",
-    "rich>=15.0.0",
     "sqlalchemy>=2.1.6",
-    "structlog>=26.1.0",
-    "tenacity>=9.2.1",
-    "typer>=0.27.3",
 ]
 
 [project.scripts]
@@ -33,7 +27,6 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "mypy>=2.4.0",
-    "pre-commit>=4.7.0",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "ruff>=0.17.2",

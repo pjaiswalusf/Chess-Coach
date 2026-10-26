@@ -1,56 +1,37 @@
-# sv
+# Chess Coach frontend
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+SvelteKit and TypeScript frontend. Shared architecture, Tailwind styling rules,
+and completion checks live in [AGENTS.md](../AGENTS.md).
 
-## Creating a project
+## Setup
 
-If you're seeing this, you've probably already done this step. Congrats!
-
-```sh
-# create a new project
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
+From this directory:
 
 ```sh
-# recreate this project
-pnpm dlx sv@1.1.1 create --template minimal --types ts --add prettier tailwindcss="plugins:typography,forms" --install pnpm frontend
+pnpm install
+pnpm test:setup
 ```
 
-## Adding features
+The setup command installs Chromium for component and end-to-end tests. Repeat it
+when the Playwright browser version changes. Test execution does not download
+browsers or install dependencies.
 
-Add features to your project with `sv add`:
+## Development
 
 ```sh
-npx sv add
+pnpm dev
 ```
 
-For example, to add Tailwind CSS:
+## Tests and build
 
-```sh
-npx sv add tailwindcss
-```
+- `pnpm lint`: Prettier and ESLint checks.
+- `pnpm check`: Svelte and TypeScript checks.
+- `pnpm test`: run unit and browser component tests once.
+- `pnpm test:unit`: run tests in watch mode.
+- `pnpm test:e2e`: run Playwright end-to-end tests (builds and previews the app).
+- `pnpm build`: production build.
+- `pnpm preview`: preview the production build.
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+Style application markup with Tailwind classes. `src/routes/layout.css` contains
+only Tailwind setup. The current app is a scaffold; production serving will need
+a deliberate adapter choice when that feature is implemented.
