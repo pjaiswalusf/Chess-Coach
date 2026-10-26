@@ -1,0 +1,8 @@
+---
+description: Architecture and frontend guidance; shared source is AGENTS.md
+alwaysApply: true
+---
+
+Read and follow [AGENTS.md](../../AGENTS.md), the authoritative shared rules.
+For this topic, pay particular attention to: Technology; Architecture and simplicity.
+Do not duplicate or override those requirements here.
