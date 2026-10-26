@@ -1,0 +1,41 @@
+[project]
+name = "chess-coach"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Pratik Jaiswal", email = "jaiswalpratik49@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "alembic>=1.20.1",
+    "chess>=1.11.2",
+    "httpx>=0.28.1",
+    "ollama>=0.6.3",
+    "plotly>=7.1.0",
+    "psutil>=7.2.2",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.16.1",
+    "rich>=15.0.0",
+    "sqlalchemy>=2.1.6",
+    "streamlit>=1.66.1",
+    "structlog>=26.1.0",
+    "tenacity>=9.2.1",
+    "typer>=0.27.3",
+]
+
+[project.scripts]
+chess-coach = "chess_coach:main"
+
+[build-system]
+requires = ["uv_build>=0.13.5,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.0",
+    "pre-commit>=4.7.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.2",
+]
