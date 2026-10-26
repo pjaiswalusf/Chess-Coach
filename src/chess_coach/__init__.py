@@ -1,2 +1,1 @@
-def main() -> None:
-    print("Hello from chess-coach!")
+"""Local-first post-game chess coaching."""
