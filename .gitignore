@@ -6,6 +6,11 @@ __pycache__/
 # C extensions
 *.so
 
+# Ignored DB
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
 # Distribution / packaging
 .Python
 build/
