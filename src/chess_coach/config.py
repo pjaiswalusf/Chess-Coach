@@ -3,6 +3,7 @@ from pathlib import Path
 
 from pydantic import Field, HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy import URL
 
 
 class Settings(BaseSettings):
@@ -19,6 +20,11 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------
 
     database_path: Path = Path("data/chess_coach.db")
+
+    @property
+    def database_url(self) -> URL:
+        """Build a SQLite URL without interpreting special path characters."""
+        return URL.create("sqlite+pysqlite", database=str(self.database_path))
 
     # ------------------------------------------------------------------
     # Stockfish
