@@ -50,11 +50,16 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Explicitly revalidate all stored games for this player",
     )
+    commands.add_parser("doctor", help="Check Stockfish startup, analysis, and cleanup")
     args = parser.parse_args(argv)
     if args.command in (None, "serve"):
         uvicorn.run("chess_coach.api.app:app", host="127.0.0.1", port=8000)
         return
     settings = Settings()
+    if args.command == "doctor":
+        from chess_coach.infrastructure.engine.diagnostics import diagnose
+
+        raise SystemExit(diagnose(settings))
     engine = create_database_engine(settings.database_url)
     try:
         if args.command == "parse-games":

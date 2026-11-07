@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     stockfish_executable: str = Field(default="stockfish", min_length=1)
     stockfish_threads: int = Field(default=4, gt=0)
     stockfish_hash_mb: int = Field(default=512, gt=0)
+    stockfish_nodes: int = Field(default=10_000, gt=0, strict=True)
+    stockfish_max_nodes: int = Field(default=10_000_000, gt=0, strict=True)
+    stockfish_search_seconds: float = Field(default=3.0, gt=0, allow_inf_nan=False)
+    stockfish_timeout_seconds: float = Field(default=10.0, gt=0, allow_inf_nan=False)
 
     # ------------------------------------------------------------------
     # Ollama
