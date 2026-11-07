@@ -16,6 +16,7 @@ from chess_coach.infrastructure.engine.exceptions import (
     EngineUnavailableError,
     InvalidPositionError,
 )
+from chess_coach.infrastructure.engine.protocol import EvidenceProtocol
 
 _ERRORS = (chess.engine.EngineError, TimeoutError, OSError)
 
@@ -25,10 +26,13 @@ class StockfishAdapter:
         self.settings = (settings or Settings()).model_copy(deep=True)
         self._engine: chess.engine.SimpleEngine | None = None
         self._lock = RLock()
+        self._closing = False
         self.engine_name = ""
 
     def start(self) -> None:
         with self._lock:
+            if self._closing:
+                raise EngineUnavailableError("Confirm prior process exit with close() before restarting")
             if self._engine is not None:
                 return
             path = shutil.which(self.settings.stockfish_executable)
@@ -38,8 +42,8 @@ class StockfishAdapter:
                     "CHESS_COACH_STOCKFISH_EXECUTABLE."
                 )
             try:
-                self._engine = chess.engine.SimpleEngine.popen_uci(
-                    path, timeout=self.settings.stockfish_timeout_seconds
+                self._engine = chess.engine.SimpleEngine.popen(
+                    EvidenceProtocol, path, timeout=self.settings.stockfish_timeout_seconds
                 )
                 for name in ("Threads", "Hash"):
                     if name not in self._engine.options:
@@ -57,6 +61,7 @@ class StockfishAdapter:
                 raise EngineUnavailableError("Stockfish startup failed; check binary and configuration") from exc
 
     def _discard(self) -> None:
+        self._closing = True
         engine, self._engine = self._engine, None
         if engine is not None:
             engine.close()
@@ -67,9 +72,11 @@ class StockfishAdapter:
                 self._engine = engine
                 raise EngineAnalysisError("Stockfish process exit could not be confirmed") from exc
 
+        self._closing = False
+
     def check_health(self) -> bool:
         with self._lock:
-            if self._engine is None:
+            if self._engine is None or self._closing:
                 return False
             try:
                 self._engine.ping()
@@ -96,7 +103,7 @@ class StockfishAdapter:
                 replay.push(move)
             if replay.fen() != position.fen():
                 raise InvalidPositionError("Board does not match its move history")
-            if self._engine is None:
+            if self._engine is None or self._closing:
                 raise EngineUnavailableError("Start Stockfish before analysis")
             outcome = position.outcome(claim_draw=False)
             if outcome is not None:
@@ -138,9 +145,13 @@ class StockfishAdapter:
 
     def close(self) -> None:
         with self._lock:
+            if self._closing:
+                self._discard()
+                return
             engine, self._engine = self._engine, None
             if engine is None:
                 return
+            self._closing = True
             try:
                 engine.quit()
                 engine.returncode.result(timeout=self.settings.stockfish_timeout_seconds)
@@ -153,6 +164,7 @@ class StockfishAdapter:
                 except TimeoutError as exc:
                     self._engine = engine
                     raise EngineAnalysisError("Stockfish process exit could not be confirmed") from exc
+                self._closing = False
 
     def __enter__(self) -> Self:
         self.start()

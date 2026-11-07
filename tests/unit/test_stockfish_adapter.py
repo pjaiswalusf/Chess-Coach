@@ -30,7 +30,7 @@ def setup_engine(monkeypatch):
     }
     monkeypatch.setattr("shutil.which", lambda _: "/fake/stockfish")
     spawn = Mock(return_value=engine)
-    monkeypatch.setattr(chess.engine.SimpleEngine, "popen_uci", spawn)
+    monkeypatch.setattr(chess.engine.SimpleEngine, "popen", spawn)
     return StockfishAdapter(Settings(_env_file=None)), engine, spawn
 
 
@@ -197,3 +197,30 @@ def test_health_failure_and_shutdown_timeout(setup_engine):
     with pytest.raises(EngineAnalysisError):
         adapter.close()
     assert engine.close.call_count == 2
+
+
+@pytest.mark.parametrize("trigger", ["analysis", "close"])
+def test_unconfirmed_exit_blocks_reuse_until_cleanup(setup_engine, trigger):
+    adapter, engine, spawn = setup_engine
+    adapter.start()
+    engine.returncode = Mock()
+    engine.returncode.result.side_effect = TimeoutError()
+    if trigger == "analysis":
+        engine.analyse.side_effect = TimeoutError()
+        with pytest.raises(EngineAnalysisError):
+            adapter.analyze(chess.Board())
+    else:
+        with pytest.raises(EngineAnalysisError):
+            adapter.close()
+    assert not adapter.check_health()
+    with pytest.raises(EngineUnavailableError):
+        adapter.start()
+    with pytest.raises(EngineUnavailableError):
+        adapter.analyze(chess.Board())
+    spawn.assert_called_once()
+    engine.returncode.result.side_effect = None
+    adapter.close()
+    engine.analyse.side_effect = None
+    with adapter:
+        assert adapter.check_health()
+    assert spawn.call_count == 2

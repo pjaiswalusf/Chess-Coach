@@ -100,3 +100,9 @@ fivefold repetition, and the 75-move rule terminate analysis; claimable threefol
 and 50-move draws are not assumed claimed. Terminal results have no PV and do
 not run a search. Full supplied move history is validated and forwarded;
 pre-FEN history remains unknown. No caching or cross-history reuse is implemented.
+
+Engine evidence uses the latest complete, unbounded UCI score/PV update.
+Depth and nodes describe that update, rather than a later partial search update.
+This avoids stale bound flags in python-chess's aggregated information; a search
+with only bounded scores fails explicitly. The standard python-chess UCI parser,
+process management, and finite `SimpleEngine.analyse` timeout remain in use.
