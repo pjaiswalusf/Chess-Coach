@@ -16,7 +16,9 @@ def create_database_engine(database_url: URL) -> Engine:
         raise ValueError("A file-based SQLite database URL is required.")
     Path(database_url.database).parent.mkdir(parents=True, exist_ok=True)
     engine = create_engine(
-        database_url, connect_args={"timeout": 5.0, "autocommit": False}
+        database_url,
+        hide_parameters=True,
+        connect_args={"timeout": 5.0, "autocommit": False},
     )
 
     @event.listens_for(engine, "connect")

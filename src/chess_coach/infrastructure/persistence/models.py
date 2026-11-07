@@ -148,6 +148,7 @@ class ImportRun(Base):
     status: Mapped[RunStatus] = mapped_column(
         string_enum(RunStatus, "status"), default=RunStatus.PENDING
     )
+    summary_json: Mapped[dict[str, object] | None] = mapped_column(JSON)
     archives_requested: Mapped[int] = mapped_column(default=0)
     games_seen: Mapped[int] = mapped_column(default=0)
     games_inserted: Mapped[int] = mapped_column(default=0)
@@ -295,3 +296,40 @@ class MoveAnalysis(Base):
     severity: Mapped[Severity | None] = mapped_column(string_enum(Severity, "severity"))
     pv_json: Mapped[list[str]] = mapped_column(JSON)
     analysis_version: Mapped[str] = mapped_column(String(32))
+
+
+class ArchiveSyncState(Base):
+    __tablename__ = "archive_sync_state"
+    __table_args__ = (
+        UniqueConstraint("tracked_player_id", "year", "month"),
+        CheckConstraint("month BETWEEN 1 AND 12", name="valid_month"),
+        CheckConstraint("year BETWEEN 2007 AND 9999", name="valid_year"),
+        CheckConstraint(
+            "status IN ('pending', 'running', 'complete', 'failed', 'unavailable')",
+            name="archive_status",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tracked_player_id: Mapped[int] = mapped_column(ForeignKey("tracked_players.id"))
+    year: Mapped[int]
+    month: Mapped[int]
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    last_checked_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    last_success_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    etag: Mapped[str | None] = mapped_column(Text)
+    last_modified: Mapped[str | None] = mapped_column(Text)
+    last_successful_game_count: Mapped[int | None]
+    last_error: Mapped[str | None] = mapped_column(Text)
+
+
+class ImportRejection(Base):
+    __tablename__ = "import_rejections"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    import_run_id: Mapped[int] = mapped_column(ForeignKey("import_runs.id"))
+    year: Mapped[int]
+    month: Mapped[int]
+    record_index: Mapped[int]
+    reason: Mapped[str] = mapped_column(String(100))
+    raw_pgn: Mapped[str | None] = mapped_column(Text)
