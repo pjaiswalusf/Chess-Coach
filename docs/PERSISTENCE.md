@@ -97,3 +97,11 @@ transaction rollback, and persisted states queryable after reopening sessions.
 
 No Chess.com downloads, PGN parsing/hashing, Stockfish execution, coaching,
 puzzles, or frontend database screens are part of Phase 6.
+
+## Phase 7 implementation update
+
+Chess.com ingestion now uses the source-specific stable URL fingerprint defined
+in [sync-contract.md](sync-contract.md), not the planned Phase 8 move-replay hash
+above. Migration `c7a001` adds archive checkpoints, rejection diagnostics and run
+summary JSON. See [phase-7-sync.md](phase-7-sync.md) for transactions, recovery,
+identity limitations, metrics and commands. Legal PGN replay remains Phase 8.

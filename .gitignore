@@ -223,3 +223,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local importer lock and coverage diagnostics
+*.sync.lock
+coverage.json

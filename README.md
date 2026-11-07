@@ -58,3 +58,16 @@ They have no current runtime consumers. Before implementing them, review game
 identity, full position history, cache compatibility, draw policy, and structured
 coaching evidence against the shared rules. In particular, a FEN-only signature
 is not sufficient for history-sensitive analysis.
+
+### Completed Chess.com game imports
+
+```sh
+uv run alembic upgrade head
+uv run chess-coach sync --username YOUR_NAME --dry-run
+uv run chess-coach sync --username YOUR_NAME
+uv run chess-coach sync-status --username YOUR_NAME
+```
+
+Use `--month YYYY/MM` for a small first import or `--force` for a deliberate
+historical rescan. See [Phase 7 synchronization](docs/phase-7-sync.md) for recovery,
+identity, validation scope and verified results. Full PGN legal replay is Phase 8.

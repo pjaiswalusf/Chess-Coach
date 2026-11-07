@@ -9,6 +9,8 @@ from chess_coach.infrastructure.persistence.base import Base
 from chess_coach.infrastructure.persistence.engine import create_database_engine
 
 EXPECTED_TABLES = {
+    "archive_sync_state",
+    "import_rejections",
     "tracked_players",
     "games",
     "import_runs",
