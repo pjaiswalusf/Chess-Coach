@@ -33,3 +33,7 @@ dev = [
     "pytest-cov>=7.1.0",
     "ruff>=0.17.2",
 ]
+
+[tool.pytest.ini_options]
+addopts = "-m 'not engine'"
+markers = ["engine: opt-in tests requiring a local Stockfish executable"]
