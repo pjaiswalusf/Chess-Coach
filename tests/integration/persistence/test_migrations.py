@@ -74,3 +74,55 @@ def test_migration_downgrade_and_reupgrade(
     command.upgrade(migration_config, "head")
     assert set(inspect(engine).get_table_names()) == EXPECTED_TABLES
     command.check(migration_config)
+
+
+def test_phase8_upgrade_preserves_phase7_game(migration_config: Config) -> None:
+    from datetime import UTC, datetime
+
+    from sqlalchemy import MetaData, Table, select
+
+    command.upgrade(migration_config, "c7a001")
+    engine = create_database_engine(Settings().database_url)
+    raw_pgn = '[White "TestPlayer"]\n[Black "Opponent"]\n[Result "1-0"]\n\n1. e4 e5 1-0'
+    try:
+        metadata = MetaData()
+        players = Table("tracked_players", metadata, autoload_with=engine)
+        games = Table("games", metadata, autoload_with=engine)
+        with engine.begin() as connection:
+            connection.execute(
+                players.insert().values(
+                    id=1,
+                    platform="chess.com",
+                    username="testplayer",
+                    created_at=datetime(2026, 11, 7, tzinfo=UTC),
+                )
+            )
+            connection.execute(
+                games.insert().values(
+                    id=1,
+                    tracked_player_id=1,
+                    platform="chess.com",
+                    external_id="old-game",
+                    canonical_hash="a" * 64,
+                    raw_pgn=raw_pgn,
+                    played_at=datetime(2026, 11, 7, tzinfo=UTC),
+                    white_username="TestPlayer",
+                    black_username="Opponent",
+                    player_color="white",
+                    result="win",
+                    created_at=datetime(2026, 11, 7, tzinfo=UTC),
+                )
+            )
+        command.upgrade(migration_config, "head")
+        upgraded = Table("games", MetaData(), autoload_with=engine)
+        with engine.connect() as connection:
+            row = connection.execute(select(upgraded)).mappings().one()
+            assert row["id"] == 1 and row["raw_pgn"] == raw_pgn
+            assert (
+                row["external_id"] == "old-game" and row["canonical_hash"] == "a" * 64
+            )
+            assert row["parse_status"] == "pending"
+            assert row["source_evidence"] is None and row["parsed_metadata"] is None
+            assert connection.exec_driver_sql("PRAGMA foreign_key_check").all() == []
+    finally:
+        engine.dispose()

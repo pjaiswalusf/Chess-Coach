@@ -1,0 +1,9 @@
+[White "Pratik"]
+[Black "Opponent"]
+[Result "1-0"]
+[TimeControl "300+5"]
+[ECO "C20"]
+[Opening "King's Pawn Game"]
+[ECOUrl "https://www.chess.com/openings/Kings-Pawn"]
+
+1. e4 {[%clk 0:04:35] [%emt 0:00:08]} (1. d4 d5) e5 {[%clk 0:04:50]} 2. Nf3 {[%clk 0:04:32]} Nc6 1-0
