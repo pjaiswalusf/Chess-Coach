@@ -7,6 +7,7 @@ from dataclasses import asdict
 import uvicorn
 from sqlalchemy.exc import SQLAlchemyError
 
+from chess_coach.application.parse_imported_games import ParseImportedGames
 from chess_coach.application.sync_games import SyncGamesService
 from chess_coach.config import Settings
 from chess_coach.domain.sync import (
@@ -17,8 +18,10 @@ from chess_coach.domain.sync import (
 )
 from chess_coach.infrastructure.chesscom.client import ChessComClient
 from chess_coach.infrastructure.persistence.engine import create_database_engine
+from chess_coach.infrastructure.persistence.parse_repository import ParseRepository
 from chess_coach.infrastructure.persistence.session import create_session_factory
 from chess_coach.infrastructure.persistence.sync_repository import SyncRepository
+from chess_coach.infrastructure.pgn.parser import parse_game
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -38,6 +41,15 @@ def main(argv: list[str] | None = None) -> None:
         "sync-status", help="Read local import diagnostics without network"
     )
     status.add_argument("--username", required=True)
+    validate = commands.add_parser(
+        "parse-games", help="Validate locally stored completed-game PGNs"
+    )
+    validate.add_argument("--username", required=True)
+    validate.add_argument(
+        "--retry",
+        action="store_true",
+        help="Explicitly revalidate all stored games for this player",
+    )
     args = parser.parse_args(argv)
     if args.command in (None, "serve"):
         uvicorn.run("chess_coach.api.app:app", host="127.0.0.1", port=8000)
@@ -45,6 +57,14 @@ def main(argv: list[str] | None = None) -> None:
     settings = Settings()
     engine = create_database_engine(settings.database_url)
     try:
+        if args.command == "parse-games":
+            report_parse = ParseImportedGames(
+                ParseRepository(create_session_factory(engine), settings.database_path),
+                parse_game,
+                max_bytes=settings.pgn_max_bytes,
+            ).run(args.username, retry=args.retry)
+            print(json.dumps(asdict(report_parse), indent=2))
+            return
         store = SyncRepository(create_session_factory(engine), settings.database_path)
         if args.command == "sync-status":
             print(

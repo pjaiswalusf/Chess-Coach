@@ -39,6 +39,7 @@ class SourceGame(BaseModel):
     time_control: str | None = None
     time_class: str | None = None
     eco: str | None = None
+    fen: str | None = None
 
 
 def normalize_game(
@@ -110,6 +111,14 @@ def normalize_game(
             source.time_class,
             source.eco,
             url,
+            {
+                "end_time": source.end_time,
+                "white_result": wr,
+                "black_result": br,
+                "result": expected,
+                "final_fen": source.fen,
+                "rules": source.rules,
+            },
         )
     except ValidationError:
         return Rejection(index, "INVALID_SOURCE_SCHEMA", pgn)

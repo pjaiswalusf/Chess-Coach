@@ -340,3 +340,25 @@ def test_previous_errors_survive_recovery(setup_sync, sessions):
         run = session.scalar(select(ImportRun))
         assert run.summary_json["errors"][0] == "prior diagnostic"
         assert "INTERRUPTED" in run.summary_json["errors"][1]
+
+
+def test_source_evidence_backfill_keeps_pgn_immutable(setup_sync, sessions):
+    source, _store, service = setup_sync
+    service.sync("testplayer")
+    with sessions.begin() as session:
+        first = session.scalar(select(Game).order_by(Game.id))
+        first_id, raw = first.id, first.raw_pgn
+        assert first.source_evidence["white_result"] == "win"
+        first.source_evidence = None
+    service.sync("testplayer", force=True)
+    with sessions() as session:
+        first = session.get(Game, first_id)
+        assert first.source_evidence["end_time"] > 0
+        assert first.raw_pgn == raw
+    with sessions.begin() as session:
+        session.get(Game, first_id).source_evidence = None
+    source.raw["pgn"] += "\n{changed source}"
+    service.sync("testplayer", force=True)
+    with sessions() as session:
+        first = session.get(Game, first_id)
+        assert first.source_evidence is None and first.raw_pgn == raw

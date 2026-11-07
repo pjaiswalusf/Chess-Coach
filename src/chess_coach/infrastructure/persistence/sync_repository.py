@@ -7,7 +7,7 @@ from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -185,6 +185,23 @@ class SyncRepository:
                     )
                     if session.scalar(statement) is None:
                         report.games_already_present += 1
+                        existing = session.scalar(
+                            select(Game).where(
+                                Game.platform == Platform.CHESS_COM,
+                                or_(
+                                    Game.external_id == game.external_id,
+                                    Game.canonical_hash == game.canonical_hash,
+                                ),
+                            )
+                        )
+                        # Backfill only matching immutable source records. Never
+                        # attach evidence for a changed PGN to an older record.
+                        if (
+                            existing is not None
+                            and existing.source_evidence is None
+                            and existing.raw_pgn == game.raw_pgn
+                        ):
+                            existing.source_evidence = game.source_evidence
                     else:
                         report.games_inserted += 1
                 state.etag, state.last_modified = result.etag, result.last_modified

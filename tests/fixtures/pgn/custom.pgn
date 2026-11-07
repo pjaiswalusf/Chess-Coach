@@ -1,0 +1,8 @@
+[White "Pratik"]
+[Black "Opponent"]
+[Result "1/2-1/2"]
+[SetUp "1"]
+[FEN "4k3/8/8/8/8/8/8/R3K3 b Q - 17 20"]
+[TimeControl "300+5"]
+
+20... Kf7 {[%clk 0:03:00]} 21. Kf2 1/2-1/2

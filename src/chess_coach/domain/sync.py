@@ -42,6 +42,7 @@ class ExternalGame:
     time_class: str | None
     eco_url: str | None
     source_url: str | None
+    source_evidence: dict[str, object] | None = None
 
 
 @dataclass(frozen=True)

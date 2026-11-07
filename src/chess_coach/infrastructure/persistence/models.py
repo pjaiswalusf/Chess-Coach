@@ -17,24 +17,17 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, validates
 
+from chess_coach.domain.game_records import (
+    GameResult,
+    ParseStatus,
+    PlayerColor,
+)
 from chess_coach.infrastructure.persistence.base import Base, UTCDateTime
 
 
 class Platform(StrEnum):
     CHESS_COM = "chess.com"
     PGN = "pgn"
-
-
-class PlayerColor(StrEnum):
-    WHITE = "white"
-    BLACK = "black"
-
-
-class GameResult(StrEnum):
-    WIN = "win"
-    LOSS = "loss"
-    DRAW = "draw"
-    UNKNOWN = "unknown"
 
 
 class RunStatus(StrEnum):
@@ -122,6 +115,16 @@ class Game(Base):
     eco_url: Mapped[str | None] = mapped_column(Text)
     opening_name: Mapped[str | None] = mapped_column(Text)
     source_url: Mapped[str | None] = mapped_column(Text)
+    source_evidence: Mapped[dict[str, object] | None] = mapped_column(JSON)
+    parse_status: Mapped[ParseStatus] = mapped_column(
+        String(16), default=ParseStatus.PENDING, server_default="pending", index=True
+    )
+    parse_reason: Mapped[str | None] = mapped_column(String(64))
+    parse_error: Mapped[str | None] = mapped_column(Text)
+    parser_version: Mapped[int | None]
+    chess_library_version: Mapped[str | None] = mapped_column(String(32))
+    parse_attempted_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    parsed_metadata: Mapped[dict[str, object] | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
 
 
