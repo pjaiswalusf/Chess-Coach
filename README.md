@@ -158,3 +158,59 @@ Regenerate its types with `uv run python scripts/generate_api_types.py`, then ru
 See [Phase 13 verification](docs/PHASE13_VALIDATION.md) for checks and limitations.
 Run `uv run python scripts/verify_phase13_http.py` with free ports 8000/5173 to
 repeat the disposable API/Vite proxy and loopback verification.
+
+
+## Local post-game coaching (Phase 14)
+
+Apply migrations with `uv run alembic upgrade head`. Start Ollama locally with
+`qwen3.5:4b-q4_K_M` installed. Configure `OLLAMA_NO_CLOUD=1` in the Ollama server
+environment and restart it for server-level cloud disablement. The application
+accepts loopback Ollama hosts and local model tags only; it never downloads models
+or falls back to cloud inference.
+
+After completing engine analysis, stop the analysis worker and run:
+
+```sh
+uv run chess-coach coaching-worker
+# Or process one queued coaching request:
+uv run chess-coach coaching-worker --once
+```
+
+The two workers share a kernel guard and cannot run simultaneously. Stop the
+coaching worker before restarting analysis. This conservative memory policy uses
+the existing local worker pattern; no queue service is required. Queued coaching
+survives process exit, and interrupted generation requeues when its worker starts.
+
+In the existing game review, view saved moves, choose **Explain ply**, then
+**Explain this move**. Requests are explicit, duplicate generation is guarded, and
+saved coaching reopens without inference. The API exposes move explanation
+GET/POST endpoints, `/api/v1/coaching-jobs/{job_id}`, read-only readiness at
+`/api/v1/system/llm`, and historical coaching GET/POST at
+`/api/v1/coaching/history` (window/color/time_class/profile_hash query filters).
+Historical generation uses only supported Phase 12 weaknesses and linked moves.
+Insufficient histories abstain without contacting the model.
+
+GET retrieves a validated snapshot without Ollama. POST checks the current local
+model digest and reuses its compatible cache, or creates a job. If Ollama is
+unavailable, an existing validated result remains accessible. Evidence, model
+digest, prompt/schema versions and all generation settings define cache identity.
+Engine facts remain independent of generated prose. Mate is never converted to
+centipawns, and the played continuation starts after the actual move.
+
+Automated checks reject malformed responses, prohibited numeric/notation claims,
+some board contradictions and unverified tactical assertions. They do **not**
+prove arbitrary prose correctness. The UI says that explanations passed automated
+checks; human coaching-quality release gates remain pending. See
+[Phase 14 evaluation](docs/evaluation/phase14_baseline.md) and the
+[human review rubric](evaluation/rubrics/coaching_quality.md).
+
+```sh
+uv run python -m chess_coach.evaluation.move_coaching --validate-only
+uv run python -m chess_coach.evaluation.move_coaching --output evaluation/results/run.json
+CHESS_COACH_REAL_OLLAMA=1 uv run pytest tests/api/test_coaching_routes.py -k real_ollama
+```
+
+Normal tests fake the model and require no Ollama or public network. The fixed
+50-case synthetic development dataset is not a reviewed mistake benchmark and
+does not satisfy the future 200-case held-out acceptance criteria. Human labels
+and explanation-quality scores must be supplied before release approval.

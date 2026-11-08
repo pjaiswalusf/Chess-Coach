@@ -420,3 +420,32 @@ class MoveFeature(Base):
     features_json: Mapped[dict[str, object]] = mapped_column(JSON)
     content_hash: Mapped[str] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
+
+
+class CoachingOutput(Base):
+    """Independent durable jobs and validated results; never updates engine tables."""
+
+    __tablename__ = "coaching_outputs"
+    __table_args__ = (
+        UniqueConstraint("cache_key"),
+        CheckConstraint("status IN ('queued', 'running', 'done', 'insufficient_evidence', 'failed')", name="coaching_status"),
+        CheckConstraint("attempt_count >= 0", name="coaching_attempts"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cache_key: Mapped[str] = mapped_column(String(64))
+    output_type: Mapped[str] = mapped_column(String(16))
+    evidence_hash: Mapped[str] = mapped_column(String(64))
+    evidence_json: Mapped[dict[str, object]] = mapped_column(JSON)
+    model_name: Mapped[str] = mapped_column(String(100))
+    model_digest: Mapped[str] = mapped_column(String(100))
+    prompt_version: Mapped[str] = mapped_column(String(32))
+    schema_version: Mapped[str] = mapped_column(String(32))
+    generation_json: Mapped[dict[str, object]] = mapped_column(JSON)
+    status: Mapped[str] = mapped_column(String(32), default="queued")
+    output_json: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    attempt_count: Mapped[int] = mapped_column(default=0)
+    latency_ms: Mapped[int | None]
+    metrics_json: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)

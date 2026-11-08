@@ -246,3 +246,22 @@ def test_serialized_report_rejects_inconsistent_move_metrics(factory, field, val
     payload["overall"]["moves"][field] = value
     with pytest.raises(ValidationError):
         AnalyticsReport.model_validate(payload)
+
+
+def test_historical_coaching_keeps_deterministic_ranking_and_refs(factory):
+    import json
+
+    from chess_coach.application.coaching import historical_evidence, validated_output
+    from chess_coach.application.errors import OperationError
+
+    report = build(planted(factory))
+    evidence = historical_evidence(report)
+    assert evidence.patterns[0].candidate_key == "phase:endgame"
+    assert evidence.patterns[0].critical_errors == 24
+    assert evidence.patterns[0].source_moves == report.ranked_weaknesses["phase"][0].source_moves[:3]
+    raw = {"status": "explained", "summary": "Review the supported phase patterns.",
+        "priorities": [{"pattern_id": "phase:endgame", "explanation": "Endgame errors are represented in the supplied history.", "practice_tip": "Review the linked endgame positions."}]}
+    assert validated_output(json.dumps(raw), evidence).priorities[0].pattern_id == "phase:endgame"
+    raw["priorities"][0]["pattern_id"] = "invented"
+    with pytest.raises(OperationError):
+        validated_output(json.dumps(raw), evidence)

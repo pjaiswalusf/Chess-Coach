@@ -21,6 +21,7 @@ EXPECTED_TABLES = {
     "position_cache",
     "move_analyses",
     "move_features",
+    "coaching_outputs",
     "alembic_version",
 }
 

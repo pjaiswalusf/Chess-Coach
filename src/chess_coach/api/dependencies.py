@@ -9,6 +9,7 @@ from fastapi import Depends
 
 from chess_coach.analytics.service import AnalyticsService
 from chess_coach.application.analysis import AnalysisService
+from chess_coach.application.coaching import CoachingService
 from chess_coach.application.jobs import JobService
 from chess_coach.application.queries import QueryService
 from chess_coach.application.system import (
@@ -17,6 +18,7 @@ from chess_coach.application.system import (
     collect_system_status,
 )
 from chess_coach.config import Settings, get_settings
+from chess_coach.domain.coaching_models import LLMHealth
 from chess_coach.infrastructure.persistence.analysis_repository import (
     AnalysisRepository,
 )
@@ -110,3 +112,22 @@ def get_system_report(
             engine.dispose()
 
     return system_report(settings, status, statistics, worker)
+
+
+def get_coaching_service(
+    settings: Annotated[Settings, Depends(get_settings)],
+    queries: Annotated[QueryService, Depends(get_query_service)],
+) -> CoachingService:
+    from chess_coach.application.coaching import CoachingService
+    from chess_coach.infrastructure.llm.health import check_health
+    from chess_coach.infrastructure.persistence.coaching_repository import (
+        CoachingRepository,
+    )
+
+    return CoachingService(CoachingRepository(queries.store), settings, partial(check_health, settings))
+
+
+def get_llm_health(settings: Annotated[Settings, Depends(get_settings)]) -> LLMHealth:
+    from chess_coach.infrastructure.llm.health import check_health
+
+    return check_health(settings)

@@ -57,6 +57,8 @@ def main(argv: list[str] | None = None) -> None:
     worker.add_argument(
         "--once", action="store_true", help="Process one pending run and exit"
     )
+    coaching_worker = commands.add_parser("coaching-worker", help="Process persisted local coaching requests; stop the analysis worker first")
+    coaching_worker.add_argument("--once", action="store_true")
     sync_worker = commands.add_parser(
         "sync-worker", help="Process persisted sync requests"
     )
@@ -87,6 +89,11 @@ def main(argv: list[str] | None = None) -> None:
         uvicorn.run("chess_coach.api.app:app", host="127.0.0.1", port=8000)
         return
     settings = Settings()
+    if args.command == "coaching-worker":
+        from chess_coach.coaching_worker import run_coaching_worker
+
+        run_coaching_worker(settings, once=args.once)
+        return
     if args.command == "sync-worker":
         from chess_coach.sync_worker import run_sync_worker
 
