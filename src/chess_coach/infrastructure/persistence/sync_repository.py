@@ -11,6 +11,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session, sessionmaker
 
+from chess_coach.application.errors import OperationError
 from chess_coach.domain.sync import (
     Archive,
     Checkpoint,
@@ -27,6 +28,7 @@ from chess_coach.infrastructure.persistence.models import (
     RunStatus,
     TrackedPlayer,
 )
+from chess_coach.infrastructure.persistence.operations import ensure_idle, reserve
 
 
 class SyncRepository:
@@ -102,6 +104,8 @@ class SyncRepository:
 
     def start(self, username: str, now: datetime) -> int:
         with self.sessions.begin() as session:
+            reserve(session)
+            ensure_idle(session)
             session.execute(
                 insert(TrackedPlayer)
                 .values(platform=Platform.CHESS_COM, username=username)
@@ -120,6 +124,84 @@ class SyncRepository:
             session.add(run)
             session.flush()
             return run.id
+
+    def enqueue(self, player_id: int) -> int:
+        with self.sessions.begin() as s:
+            reserve(s)
+            ensure_idle(s)
+            if s.get(TrackedPlayer, player_id) is None:
+                raise OperationError(
+                    "PLAYER_NOT_CONFIGURED", "Configure a player first."
+                )
+            run = ImportRun(tracked_player_id=player_id, status=RunStatus.PENDING)
+            s.add(run)
+            s.flush()
+            return run.id
+
+    def next_pending(self) -> tuple[int, str] | None:
+        with self.sessions() as s:
+            row = s.execute(
+                select(ImportRun.id, TrackedPlayer.username)
+                .join(TrackedPlayer)
+                .where(ImportRun.status == RunStatus.PENDING)
+                .order_by(ImportRun.id)
+                .limit(1)
+            ).first()
+            return (row[0], row[1]) if row else None
+
+    def claim(self, run_id: int, now: datetime) -> None:
+        with self.sessions.begin() as s:
+            reserve(s)
+            run = s.get(ImportRun, run_id)
+            if run is None or run.status != RunStatus.PENDING:
+                raise OperationError("SYNC_NOT_QUEUED", "Select a queued sync run.")
+            run.status, run.started_at = RunStatus.RUNNING, now
+
+    def progress(self, run_id: int) -> dict[str, object]:
+        with self.sessions() as s:
+            run = s.get(ImportRun, run_id)
+            if run is None:
+                raise OperationError(
+                    "SYNC_RUN_NOT_FOUND", "The sync run was not found.", 404
+                )
+            summary = run.summary_json or {}
+            failed = run.status in (RunStatus.FAILED, RunStatus.PARTIAL)
+            return {
+                "run_id": run.id,
+                "status": {
+                    RunStatus.PENDING: "queued",
+                    RunStatus.RUNNING: "running",
+                    RunStatus.SUCCEEDED: "completed",
+                    RunStatus.FAILED: "failed",
+                    RunStatus.PARTIAL: "failed",
+                }[run.status],
+                "started_at": run.started_at,
+                "finished_at": run.finished_at,
+                "progress": {
+                    "archives_total": summary.get("archives_selected"),
+                    "archives_processed": sum(
+                        v
+                        for key in (
+                            "archives_completed",
+                            "archives_failed",
+                            "archives_skipped",
+                        )
+                        if isinstance((v := summary.get(key)), int)
+                    ),
+                    "games_seen": run.games_seen,
+                    "games_inserted": run.games_inserted,
+                    "games_existing": run.games_existing,
+                    "games_failed": run.games_failed,
+                },
+                "error": {
+                    "code": "SYNC_FAILED",
+                    "message": "Sync did not finish successfully. Check backend logs and start another sync to resume archive checkpoints.",
+                    "details": {},
+                }
+                if failed
+                else None,
+                "recoverable": failed or run.status == RunStatus.RUNNING,
+            }
 
     @staticmethod
     def _state(session: Session, run: ImportRun, archive: Archive) -> ArchiveSyncState:

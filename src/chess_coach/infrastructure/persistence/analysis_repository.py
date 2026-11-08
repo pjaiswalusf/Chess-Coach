@@ -7,6 +7,7 @@ import chess
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
+from chess_coach.application.errors import OperationError
 from chess_coach.domain.analysis import (
     ACTIVE,
     AnalysisProfile,
@@ -34,12 +35,11 @@ from chess_coach.infrastructure.persistence.models import (
     TrackedPlayer,
     utc_now,
 )
+from chess_coach.infrastructure.persistence.operations import ensure_idle, reserve
 
 
-class AnalysisError(ValueError):
-    def __init__(self, code: str, message: str, status: int = 409):
-        self.code, self.status = code, status
-        super().__init__(message)
+class AnalysisError(OperationError):
+    pass
 
 
 def source_hash(game: Game) -> str:
@@ -139,20 +139,11 @@ class AnalysisRepository:
 
     def create(self, player_id: int, profile: AnalysisProfile) -> int:
         with self.sessions.begin() as s:
-            # Acquire SQLite's write reservation before reading eligibility.
-            s.execute(
-                update(AnalysisWorkerState)
-                .where(AnalysisWorkerState.id == 1)
-                .values(id=1)
-            )
-            if (
-                s.scalar(select(AnalysisRun.id).where(AnalysisRun.status.in_(ACTIVE)))
-                is not None
-            ):
-                raise AnalysisError(
-                    "ANALYSIS_ALREADY_RUNNING",
-                    "Inspect the active run before starting another.",
-                )
+            reserve(s)
+            try:
+                ensure_idle(s)
+            except OperationError as exc:
+                raise AnalysisError(exc.code, str(exc), exc.status) from None
             if s.get(TrackedPlayer, player_id) is None:
                 raise AnalysisError(
                     "PLAYER_NOT_FOUND", "Select an imported player.", 404
@@ -182,7 +173,7 @@ class AnalysisRepository:
                 ):
                     run.games_excluded += 1
                     continue
-                skipped = self._compatible(s, g, profile)
+                skipped = self.compatible(s, g, profile)
                 s.add(
                     AnalysisRunGame(
                         run_id=run.id,
@@ -198,7 +189,7 @@ class AnalysisRepository:
                 self._transition(run, Status.DONE)
             return run.id
 
-    def _compatible(self, s: Session, game: Game, profile: AnalysisProfile) -> bool:
+    def compatible(self, s: Session, game: Game, profile: AnalysisProfile) -> bool:
         state = s.scalar(
             select(GameAnalysisState).where(
                 GameAnalysisState.game_id == game.id,
@@ -721,7 +712,7 @@ class AnalysisRepository:
             if (
                 game is None
                 or run is None
-                or not self._compatible(s, game, profile_of(run))
+                or not self.compatible(s, game, profile_of(run))
             ):
                 raise AnalysisError(
                     "ANALYSIS_INCOMPLETE",

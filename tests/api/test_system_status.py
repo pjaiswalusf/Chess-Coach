@@ -17,7 +17,9 @@ def test_status_serializes_independent_readiness_without_running_integrations() 
 
     app.dependency_overrides[get_system_status] = fake_status
     try:
-        response = TestClient(app).get("/api/v1/system/status")
+        response = TestClient(app, base_url="http://127.0.0.1").get(
+            "/api/v1/system/status"
+        )
     finally:
         app.dependency_overrides.pop(get_system_status)
     assert response.status_code == 200

@@ -295,7 +295,7 @@ def test_api_start_progress_conflict_cancel_and_restart(pipeline, sessions, play
     seed(sessions, player_id)
     app.dependency_overrides[get_analysis_service] = lambda: AnalysisService(store)
     try:
-        with TestClient(app) as client:
+        with TestClient(app, base_url="http://127.0.0.1") as client:
             assert (
                 client.post(
                     "/api/v1/analysis-runs", json={"tracked_player_id": player_id}
@@ -308,7 +308,7 @@ def test_api_start_progress_conflict_cancel_and_restart(pipeline, sessions, play
                 )
                 assert response.status_code == 202
                 run = response.json()["id"]
-                assert response.json()["status"] == "pending"
+                assert response.json()["status"] == "queued"
                 assert (
                     client.post(
                         "/api/v1/analysis-runs", json={"tracked_player_id": player_id}
@@ -319,9 +319,11 @@ def test_api_start_progress_conflict_cancel_and_restart(pipeline, sessions, play
                 response = client.get(f"/api/v1/analysis-runs/{run}")
                 assert response.json()["progress_percent"] == 100
                 assert client.get("/health").status_code == 200
-            with TestClient(app) as restarted:
+            with TestClient(app, base_url="http://127.0.0.1") as restarted:
                 data = restarted.get(f"/api/v1/analysis-runs/{run}").json()
-                assert data["status"] == "done" and data["worker_available"] is False
+                assert (
+                    data["status"] == "completed" and data["worker_available"] is False
+                )
                 assert restarted.get("/api/v1/analysis-runs/99999").status_code == 404
     finally:
         app.dependency_overrides.clear()
@@ -470,10 +472,10 @@ def test_database_errors_are_safe_api_responses(pipeline):
 
     app.dependency_overrides[get_analysis_service] = broken
     try:
-        with TestClient(app) as client:
+        with TestClient(app, base_url="http://127.0.0.1") as client:
             response = client.get("/api/v1/analysis-runs")
             assert response.status_code == 503
-            assert response.json()["detail"]["code"] == "DATABASE_UNAVAILABLE"
+            assert response.json()["code"] == "DATABASE_UNAVAILABLE"
             assert (
                 "secret-path" not in response.text
                 and "private-sql" not in response.text
@@ -504,13 +506,13 @@ def test_concurrent_submission_has_one_winner(pipeline, sessions, player_id):
 
 
 def test_cross_origin_mutation_rejected(pipeline):
-    with TestClient(app) as client:
+    with TestClient(app, base_url="http://127.0.0.1") as client:
         response = client.post(
             "/api/v1/analysis-runs/1/cancel",
             headers={"origin": "https://untrusted.example"},
         )
         assert response.status_code == 403
-        assert response.json()["detail"]["code"] == "ORIGIN_NOT_ALLOWED"
+        assert response.json()["code"] == "ORIGIN_NOT_ALLOWED"
 
 
 def test_worker_lifecycle_closes_engine_and_releases_lock(

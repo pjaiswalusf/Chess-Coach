@@ -227,7 +227,19 @@ class AnalysisService:
     def __init__(self, store: AnalysisRepository):
         self.store = store
 
-    def create(self, player_id: int) -> AnalysisRun:
+    def create(self, player_id: int | None = None) -> AnalysisRun:
+        from chess_coach.application.errors import OperationError
+
+        players = self.store.players()
+        if not players:
+            raise OperationError(
+                "PLAYER_NOT_CONFIGURED", "Configure the tracked player first."
+            )
+        if len(players) != 1 or (player_id is not None and player_id != players[0][0]):
+            raise OperationError(
+                "PLAYER_MISMATCH", "Select the single configured player."
+            )
+        player_id = players[0][0]
         return self.store.get(
             self.store.create(player_id, self.store.available_profile())
         )
@@ -237,6 +249,19 @@ class AnalysisService:
         processed = run.games_completed + run.games_failed + run.games_skipped
         return {
             **{c.name: getattr(run, c.name) for c in run.__table__.columns},
+            "run_id": run.id,
+            "storage_status": run.status,
+            "status": {
+                "pending": "queued",
+                "running": "running",
+                "done": "completed",
+                "completed_with_errors": "failed",
+                "cancelled": "failed",
+                "failed": "failed",
+            }[run.status],
+            "error_message": "Analysis stopped. Check backend logs and retry pending work."
+            if run.error_code or run.error_message
+            else None,
             "progress_percent": 100 * processed / run.games_total
             if run.games_total
             else 100,

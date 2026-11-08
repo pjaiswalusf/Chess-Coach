@@ -6,7 +6,9 @@ from sqlalchemy import URL, Engine, create_engine, event
 from sqlalchemy.pool import ConnectionPoolEntry
 
 
-def create_database_engine(database_url: URL) -> Engine:
+def create_database_engine(
+    database_url: URL, *, timeout_seconds: float = 5.0
+) -> Engine:
     """Create the local file database engine; schema creation belongs to Alembic."""
     if database_url.get_backend_name() != "sqlite" or database_url.database in (
         None,
@@ -18,7 +20,7 @@ def create_database_engine(database_url: URL) -> Engine:
     engine = create_engine(
         database_url,
         hide_parameters=True,
-        connect_args={"timeout": 5.0, "autocommit": False},
+        connect_args={"timeout": timeout_seconds, "autocommit": False},
     )
 
     @event.listens_for(engine, "connect")
@@ -33,7 +35,7 @@ def create_database_engine(database_url: URL) -> Engine:
             with closing(connection.cursor()) as cursor:
                 cursor.execute("PRAGMA foreign_keys=ON")
                 cursor.execute("PRAGMA journal_mode=WAL")
-                cursor.execute("PRAGMA busy_timeout=5000")
+                cursor.execute(f"PRAGMA busy_timeout={int(timeout_seconds * 1000)}")
         finally:
             connection.autocommit = previous
 

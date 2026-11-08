@@ -2,7 +2,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from chess_coach.api.dependencies import get_system_status
+from chess_coach.api.dependencies import get_system_report, get_system_status
+from chess_coach.api.schemas.contracts import SystemResponse
 from chess_coach.api.schemas.system import DependencyStatus, SystemStatusResponse
 from chess_coach.application.system import SystemStatus
 
@@ -23,3 +24,14 @@ def system_status(
             state=status.ollama_model.state, detail=status.ollama_model.detail
         ),
     )
+
+
+@router.get(
+    "",
+    response_model=SystemResponse,
+    summary="Check local component availability and stored-game counts",
+)
+def report(
+    status: Annotated[dict[str, object], Depends(get_system_report)],
+) -> dict[str, object]:
+    return status

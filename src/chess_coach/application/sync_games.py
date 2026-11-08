@@ -33,6 +33,7 @@ class SyncStore(Protocol):
     def recover(self, now: datetime) -> None: ...
     def checkpoints(self, username: str) -> dict[Archive, Checkpoint]: ...
     def start(self, username: str, now: datetime) -> int: ...
+    def claim(self, run_id: int, now: datetime) -> None: ...
     def begin_archive(self, run_id: int, archive: Archive) -> None: ...
     def commit_archive(
         self,
@@ -62,8 +63,10 @@ class SyncGamesService:
         provider: GameProvider,
         store: SyncStore,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        prepare_games: Callable[[str], object] | None = None,
     ):
         self.provider, self.store, self.clock = provider, store, clock
+        self.prepare_games = prepare_games
 
     def sync(
         self,
@@ -72,17 +75,25 @@ class SyncGamesService:
         force: bool = False,
         dry_run: bool = False,
         month: Archive | None = None,
+        queued_run_id: int | None = None,
     ) -> SyncReport:
         username = normalize_username(username)
         with self.store.guard():
             if not dry_run:
                 self.store.recover(self.clock())
             # No player/run creation when the public identity cannot be verified.
-            self.provider.get_player(username)
+            if queued_run_id is None:
+                self.provider.get_player(username)
             report = SyncReport()
             if not dry_run:
-                report.run_id = self.store.start(username, self.clock())
+                if queued_run_id is None:
+                    report.run_id = self.store.start(username, self.clock())
+                else:
+                    self.store.claim(queued_run_id, self.clock())
+                    report.run_id = queued_run_id
             try:
+                if queued_run_id is not None:
+                    self.provider.get_player(username)
                 archives = self.provider.get_archives(username)
                 report.archives_discovered = len(archives)
                 if month is not None:
@@ -180,6 +191,8 @@ class SyncGamesService:
                     if completed
                     else "FAILED"
                 )
+                if self.prepare_games is not None:
+                    self.prepare_games(username)
             except Exception as exc:
                 report.status = "FAILED"
                 report.errors.append(
