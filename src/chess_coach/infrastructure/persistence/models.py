@@ -388,3 +388,35 @@ class AnalysisWorkerState(Base):
     config_json: Mapped[dict[str, int | float | str]] = mapped_column(JSON)
     heartbeat_at: Mapped[datetime] = mapped_column(UTCDateTime())
     status: Mapped[str] = mapped_column(String(16))
+
+
+class MoveFeature(Base):
+    """Immutable input snapshots; each complete game's rows commit atomically."""
+
+    __tablename__ = "move_features"
+    __table_args__ = (
+        UniqueConstraint("game_id", "ply", "feature_version", "input_hash"),
+        CheckConstraint("ply >= 1", name="ply_positive"),
+        CheckConstraint("feature_version >= 1", name="version_positive"),
+        Index("ix_move_features_snapshot", "game_id", "feature_version", "input_hash"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    game_id: Mapped[int] = mapped_column(ForeignKey("games.id", ondelete="CASCADE"))
+    ply: Mapped[int]
+    feature_version: Mapped[int]
+    phase_classifier_version: Mapped[int]
+    input_hash: Mapped[str] = mapped_column(String(64))
+    profile_hash: Mapped[str] = mapped_column(String(64))
+    phase: Mapped[str] = mapped_column(String(16))
+    played_is_capture: Mapped[bool]
+    played_gives_check: Mapped[bool]
+    played_is_castling: Mapped[bool]
+    material_balance_before: Mapped[int]
+    material_balance_after: Mapped[int]
+    engine_advantage_before: Mapped[str | None] = mapped_column(String(32))
+    advantage_lost: Mapped[bool | None]
+    time_used_seconds: Mapped[float | None] = mapped_column(Float)
+    under_time_pressure: Mapped[bool | None]
+    features_json: Mapped[dict[str, object]] = mapped_column(JSON)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)

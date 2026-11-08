@@ -1,0 +1,6 @@
+[White "TestPlayer"]
+[Black "Opponent"]
+[Result "1-0"]
+[TimeControl "-"]
+
+1. e4 d5 2. exd5 Qxd5 3. Nc3 Qd6 4. d4 e6 5. Nf3 c5 6. dxc5 Qxd1+ 7. Nxd1 Be7 8. Bc4 Nc6 9. Be3 a5 10. Bb5 Nh6 11. O-O Nf5 12. Re1 Kf8 13. c3 Nxe3 14. Nxe3 Na7 15. Ba4 h5 16. b4 axb4 17. cxb4 Nc6 18. Bxc6 bxc6 19. Nc4 Ba6 20. Nb6 Rd8 21. g3 Bf6 22. Rad1 Be2 23. Rxd8+ Bxd8 24. Rxe2 h4 25. gxh4 Bxh4 26. Nxh4 Rxh4 27. Nd7+ Ke8 28. Nb6 Rxb4 29. Nc8 Rc4 30. Re5 Rg4+ 31. Kf1 Rh4 32. Kg2 Kd8 33. Nd6 Ra4 34. Nxf7+ Kd7 35. Re2 Rf4 36. Ne5+ Ke8 37. Nxc6 Kd7 38. Nb8+ Kc7 39. Na6+ Kd7 40. Rc2 Ra4 41. Nb8+ Kc7 42. Nd7 Kxd7 43. c6+ Kc7 44. f3 Ra3 45. h4 Ra4 46. Kg3 g6 47. f4 Ra7 48. Kg4 Ra5 49. Re2 Rc5 50. Rxe6 Rc1 51. Rxg6 Rc4 52. h5 Ra4 53. h6 Ra8 54. h7 Rh8 55. Rh6 Kb8 56. f5 Kc7 57. Kg5 Kb6 58. Kg6 Rxh7 59. Rxh7 Kxc6 60. f6 Kd6 61. f7 Ke7 62. Rh8 Kd6 63. f8=Q+ Kd5 64. Rh5+ Kc4 65. Qc5+ Kd3 66. Rh4 Ke2 67. Qc3 Kf1 68. Rb4 Kg1 69. Rb2 Kh1 70. Qc1# 1-0

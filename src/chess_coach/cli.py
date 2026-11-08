@@ -57,6 +57,14 @@ def main(argv: list[str] | None = None) -> None:
     worker.add_argument(
         "--once", action="store_true", help="Process one pending run and exit"
     )
+    features = commands.add_parser(
+        "extract-features",
+        help="Extract offline facts from completed games; no engine/model calls",
+    )
+    features.add_argument("--username", required=True)
+    features.add_argument(
+        "--profile", required=True, help="Existing analysis profile hash, or board-only"
+    )
     args = parser.parse_args(argv)
     if args.command in (None, "serve"):
         uvicorn.run("chess_coach.api.app:app", host="127.0.0.1", port=8000)
@@ -73,6 +81,19 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(diagnose(settings))
     engine = create_database_engine(settings.database_url)
     try:
+        if args.command == "extract-features":
+            from chess_coach.application.features import ExtractFeatures
+            from chess_coach.infrastructure.persistence.feature_repository import (
+                FeatureRepository,
+            )
+
+            report_features = ExtractFeatures(
+                FeatureRepository(create_session_factory(engine))
+            ).run(args.username, args.profile)
+            print(json.dumps(asdict(report_features), indent=2))
+            if report_features.games_failed:
+                raise SystemExit(1)
+            return
         if args.command == "parse-games":
             report_parse = ParseImportedGames(
                 ParseRepository(create_session_factory(engine), settings.database_path),

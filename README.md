@@ -118,3 +118,12 @@ search estimates, not confirmed mistake classifications.
 See the [operations runbook](docs/operations/analysis-runbook.md),
 [validation record](docs/PHASE10_VALIDATION.md), and
 [measured baseline](docs/benchmarks/phase10-baseline.md).
+
+### Deterministic features (Phase 11)
+
+After `uv run alembic upgrade head`, extract features offline from a stored analysis
+profile with `uv run chess-coach extract-features --username YOUR_USERNAME --profile PROFILE_HASH`.
+Use `--profile board-only` for board and clock facts without engine evidence.
+The command resumes by skipping complete matching snapshots and never starts an
+engine or model. See the [feature contract and recovery instructions](docs/FEATURES.md)
+and [validation record](docs/PHASE11_VALIDATION.md).
