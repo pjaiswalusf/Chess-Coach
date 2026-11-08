@@ -1,0 +1,17 @@
+[
+ {"name":"initial quiet", "fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "uci":"e2e4", "capture":false, "check":false,"delta":0,"reason":"Pawn advances without capture."},
+ {"name":"pawn capture", "fen":"4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1", "uci":"e4d5", "capture":true,"check":false,"delta":1,"reason":"White removes one pawn."},
+ {"name":"rook capture", "fen":"4k3/8/8/3r4/4P3/8/8/4K3 w - - 0 1", "uci":"e4d5", "capture":true,"check":false,"delta":5,"reason":"Pawn captures rook worth five."},
+ {"name":"en passant", "fen":"4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 2", "uci":"e5d6", "capture":true,"check":false,"delta":1,"reason":"Captured pawn is on d5, not destination d6."},
+ {"name":"queen promotion", "fen":"7k/P7/8/8/8/8/8/4K3 w - - 0 1", "uci":"a7a8q", "capture":false,"check":true,"delta":8,"reason":"Queen replaces pawn, net eight."},
+ {"name":"capture promotion", "fen":"1r5k/P7/8/8/8/8/8/4K3 w - - 0 1", "uci":"a7b8q", "capture":true,"check":true,"delta":13,"reason":"Promotion gains eight and removes rook worth five."},
+ {"name":"underpromotion", "fen":"7k/P7/8/8/8/8/8/4K3 w - - 0 1", "uci":"a7a8n", "capture":false,"check":false,"delta":2,"reason":"Knight replaces pawn."},
+ {"name":"castle", "fen":"r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1", "uci":"e1g1", "capture":false,"check":false,"delta":0,"castle":true,"reason":"Legal kingside castling."},
+ {"name":"black capture", "fen":"4k3/8/8/3p4/4R3/8/8/4K3 b - - 0 1", "uci":"d5e4", "capture":true,"check":false,"delta":5,"reason":"Black mover gains five material points."},
+ {"name":"immediate mate", "fen":"rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2", "uci":"d8h4", "capture":false,"check":true,"delta":0,"mate":true,"reason":"Fools mate."},
+ {"name":"queenless middlegame", "fen":"r1b1k2r/ppp2ppp/2n2n2/3pp3/3PP3/2N2N2/PPP2PPP/R1B1K2R w KQkq - 0 25", "phase":"middlegame","reason":"38 non-pawn points exceeds endgame threshold."},
+ {"name":"rook ending", "fen":"4k2r/pp6/8/8/8/8/PP6/R3K3 w - - 0 25", "phase":"endgame","reason":"Ten non-pawn material points."},
+ {"name":"pawn ending", "fen":"4k3/pp6/8/8/8/8/PP6/4K3 w - - 0 25", "phase":"endgame","reason":"Zero non-pawn material."},
+ {"name":"opening", "fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 4", "phase":"opening","reason":"Known standard history, early move window."},
+ {"name":"middlegame", "fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 25", "phase":"middlegame","reason":"Opening window completed, irrespective of development."}
+]

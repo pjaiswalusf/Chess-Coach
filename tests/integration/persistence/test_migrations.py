@@ -20,6 +20,7 @@ EXPECTED_TABLES = {
     "game_analysis_states",
     "position_cache",
     "move_analyses",
+    "move_features",
     "alembic_version",
 }
 

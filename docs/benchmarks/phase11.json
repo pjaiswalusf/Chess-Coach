@@ -1,0 +1,299 @@
+{
+  "sample_policy": "All 30 unique games in existing Phase 10 first-N corpus; overlapping 10-game/recovery corpora excluded. PGN-declared completion. No new engine analysis.",
+  "report": {
+    "run_id": "703408eb53c7446384fb64ff2563193c",
+    "feature_version": 1,
+    "games_completed": 30,
+    "games_skipped": 0,
+    "games_failed": 0,
+    "valid_moves": 1768,
+    "missing_clocks": 465,
+    "missing_evaluations": 0,
+    "mate_evaluations": 107,
+    "clock_inconsistencies": 0,
+    "extraction_seconds": 0.17300725000131933,
+    "persistence_seconds": 0.1294230419989617,
+    "reasons": {}
+  },
+  "wall_seconds": 0.4274466670003676,
+  "features_per_extraction_second": 10219.22491679694,
+  "missing_clock_percent": 26.300904977375566,
+  "missing_evaluation_percent": 0.0,
+  "phase_counts": {
+    "opening": 590,
+    "middlegame": 799,
+    "endgame": 379
+  },
+  "flag_counts": {
+    "played_is_capture": 450,
+    "played_gives_check": 198,
+    "played_is_castling": 39,
+    "queen_moved_early": 69,
+    "advantage_lost": 18
+  },
+  "repeat": {
+    "run_id": "38693eecd29f4cd89c36c14833dd8de3",
+    "feature_version": 1,
+    "games_completed": 0,
+    "games_skipped": 30,
+    "games_failed": 0,
+    "valid_moves": 0,
+    "missing_clocks": 0,
+    "missing_evaluations": 0,
+    "mate_evaluations": 0,
+    "clock_inconsistencies": 0,
+    "extraction_seconds": 0,
+    "persistence_seconds": 0,
+    "reasons": {}
+  },
+  "games": [
+    {
+      "game_id": 1,
+      "plies": 62,
+      "phases": {
+        "opening": 20,
+        "middlegame": 28,
+        "endgame": 14
+      }
+    },
+    {
+      "game_id": 2,
+      "plies": 43,
+      "phases": {
+        "opening": 20,
+        "middlegame": 23
+      }
+    },
+    {
+      "game_id": 3,
+      "plies": 14,
+      "phases": {
+        "opening": 14
+      }
+    },
+    {
+      "game_id": 4,
+      "plies": 70,
+      "phases": {
+        "opening": 20,
+        "middlegame": 28,
+        "endgame": 22
+      }
+    },
+    {
+      "game_id": 5,
+      "plies": 24,
+      "phases": {
+        "opening": 20,
+        "middlegame": 4
+      }
+    },
+    {
+      "game_id": 6,
+      "plies": 29,
+      "phases": {
+        "opening": 20,
+        "middlegame": 9
+      }
+    },
+    {
+      "game_id": 7,
+      "plies": 36,
+      "phases": {
+        "opening": 20,
+        "middlegame": 16
+      }
+    },
+    {
+      "game_id": 8,
+      "plies": 40,
+      "phases": {
+        "opening": 20,
+        "middlegame": 20
+      }
+    },
+    {
+      "game_id": 9,
+      "plies": 47,
+      "phases": {
+        "opening": 20,
+        "middlegame": 27
+      }
+    },
+    {
+      "game_id": 10,
+      "plies": 80,
+      "phases": {
+        "opening": 20,
+        "middlegame": 60
+      }
+    },
+    {
+      "game_id": 11,
+      "plies": 40,
+      "phases": {
+        "opening": 20,
+        "middlegame": 20
+      }
+    },
+    {
+      "game_id": 12,
+      "plies": 50,
+      "phases": {
+        "opening": 20,
+        "middlegame": 30
+      }
+    },
+    {
+      "game_id": 13,
+      "plies": 46,
+      "phases": {
+        "opening": 20,
+        "middlegame": 26
+      }
+    },
+    {
+      "game_id": 14,
+      "plies": 45,
+      "phases": {
+        "opening": 20,
+        "middlegame": 25
+      }
+    },
+    {
+      "game_id": 15,
+      "plies": 85,
+      "phases": {
+        "opening": 20,
+        "middlegame": 65
+      }
+    },
+    {
+      "game_id": 16,
+      "plies": 88,
+      "phases": {
+        "opening": 20,
+        "middlegame": 26,
+        "endgame": 42
+      }
+    },
+    {
+      "game_id": 17,
+      "plies": 63,
+      "phases": {
+        "opening": 20,
+        "middlegame": 41,
+        "endgame": 2
+      }
+    },
+    {
+      "game_id": 18,
+      "plies": 83,
+      "phases": {
+        "opening": 20,
+        "middlegame": 34,
+        "endgame": 29
+      }
+    },
+    {
+      "game_id": 19,
+      "plies": 95,
+      "phases": {
+        "opening": 20,
+        "middlegame": 39,
+        "endgame": 36
+      }
+    },
+    {
+      "game_id": 20,
+      "plies": 139,
+      "phases": {
+        "opening": 20,
+        "middlegame": 32,
+        "endgame": 87
+      }
+    },
+    {
+      "game_id": 21,
+      "plies": 87,
+      "phases": {
+        "opening": 20,
+        "middlegame": 23,
+        "endgame": 44
+      }
+    },
+    {
+      "game_id": 22,
+      "plies": 122,
+      "phases": {
+        "opening": 20,
+        "middlegame": 39,
+        "endgame": 63
+      }
+    },
+    {
+      "game_id": 23,
+      "plies": 49,
+      "phases": {
+        "opening": 20,
+        "middlegame": 29
+      }
+    },
+    {
+      "game_id": 24,
+      "plies": 20,
+      "phases": {
+        "opening": 20
+      }
+    },
+    {
+      "game_id": 25,
+      "plies": 16,
+      "phases": {
+        "opening": 16
+      }
+    },
+    {
+      "game_id": 26,
+      "plies": 61,
+      "phases": {
+        "opening": 20,
+        "middlegame": 41
+      }
+    },
+    {
+      "game_id": 27,
+      "plies": 54,
+      "phases": {
+        "opening": 20,
+        "middlegame": 34
+      }
+    },
+    {
+      "game_id": 28,
+      "plies": 38,
+      "phases": {
+        "opening": 20,
+        "middlegame": 18
+      }
+    },
+    {
+      "game_id": 29,
+      "plies": 40,
+      "phases": {
+        "opening": 20,
+        "middlegame": 20
+      }
+    },
+    {
+      "game_id": 30,
+      "plies": 102,
+      "phases": {
+        "opening": 20,
+        "middlegame": 42,
+        "endgame": 40
+      }
+    }
+  ],
+  "subprocess_and_network_calls": 0
+}
