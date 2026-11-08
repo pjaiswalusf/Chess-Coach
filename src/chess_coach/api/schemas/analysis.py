@@ -1,0 +1,84 @@
+"""Explicit public contracts for completed-game analysis."""
+
+from datetime import datetime
+
+from pydantic import BaseModel, Field
+
+from chess_coach.domain.analysis import AnalysisRunStatus
+
+
+class CreateRun(BaseModel):
+    tracked_player_id: int = Field(gt=0)
+
+
+class RunGame(BaseModel):
+    game_id: int
+    status: str
+    attempt_count: int
+    error_code: str | None
+
+
+class RunResponse(BaseModel):
+    id: int
+    tracked_player_id: int
+    status: AnalysisRunStatus
+    created_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None
+    last_heartbeat_at: datetime | None
+    profile_hash: str
+    engine_version: str
+    analysis_version: str
+    engine_config_json: dict[str, int | float | str]
+    draw_policy_version: str
+    games_total: int
+    games_completed: int
+    games_failed: int
+    games_skipped: int
+    games_excluded: int
+    positions_analyzed: int
+    terminal_positions: int
+    cache_hits: int
+    cache_misses: int
+    engine_seconds: float
+    cancel_requested: bool
+    error_code: str | None
+    error_message: str | None
+    progress_percent: float
+    successful_percent: float
+    worker_available: bool
+    games: list[RunGame]
+
+
+class Player(BaseModel):
+    id: int
+    username: str
+
+
+class WorkerResponse(BaseModel):
+    available: bool
+    engine_version: str | None
+    heartbeat_at: datetime | None
+    database: str
+    players: list[Player]
+
+
+class MoveResponse(BaseModel):
+    game_id: int
+    profile_hash: str
+    ply: int
+    move_number: int
+    mover: str
+    played_move_uci: str
+    played_move_san: str
+    fen_before: str
+    best_move_uci: str | None
+    eval_before_cp_white: int | None
+    eval_after_cp_white: int | None
+    mate_before_white: int | None
+    mate_after_white: int | None
+    mate_before_winner: bool | None
+    mate_after_winner: bool | None
+    loss_cp: int | None
+    pv_json: list[str]
+    evidence_kind: str = "single_pass_estimate"

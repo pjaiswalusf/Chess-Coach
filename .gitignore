@@ -227,3 +227,7 @@ __marimo__/
 # Local importer lock and coverage diagnostics
 *.sync.lock
 coverage.json
+
+# Local analysis worker ownership and verification captures
+*.analysis.lock
+data/phase10-browser.png

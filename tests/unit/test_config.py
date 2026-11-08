@@ -45,3 +45,18 @@ def test_settings_load_env_file_and_environment_override(
     assert settings.stockfish_threads == 3
     assert settings.stockfish_hash_mb == 128
     assert settings.database_path == Path("data/chess_coach.db")
+
+
+def test_node_budget_environment_and_maximum(monkeypatch):
+    monkeypatch.setenv("CHESS_COACH_STOCKFISH_NODES", "20000")
+    monkeypatch.setenv("CHESS_COACH_STOCKFISH_MAX_NODES", "100000")
+    assert Settings(_env_file=None).stockfish_nodes == 20000
+    monkeypatch.setenv("CHESS_COACH_STOCKFISH_MAX_NODES", "10000")
+    with pytest.raises(ValidationError, match="must not exceed"):
+        Settings(_env_file=None)
+
+
+@pytest.mark.parametrize("value", [True, 1.5, "1.5", "true"])
+def test_node_budget_remains_strict(value):
+    with pytest.raises(ValidationError):
+        Settings(stockfish_nodes=value, _env_file=None)

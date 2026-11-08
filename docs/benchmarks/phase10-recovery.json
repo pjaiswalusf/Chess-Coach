@@ -1,0 +1,11 @@
+{
+  "hard_stop": "SIGKILL",
+  "completed_before": 3,
+  "move_rows_before": 119,
+  "completed_after": 10,
+  "move_rows_after": 445,
+  "duplicates": 0,
+  "repeat_engine_calls": 0,
+  "api_requests_during_analysis": 79,
+  "max_api_response_seconds": 0.006063207999886799
+}

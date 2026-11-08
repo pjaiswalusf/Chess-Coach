@@ -1,0 +1,27 @@
+{
+  "status": "done",
+  "games_total": 30,
+  "games_completed": 30,
+  "games_failed": 0,
+  "positions_analyzed": 1662,
+  "cache_hits": 124,
+  "cache_misses": 1674,
+  "terminal_positions": 12,
+  "engine_seconds": 20.095961474001115,
+  "engine": "Stockfish 19",
+  "config": {
+    "threads": 4,
+    "hash_mb": 512,
+    "nodes": 10000,
+    "search_seconds": 3.0,
+    "multipv": 1,
+    "chess_version": "1.11.2",
+    "score_policy": "white-mate-separate-v1"
+  },
+  "wall_seconds": 23.322251125000093,
+  "total_plies": 1768,
+  "min_plies": 14,
+  "max_plies": 139,
+  "repeat_skipped": 30,
+  "repeat_engine_calls": 0
+}
