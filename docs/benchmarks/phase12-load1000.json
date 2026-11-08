@@ -1,0 +1,27 @@
+{
+  "sample_policy": "Synthetic load test: replicated source records; not independent historical evidence.",
+  "independent_source_games": 30,
+  "selected_games": 1000,
+  "analyzed_games": 1000,
+  "player_moves": 29527,
+  "report_status": "COMPLETE",
+  "first_wall_seconds": 17.32148425000014,
+  "timings": [
+    {
+      "retrieval_seconds": 1.4749305000004824,
+      "validation_seconds": 15.558978207998734,
+      "aggregation_seconds": 0.1374134170000616,
+      "ranking_seconds": 0.03330295799969463,
+      "total_seconds": 17.315204667000216
+    },
+    {
+      "retrieval_seconds": 1.407525083001019,
+      "validation_seconds": 15.55559145799998,
+      "aggregation_seconds": 0.1346937500002241,
+      "ranking_seconds": 0.03426254199985124,
+      "total_seconds": 17.24843841599977
+    }
+  ],
+  "deterministic_repeat": true,
+  "subprocess_and_network_calls": 0
+}

@@ -65,6 +65,19 @@ def main(argv: list[str] | None = None) -> None:
     features.add_argument(
         "--profile", required=True, help="Existing analysis profile hash, or board-only"
     )
+    analytics = commands.add_parser(
+        "analytics-health",
+        help="Read-only longitudinal report and readiness diagnostics",
+    )
+    analytics.add_argument("--player-id", type=int, required=True)
+    analytics.add_argument("--profile", required=True)
+    analytics.add_argument(
+        "--window",
+        default="all",
+        choices=["all", "last_20", "last_50", "last_100", "date_range"],
+    )
+    analytics.add_argument("--start", help="Inclusive ISO timestamp with timezone")
+    analytics.add_argument("--end", help="Exclusive ISO timestamp with timezone")
     args = parser.parse_args(argv)
     if args.command in (None, "serve"):
         uvicorn.run("chess_coach.api.app:app", host="127.0.0.1", port=8000)
@@ -81,6 +94,30 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(diagnose(settings))
     engine = create_database_engine(settings.database_url)
     try:
+        if args.command == "analytics-health":
+            from chess_coach.analytics.contracts import AnalyticsRequest, ReportStatus
+            from chess_coach.analytics.service import AnalyticsService
+            from chess_coach.infrastructure.persistence.analytics_repository import (
+                AnalyticsRepository,
+            )
+
+            report_analytics = AnalyticsService(
+                AnalyticsRepository(create_session_factory(engine))
+            ).build_report(
+                AnalyticsRequest.model_validate(
+                    {
+                        "player_id": args.player_id,
+                        "profile_hash": args.profile,
+                        "window": args.window,
+                        "start_date": args.start,
+                        "end_date": args.end,
+                    }
+                )
+            )
+            print(report_analytics.model_dump_json(indent=2))
+            if report_analytics.status == ReportStatus.DATA_ERROR:
+                raise SystemExit(1)
+            return
         if args.command == "extract-features":
             from chess_coach.application.features import ExtractFeatures
             from chess_coach.infrastructure.persistence.feature_repository import (
