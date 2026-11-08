@@ -57,6 +57,10 @@ def main(argv: list[str] | None = None) -> None:
     worker.add_argument(
         "--once", action="store_true", help="Process one pending run and exit"
     )
+    sync_worker = commands.add_parser(
+        "sync-worker", help="Process persisted sync requests"
+    )
+    sync_worker.add_argument("--once", action="store_true")
     features = commands.add_parser(
         "extract-features",
         help="Extract offline facts from completed games; no engine/model calls",
@@ -83,6 +87,11 @@ def main(argv: list[str] | None = None) -> None:
         uvicorn.run("chess_coach.api.app:app", host="127.0.0.1", port=8000)
         return
     settings = Settings()
+    if args.command == "sync-worker":
+        from chess_coach.sync_worker import run_sync_worker
+
+        run_sync_worker(settings, once=args.once)
+        return
     if args.command == "analysis-worker":
         from chess_coach.analysis_worker import run_worker
 

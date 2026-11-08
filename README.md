@@ -21,16 +21,18 @@ uv run uvicorn chess_coach.api.app:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 - `GET /health`: API liveness; does not require Stockfish or Ollama.
-- `GET /api/v1/system/status`: Stockfish UCI readiness, Ollama reachability,
-  and configured model installation as separate states. HTTP 200 means the status
-  report succeeded; inspect each dependency state to determine readiness.
+- `GET /api/v1/system`: component availability and stored/analysed game counts.
+  Database failures produce unavailable counts, and optional dependency outages
+  degrade the report without breaking liveness.
+- `GET /api/v1/system/status`: retained detailed dependency diagnostics.
 - `/docs`: interactive API documentation.
 
 Install Stockfish separately and set `CHESS_COACH_STOCKFISH_EXECUTABLE` if it is
 not on PATH. Start Ollama and pull the model named by `CHESS_COACH_OLLAMA_MODEL`.
 A model being installed does not prove it can successfully generate a response;
-this status check does not load the model or run inference. Stockfish probing
-starts a short-lived process for a UCI handshake, without analyzing positions.
+this status check does not load the model or run inference. API polling never
+starts Stockfish: executable detection alone is unknown readiness; a verified
+registered analysis worker supplies current availability and engine version.
 
 Settings read `.env` from the current working directory; environment variables
 override that file. Relative database paths are also relative to the working
@@ -138,3 +140,21 @@ This needs stored analysis, starts no engine/model/server, and preserves pending
 games in the selected window. See [analytics semantics and usage](docs/ANALYTICS.md),
 [troubleshooting](docs/analytics-troubleshooting.md) and
 [validation and performance limits](docs/PHASE12_VALIDATION.md).
+
+
+### HTTP contracts (Phase 13)
+
+The [API contract](docs/api-contract.md) documents player configuration, bounded
+historical game queries, stored analysis, persistent sync/analysis jobs, analytics,
+local safeguards, and error schemas. Generated OpenAPI is at `/openapi.json`.
+Start `uv run chess-coach sync-worker` to process durable sync requests and validate
+imported PGNs. Start the existing analysis worker to process engine requests.
+Both workers are separate local processes; restarting the API preserves queued work.
+Player switching is deliberately unsupported and preserves historical ownership.
+
+The existing analysis UI uses the updated run statuses and analysis response.
+Regenerate its types with `uv run python scripts/generate_api_types.py`, then run
+`pnpm exec prettier --write src/lib/api/generated.ts` from `frontend/`.
+See [Phase 13 verification](docs/PHASE13_VALIDATION.md) for checks and limitations.
+Run `uv run python scripts/verify_phase13_http.py` with free ports 8000/5173 to
+repeat the disposable API/Vite proxy and loopback verification.

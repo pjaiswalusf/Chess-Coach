@@ -14,7 +14,7 @@
 	let movesLoading = $state(false);
 	let selectedGame = $state<number | null>(null);
 	let selection = 0;
-	const active = $derived(runs.find((run) => ['pending', 'running'].includes(run.status)));
+	const active = $derived(runs.find((run) => ['queued', 'running'].includes(run.status)));
 
 	onMount(() => {
 		let disposed = false;
@@ -153,7 +153,7 @@
 				<article class="space-y-3 rounded-xl border border-slate-200 p-5">
 					<div class="flex items-center justify-between gap-4">
 						<h3 class="font-semibold">Run #{run.id} · {run.status.replaceAll('_', ' ')}</h3>
-						{#if ['pending', 'running'].includes(run.status)}
+						{#if ['queued', 'running'].includes(run.status)}
 							<button
 								onclick={() => submit(run.id)}
 								disabled={submitting || run.cancel_requested}
@@ -183,7 +183,7 @@
 					{#if run.last_heartbeat_at}<p class="text-sm text-slate-600">
 							Last progress: {new Date(run.last_heartbeat_at).toLocaleString()}
 						</p>{/if}
-					{#if ['pending', 'running'].includes(run.status) && !run.worker_available}<p
+					{#if ['queued', 'running'].includes(run.status) && !run.worker_available}<p
 							class="text-amber-800"
 						>
 							Worker unavailable. Restart it with the same configuration to recover unfinished work.
@@ -191,7 +191,7 @@
 					{#if run.error_code}<p class="text-amber-800">
 							{run.error_code}: {run.error_message ?? 'Completed results are preserved.'}
 						</p>{/if}
-					{#if ['failed', 'cancelled', 'completed_with_errors'].includes(run.status)}
+					{#if ['failed'].includes(run.status)}
 						<button
 							onclick={() => {
 								player = run.tracked_player_id;

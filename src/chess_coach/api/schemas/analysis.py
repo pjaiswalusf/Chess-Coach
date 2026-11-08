@@ -1,14 +1,17 @@
 """Explicit public contracts for completed-game analysis."""
 
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from chess_coach.domain.analysis import AnalysisRunStatus
 
 
 class CreateRun(BaseModel):
-    tracked_player_id: int = Field(gt=0)
+    model_config = ConfigDict(extra="forbid")
+    tracked_player_id: int | None = Field(default=None, gt=0)
+    scope: Literal["pending"] = "pending"
 
 
 class RunGame(BaseModel):
@@ -21,7 +24,9 @@ class RunGame(BaseModel):
 class RunResponse(BaseModel):
     id: int
     tracked_player_id: int
-    status: AnalysisRunStatus
+    run_id: int
+    status: Literal["queued", "running", "completed", "failed"]
+    storage_status: AnalysisRunStatus
     created_at: datetime
     started_at: datetime | None
     finished_at: datetime | None

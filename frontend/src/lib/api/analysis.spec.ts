@@ -21,7 +21,7 @@ test('reports structured retry instructions', async () => {
 		vi
 			.fn()
 			.mockResolvedValue(
-				new Response(JSON.stringify({ detail: { message: 'Start the worker.' } }), { status: 503 })
+				new Response(JSON.stringify({ message: 'Start the worker.' }), { status: 503 })
 			)
 	);
 	await expect(analysisApi.start(2)).rejects.toThrow('Start the worker.');

@@ -6,6 +6,8 @@ from chess_coach.api.app import app
 
 
 def ts(schema):
+    if "const" in schema:
+        return repr(schema["const"])
     if "$ref" in schema:
         return schema["$ref"].rsplit("/", 1)[1]
     if "anyOf" in schema:
@@ -13,9 +15,13 @@ def ts(schema):
     if "enum" in schema:
         return " | ".join(repr(value) for value in schema["enum"])
     kind = schema.get("type")
+    if kind == "array" and "prefixItems" in schema:
+        return "[" + ", ".join(ts(item) for item in schema["prefixItems"]) + "]"
     if kind == "array":
-        return f"Array<{ts(schema['items'])}>"
+        return f"Array<{ts(schema.get('items', {}))}>"
     if kind == "object":
+        if "properties" in schema and not schema["properties"]:
+            return "Record<string, never>"
         if "properties" in schema:
             required = schema.get("required", [])
             return (

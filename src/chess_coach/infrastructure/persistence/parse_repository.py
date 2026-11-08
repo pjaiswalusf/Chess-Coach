@@ -1,6 +1,6 @@
 """Short atomic parsing transactions; share the import lock during local batches."""
 
-from contextlib import AbstractContextManager
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
@@ -21,12 +21,19 @@ from chess_coach.infrastructure.persistence.sync_repository import SyncRepositor
 
 
 class ParseRepository:
-    def __init__(self, sessions: sessionmaker[Session], database_path: Path):
+    def __init__(
+        self,
+        sessions: sessionmaker[Session],
+        database_path: Path,
+        *,
+        lock_already_held: bool = False,
+    ):
         self.sessions = sessions
+        self.lock_already_held = lock_already_held
         self._lock = SyncRepository(sessions, database_path)
 
     def guard(self) -> AbstractContextManager[None]:
-        return self._lock.guard()
+        return nullcontext() if self.lock_already_held else self._lock.guard()
 
     def recover(self, username: str) -> int:
         with self.sessions.begin() as session:

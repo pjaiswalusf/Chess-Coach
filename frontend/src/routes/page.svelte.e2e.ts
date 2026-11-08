@@ -10,7 +10,7 @@ const worker = {
 const run = {
 	id: 1,
 	tracked_player_id: 1,
-	status: 'pending',
+	status: 'queued',
 	games_total: 2,
 	games_completed: 0,
 	games_failed: 0,
@@ -42,20 +42,20 @@ test('start, persist across reload, cancel and retry', async ({ page }) => {
 		} else await route.fulfill({ json: current ? [current] : [] });
 	});
 	await page.route('**/api/v1/analysis-runs/*/cancel', async (route) => {
-		current = { ...run, status: 'cancelled', cancel_requested: true };
+		current = { ...run, status: 'failed', cancel_requested: true };
 		await route.fulfill({ json: current });
 	});
 	await page.goto('/');
 	await expect(page.getByText('No analysis runs yet.')).toBeVisible();
 	await page.getByRole('button', { name: 'Analyze eligible games' }).click();
-	await expect(page.getByRole('heading', { name: 'Run #1 · pending' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Run #1 · queued' })).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Analyze eligible games' })).toBeDisabled();
 	await page.reload();
-	await expect(page.getByRole('heading', { name: 'Run #1 · pending' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Run #1 · queued' })).toBeVisible();
 	await page.getByRole('button', { name: 'Cancel run' }).click();
-	await expect(page.getByRole('heading', { name: 'Run #1 · cancelled' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Run #1 · failed' })).toBeVisible();
 	await page.getByRole('button', { name: 'Retry eligible games' }).click();
-	await expect(page.getByRole('heading', { name: 'Run #2 · pending' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Run #2 · queued' })).toBeVisible();
 	expect(starts).toBe(2);
 });
 
@@ -70,7 +70,7 @@ test('worker outage and request errors are actionable', async ({ page }) => {
 	await expect(page.getByText('Worker unavailable. Restart it', { exact: false })).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Analyze eligible games' })).toBeDisabled();
 	await page.route('**/api/v1/analysis-worker', (route) =>
-		route.fulfill({ status: 503, json: { detail: { message: 'Check database access.' } } })
+		route.fulfill({ status: 503, json: { message: 'Check database access.' } })
 	);
 	await page.reload();
 	await expect(page.getByRole('alert')).toHaveText('Check database access.');
@@ -83,7 +83,7 @@ test('completed evidence keeps mate separate', async ({ page }) => {
 			json: [
 				{
 					...run,
-					status: 'done',
+					status: 'completed',
 					games_completed: 2,
 					progress_percent: 100,
 					games: [{ game_id: 42, status: 'done', error_code: null }]
@@ -93,16 +93,18 @@ test('completed evidence keeps mate separate', async ({ page }) => {
 	);
 	await page.route('**/api/v1/games/42/analysis?*', (route) =>
 		route.fulfill({
-			json: [
-				{
-					ply: 4,
-					played_move_san: 'Qh4#',
-					best_move_uci: 'd8h4',
-					mate_after_white: 0,
-					mate_after_winner: false,
-					loss_cp: null
-				}
-			]
+			json: {
+				moves: [
+					{
+						ply: 4,
+						played_move_san: 'Qh4#',
+						best_move_uci: 'd8h4',
+						mate_after_white: 0,
+						mate_after_winner: false,
+						loss_cp: null
+					}
+				]
+			}
 		})
 	);
 	await page.goto('/');

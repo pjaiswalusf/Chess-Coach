@@ -1,4 +1,4 @@
-import type { RunResponse, WorkerResponse, MoveResponse } from './generated';
+import type { RunResponse, WorkerResponse, GameAnalysisResponse } from './generated';
 
 async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
 	const response = await fetch(`/api/v1${path}`, {
@@ -9,8 +9,8 @@ async function request<T>(path: string, method = 'GET', body?: unknown): Promise
 	if (!response.ok) {
 		let message = `Request failed (${response.status}). Retry after checking the API.`;
 		try {
-			const error: { detail?: { message?: string } } = await response.json();
-			message = error.detail?.message ?? message;
+			const error: { message?: string } = await response.json();
+			message = error.message ?? message;
 		} catch {
 			// A disconnected proxy may return HTML rather than an API error.
 		}
@@ -26,5 +26,7 @@ export const analysisApi = {
 		request<RunResponse>('/analysis-runs', 'POST', { tracked_player_id: player }),
 	cancel: (id: number) => request<RunResponse>(`/analysis-runs/${id}/cancel`, 'POST'),
 	moves: (game: number, profile: string) =>
-		request<MoveResponse[]>(`/games/${game}/analysis?profile_hash=${encodeURIComponent(profile)}`)
+		request<GameAnalysisResponse>(
+			`/games/${game}/analysis?profile_hash=${encodeURIComponent(profile)}`
+		).then((result) => result.moves)
 };

@@ -80,8 +80,8 @@ test('real UI, API and worker survive hard stop and profile change', async ({ pa
 		});
 		const reopened = await context.newPage();
 		await reopened.goto('/');
-		await expect.poll(async () => (await runs())[0]?.status, { timeout: 30000 }).toBe('done');
-		await expect(reopened.getByRole('heading', { name: 'Run #1 · done' })).toBeVisible();
+		await expect.poll(async () => (await runs())[0]?.status, { timeout: 30000 }).toBe('completed');
+		await expect(reopened.getByRole('heading', { name: 'Run #1 · completed' })).toBeVisible();
 		await reopened.getByRole('button', { name: 'Analyze eligible games' }).click();
 		await expect.poll(async () => (await runs())[0]?.id).toBe(2);
 		const repeat = (await runs())[0];
@@ -103,16 +103,16 @@ test('real UI, API and worker survive hard stop and profile change', async ({ pa
 			.toBe(true);
 		await reopened.getByRole('button', { name: 'Analyze eligible games' }).click();
 		await expect.poll(async () => (await runs())[0]?.id).toBe(3);
-		await expect.poll(async () => (await runs())[0]?.status, { timeout: 30000 }).toBe('done');
+		await expect.poll(async () => (await runs())[0]?.status, { timeout: 30000 }).toBe('completed');
 		const changed = (await runs())[0];
 		expect(changed.profile_hash).not.toBe(repeat.profile_hash);
 		expect(changed.games_skipped).toBe(0);
 		expect(changed.games_completed).toBe(10);
-		await expect(reopened.getByRole('heading', { name: 'Run #3 · done' })).toBeVisible();
+		await expect(reopened.getByRole('heading', { name: 'Run #3 · completed' })).toBeVisible();
 		await reopened.screenshot({ path: resolve(root, 'data/phase10-browser.png'), fullPage: true });
 		const newest = reopened
 			.locator('article')
-			.filter({ has: reopened.getByRole('heading', { name: 'Run #3 · done' }) });
+			.filter({ has: reopened.getByRole('heading', { name: 'Run #3 · completed' }) });
 		await newest.getByText('Games and evidence').click();
 		await newest
 			.getByRole('button', { name: /View moves for game/ })
