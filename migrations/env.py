@@ -30,6 +30,13 @@ def run_migrations_online() -> None:
     engine = create_database_engine(Settings().database_url)
     try:
         with engine.connect() as connection:
+            # SQLite batch migrations rebuild referenced tables. Disable enforcement
+            # only on this migration connection and audit before committing DDL.
+            raw = connection.connection.dbapi_connection
+            assert raw is not None
+            raw.autocommit = True
+            raw.execute("PRAGMA foreign_keys=OFF")
+            raw.autocommit = False
             context.configure(
                 connection=connection,
                 target_metadata=target_metadata,
@@ -39,6 +46,8 @@ def run_migrations_online() -> None:
             )
             with context.begin_transaction():
                 context.run_migrations()
+                if connection.exec_driver_sql("PRAGMA foreign_key_check").first():
+                    raise RuntimeError("Migration violated foreign-key integrity")
     finally:
         engine.dispose()
 

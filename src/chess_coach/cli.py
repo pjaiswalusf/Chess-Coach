@@ -51,11 +51,22 @@ def main(argv: list[str] | None = None) -> None:
         help="Explicitly revalidate all stored games for this player",
     )
     commands.add_parser("doctor", help="Check Stockfish startup, analysis, and cleanup")
+    worker = commands.add_parser(
+        "analysis-worker", help="Run the single local analysis worker"
+    )
+    worker.add_argument(
+        "--once", action="store_true", help="Process one pending run and exit"
+    )
     args = parser.parse_args(argv)
     if args.command in (None, "serve"):
         uvicorn.run("chess_coach.api.app:app", host="127.0.0.1", port=8000)
         return
     settings = Settings()
+    if args.command == "analysis-worker":
+        from chess_coach.analysis_worker import run_worker
+
+        run_worker(settings, once=args.once)
+        return
     if args.command == "doctor":
         from chess_coach.infrastructure.engine.diagnostics import diagnose
 

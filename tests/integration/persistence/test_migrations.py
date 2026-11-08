@@ -15,6 +15,8 @@ EXPECTED_TABLES = {
     "games",
     "import_runs",
     "analysis_runs",
+    "analysis_run_games",
+    "analysis_worker_state",
     "game_analysis_states",
     "position_cache",
     "move_analyses",
@@ -124,5 +126,84 @@ def test_phase8_upgrade_preserves_phase7_game(migration_config: Config) -> None:
             assert row["parse_status"] == "pending"
             assert row["source_evidence"] is None and row["parsed_metadata"] is None
             assert connection.exec_driver_sql("PRAGMA foreign_key_check").all() == []
+    finally:
+        engine.dispose()
+
+
+def test_phase10_upgrade_preserves_legacy_analysis(migration_config: Config) -> None:
+    """Referenced parent-table rebuild retains legacy evidence and maps statuses."""
+    from datetime import UTC, datetime
+
+    from sqlalchemy import MetaData, Table, select
+
+    command.upgrade(migration_config, "c8a001")
+    engine = create_database_engine(Settings().database_url)
+    metadata = MetaData()
+    metadata.reflect(bind=engine)
+    now = datetime.now(UTC)
+    try:
+        with engine.begin() as c:
+            c.execute(
+                metadata.tables["tracked_players"]
+                .insert()
+                .values(id=1, platform="pgn", username="a", created_at=now)
+            )
+            c.execute(
+                metadata.tables["games"]
+                .insert()
+                .values(
+                    id=1,
+                    tracked_player_id=1,
+                    platform="pgn",
+                    canonical_hash="a" * 64,
+                    raw_pgn="preserved",
+                    played_at=now,
+                    white_username="a",
+                    black_username="b",
+                    player_color="white",
+                    result="win",
+                    created_at=now,
+                )
+            )
+            c.execute(
+                metadata.tables["analysis_runs"]
+                .insert()
+                .values(
+                    id=1,
+                    tracked_player_id=1,
+                    status="succeeded",
+                    engine_version="old",
+                    analysis_version="1",
+                    engine_config_hash="x" * 64,
+                    engine_config_json={},
+                    draw_policy_version="old",
+                    games_total=1,
+                    games_completed=1,
+                    games_failed=0,
+                    positions_analyzed=0,
+                    cache_hits=0,
+                    cache_misses=0,
+                    error_count=0,
+                )
+            )
+            c.execute(
+                metadata.tables["game_analysis_states"]
+                .insert()
+                .values(
+                    id=1,
+                    game_id=1,
+                    analysis_run_id=1,
+                    analysis_version="1",
+                    status="done",
+                )
+            )
+        command.upgrade(migration_config, "head")
+        runs = Table("analysis_runs", MetaData(), autoload_with=engine)
+        states = Table("game_analysis_states", MetaData(), autoload_with=engine)
+        with engine.connect() as c:
+            row = c.execute(select(runs)).mappings().one()
+            assert row["status"] == "done" and row["profile_hash"] == "legacy"
+            assert c.execute(select(states.c.analysis_run_id)).scalar() == 1
+            assert c.exec_driver_sql("PRAGMA foreign_key_check").all() == []
     finally:
         engine.dispose()

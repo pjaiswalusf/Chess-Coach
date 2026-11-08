@@ -1,8 +1,8 @@
 # Chess Coach
 
-A local-first chess coach for completed games. Currently includes API liveness
-and dependency status checks; game import, analysis, and coaching are not yet
-implemented. Shared development rules live in [AGENTS.md](AGENTS.md).
+A local-first chess coach for completed games. Includes historical imports, PGN
+validation, persistent Stockfish analysis, resumable local runs, and a Svelte UI.
+LLM coaching and player-pattern analytics are not yet implemented. Shared development rules live in [AGENTS.md](AGENTS.md).
 
 ## Backend setup
 
@@ -34,8 +34,7 @@ starts a short-lived process for a UCI handshake, without analyzing positions.
 
 Settings read `.env` from the current working directory; environment variables
 override that file. Relative database paths are also relative to the working
-directory. Launch from the repository root for consistent paths. The database
-setting is reserved for the persistence feature; startup does not create a DB.
+directory. Launch from the repository root for consistent paths. Run `uv run alembic upgrade head` to create or upgrade the configured database.
 
 ## Frontend setup
 
@@ -99,10 +98,23 @@ Draw policy `automatic-only-v1`: checkmate, stalemate, insufficient material,
 fivefold repetition, and the 75-move rule terminate analysis; claimable threefold
 and 50-move draws are not assumed claimed. Terminal results have no PV and do
 not run a search. Full supplied move history is validated and forwarded;
-pre-FEN history remains unknown. No caching or cross-history reuse is implemented.
+pre-FEN history remains unknown. Phase 10 adds compatible history-aware caching; incompatible histories are never reused.
 
 Engine evidence uses the latest complete, unbounded UCI score/PV update.
 Depth and nodes describe that update, rather than a later partial search update.
 This avoids stale bound flags in python-chess's aggregated information; a search
 with only bounded scores fails explicitly. The standard python-chess UCI parser,
 process management, and finite `SimpleEngine.analyse` timeout remain in use.
+
+
+### Persistent analysis (Phase 10)
+
+Start `uv run chess-coach analysis-worker` alongside the API and frontend, then
+select **Analyze eligible games**. Completed work survives browser closure and
+worker interruption. Retry, cancellation, progress, and per-move evidence are
+available in the UI. The worker uses one configured analysis budget; losses are
+search estimates, not confirmed mistake classifications.
+
+See the [operations runbook](docs/operations/analysis-runbook.md),
+[validation record](docs/PHASE10_VALIDATION.md), and
+[measured baseline](docs/benchmarks/phase10-baseline.md).

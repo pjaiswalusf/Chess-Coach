@@ -8,6 +8,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Enum,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -17,6 +18,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, validates
 
+from chess_coach.domain.analysis import AnalysisRunStatus
 from chess_coach.domain.game_records import (
     GameResult,
     ParseStatus,
@@ -182,9 +184,20 @@ class AnalysisRun(Base):
     )
     started_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
-    status: Mapped[RunStatus] = mapped_column(
-        string_enum(RunStatus, "status"), default=RunStatus.PENDING
+    status: Mapped[AnalysisRunStatus] = mapped_column(
+        string_enum(AnalysisRunStatus, "status"), default=AnalysisRunStatus.PENDING
     )
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
+    profile_hash: Mapped[str] = mapped_column(
+        String(64), default="legacy", server_default="legacy"
+    )
+    cancel_requested: Mapped[bool] = mapped_column(default=False, server_default="0")
+    last_heartbeat_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    games_skipped: Mapped[int] = mapped_column(default=0, server_default="0")
+    games_excluded: Mapped[int] = mapped_column(default=0, server_default="0")
+    terminal_positions: Mapped[int] = mapped_column(default=0, server_default="0")
+    engine_seconds: Mapped[float] = mapped_column(Float, default=0, server_default="0")
     engine_version: Mapped[str] = mapped_column(String(100))
     analysis_version: Mapped[str] = mapped_column(String(32))
     engine_config_hash: Mapped[str] = mapped_column(String(64))
@@ -203,11 +216,16 @@ class AnalysisRun(Base):
 
 class GameAnalysisState(Base):
     __tablename__ = "game_analysis_states"
-    __table_args__ = (UniqueConstraint("game_id", "analysis_version"),)
+    __table_args__ = (UniqueConstraint("game_id", "analysis_version", "profile_hash"),)
 
+    profile_hash: Mapped[str] = mapped_column(
+        String(64), default="legacy", server_default="legacy"
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     game_id: Mapped[int] = mapped_column(ForeignKey("games.id", ondelete="CASCADE"))
     analysis_version: Mapped[str] = mapped_column(String(32))
+    position_ids: Mapped[list[int] | None] = mapped_column(JSON)
+    source_hash: Mapped[str | None] = mapped_column(String(64))
     status: Mapped[GameAnalysisStatus] = mapped_column(
         string_enum(GameAnalysisStatus, "status"), default=GameAnalysisStatus.PENDING
     )
@@ -254,6 +272,7 @@ class PositionCache(Base):
     draw_policy_version: Mapped[str] = mapped_column(String(32))
     score_cp_white: Mapped[int | None]
     mate_distance_white: Mapped[int | None]
+    mate_winner: Mapped[bool | None]
     best_move_uci: Mapped[str | None] = mapped_column(String(5))
     pv_json: Mapped[list[str]] = mapped_column(JSON)
     depth: Mapped[int] = mapped_column(Integer)
@@ -264,7 +283,7 @@ class PositionCache(Base):
 class MoveAnalysis(Base):
     __tablename__ = "move_analyses"
     __table_args__ = (
-        UniqueConstraint("game_id", "ply", "analysis_version"),
+        UniqueConstraint("game_id", "ply", "analysis_version", "profile_hash"),
         CheckConstraint("ply >= 1", name="ply_positive"),
         CheckConstraint("move_number >= 1", name="move_number_positive"),
         CheckConstraint("loss_cp >= 0", name="loss_nonnegative"),
@@ -278,6 +297,9 @@ class MoveAnalysis(Base):
         ),
     )
 
+    profile_hash: Mapped[str] = mapped_column(
+        String(64), default="legacy", server_default="legacy"
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     game_id: Mapped[int] = mapped_column(ForeignKey("games.id", ondelete="CASCADE"))
     analysis_run_id: Mapped[int] = mapped_column(
@@ -294,6 +316,8 @@ class MoveAnalysis(Base):
     eval_after_cp_white: Mapped[int | None]
     mate_before_white: Mapped[int | None]
     mate_after_white: Mapped[int | None]
+    mate_before_winner: Mapped[bool | None]
+    mate_after_winner: Mapped[bool | None]
     loss_cp: Mapped[int | None]
     phase: Mapped[Phase | None] = mapped_column(string_enum(Phase, "phase"))
     severity: Mapped[Severity | None] = mapped_column(string_enum(Severity, "severity"))
@@ -336,3 +360,31 @@ class ImportRejection(Base):
     record_index: Mapped[int]
     reason: Mapped[str] = mapped_column(String(100))
     raw_pgn: Mapped[str | None] = mapped_column(Text)
+
+
+class AnalysisRunGame(Base):
+    __tablename__ = "analysis_run_games"
+    run_id: Mapped[int] = mapped_column(
+        ForeignKey("analysis_runs.id"), primary_key=True
+    )
+    game_id: Mapped[int] = mapped_column(ForeignKey("games.id"), primary_key=True)
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    attempt_count: Mapped[int] = mapped_column(default=0)
+    source_hash: Mapped[str] = mapped_column(String(64))
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'running', 'done', 'failed', 'skipped')",
+            name="membership_status",
+        ),
+        CheckConstraint("attempt_count >= 0", name="attempts_nonnegative"),
+    )
+
+
+class AnalysisWorkerState(Base):
+    __tablename__ = "analysis_worker_state"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    engine_version: Mapped[str] = mapped_column(String(100))
+    config_json: Mapped[dict[str, int | float | str]] = mapped_column(JSON)
+    heartbeat_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    status: Mapped[str] = mapped_column(String(16))
