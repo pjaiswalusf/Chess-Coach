@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import MoveCoaching from '#lib/components/MoveCoaching.svelte';
 	import { analysisApi } from '#lib/api/analysis.js';
 	import type { RunResponse, WorkerResponse, MoveResponse } from '#lib/api/generated.js';
 
@@ -14,6 +15,8 @@
 	let movesLoading = $state(false);
 	let selectedGame = $state<number | null>(null);
 	let selection = 0;
+	let selectedProfile = $state('');
+	let selectedPly = $state<number | null>(null);
 	const active = $derived(runs.find((run) => ['queued', 'running'].includes(run.status)));
 
 	onMount(() => {
@@ -65,6 +68,8 @@
 	async function viewGame(game: number, profile: string) {
 		const current = ++selection;
 		selectedGame = game;
+		selectedProfile = profile;
+		selectedPly = null;
 		movesLoading = true;
 		moves = [];
 		try {
@@ -237,7 +242,8 @@
 						<thead
 							><tr class="border-b"
 								><th class="p-2">Ply</th><th class="p-2">Played</th><th class="p-2">Best (UCI)</th
-								><th class="p-2">After</th><th class="p-2">Loss (cp)</th></tr
+								><th class="p-2">After</th><th class="p-2">Loss (cp)</th><th class="p-2">Coach</th
+								></tr
 							></thead
 						>
 						<tbody
@@ -251,10 +257,21 @@
 											: `${move.eval_after_cp_white} cp`}</td
 									>
 									<td class="p-2">{move.loss_cp ?? '—'}</td>
+									<td class="p-2"
+										><button
+											onclick={() => (selectedPly = move.ply)}
+											class="text-emerald-800 underline">Explain ply {move.ply}</button
+										></td
+									>
 								</tr>{/each}</tbody
 						>
 					</table>
 				</div>{/if}
+			{#if selectedPly !== null}
+				{#key `${selectedGame}:${selectedProfile}:${selectedPly}`}
+					<MoveCoaching game={selectedGame} ply={selectedPly} profile={selectedProfile} />
+				{/key}
+			{/if}
 		</section>
 	{/if}
 </main>

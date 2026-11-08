@@ -31,6 +31,18 @@ export type AnalyticsHealthReport = {
 	warnings: Array<Diagnostic>;
 };
 
+export type CoachingResponse = {
+	job_id?: number | null;
+	status: string;
+	evidence: MoveCoachingEvidence | HistoricalEvidence;
+	coach?: MoveExplanation | HistoricalExplanation | null;
+	error_code?: string | null;
+	message?: string | null;
+	cached?: boolean;
+	model_digest?: string | null;
+	attempt_count?: number;
+};
+
 export type Component = {
 	status: 'available' | 'unavailable' | 'unknown';
 	model?: string | null;
@@ -65,6 +77,12 @@ export type DependencyStatus = {
 export type Diagnostic = {
 	code: string;
 	game_id?: number | null;
+};
+
+export type EngineScore = {
+	cp_white?: number | null;
+	mate_white?: number | null;
+	mate_winner?: boolean | null;
 };
 
 export type ErrorResponse = {
@@ -121,10 +139,81 @@ export type GamePage = {
 	offset: number;
 };
 
+export type GamePhase = 'opening' | 'middlegame' | 'endgame' | 'unclassified';
+
 export type GameResult = 'win' | 'loss' | 'draw' | 'unknown';
 
 export type HealthResponse = {
 	status?: 'ok';
+};
+
+export type HistoricalAdvice = {
+	pattern_id: string;
+	explanation: string;
+	practice_tip: string;
+};
+
+export type HistoricalEvidence = {
+	schema_version?: string;
+	report_hash: string;
+	analytics_version: string;
+	policy_version: string;
+	ranker_version: string;
+	request: Record<string, unknown>;
+	total_games: number;
+	patterns: Array<Weakness>;
+};
+
+export type HistoricalExplanation = {
+	status: 'explained' | 'insufficient_evidence';
+	summary: string;
+	priorities?: Array<HistoricalAdvice>;
+};
+
+export type LLMHealth = {
+	status: 'ready' | 'server_unavailable' | 'model_missing' | 'check_failed';
+	server_reachable: boolean;
+	model_installed: boolean;
+	model: string;
+	model_digest?: string | null;
+	message: string;
+};
+
+export type MoveCoachingEvidence = {
+	schema_version?: 'move-evidence-v1';
+	game_id: number;
+	ply: number;
+	player_color: PlayerColor;
+	player_rating?: number | null;
+	phase: GamePhase;
+	fen_before: string;
+	initial_fen: string;
+	history_uci: Array<string>;
+	history_before_start_unknown: boolean;
+	played_move_uci: string;
+	best_move_uci: string;
+	best_line_uci: Array<string>;
+	played_refutation_uci: Array<string>;
+	before: EngineScore;
+	after: EngineScore;
+	loss_cp?: number | null;
+	historical_theme_frequency?: number | null;
+	completion_provenance: 'pgn_declaration' | 'chesscom_archive';
+	source_hash: string;
+	profile_hash: string;
+	engine_version: string;
+	analysis_version: string;
+	draw_policy: string;
+	feature_version: number;
+};
+
+export type MoveExplanation = {
+	status: 'explained' | 'insufficient_evidence';
+	summary: string;
+	what_went_wrong?: string;
+	why_best_move_works?: string;
+	lesson?: string;
+	practice_tip?: string;
 };
 
 export type MoveMetrics = {

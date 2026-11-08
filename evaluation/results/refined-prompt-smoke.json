@@ -1,0 +1,129 @@
+{
+  "dataset_hash": "c3b94dffc4a150483a3dd66d7e977f40305a55f1c453b41f06b00df5366c68fa",
+  "model": "qwen3.5:4b-q4_K_M",
+  "model_digest": "d8b0f5e9760cd1682034f292d7ef72ec46f432149be0df7574bf2d6e92e38c04",
+  "prompt_version": "coaching-v1.1",
+  "schema_version": "coaching-output-v1",
+  "generation": {
+    "temperature": 0,
+    "num_ctx": 4096,
+    "num_predict": 800,
+    "keep_alive": "1m",
+    "think": false,
+    "timeout": 90.0
+  },
+  "count": 5,
+  "schema_valid": 5,
+  "accepted": 4,
+  "human_reviewed": 0,
+  "factuality": "unmeasured; automated checks do not prove semantic correctness",
+  "results": [
+    {
+      "case_id": "case_001",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move matches the best move, and no loss or mate consequence is demonstrated in the supplied lines.\"\n}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The played move matches the best move, and no loss or mate consequence is demonstrated in the supplied lines.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 3310,
+      "metrics": {
+        "total_duration": 3300699791,
+        "load_duration": 1029250,
+        "prompt_eval_count": 790,
+        "eval_count": 42
+      }
+    },
+    {
+      "case_id": "case_002",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move matches the best move; no loss or mate consequence is demonstrated.\"\n}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The played move matches the best move; no loss or mate consequence is demonstrated.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 1895,
+      "metrics": {
+        "total_duration": 1882656917,
+        "load_duration": 460417,
+        "prompt_eval_count": 786,
+        "eval_count": 37
+      }
+    },
+    {
+      "case_id": "case_003",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move is identified as best, and no loss in centipawns or mate state exists between the played line and alternatives. No tactical motif or causal diagnosis can be derived from the supplied data.\"\n}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The played move is identified as best, and no loss in centipawns or mate state exists between the played line and alternatives. No tactical motif or causal diagnosis can be derived from the supplied data.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 2957,
+      "metrics": {
+        "total_duration": 2944979458,
+        "load_duration": 392000,
+        "prompt_eval_count": 801,
+        "eval_count": 61
+      }
+    },
+    {
+      "case_id": "case_004",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move matches the best move, and no loss or mate consequence is demonstrated in the supplied lines.\"\n}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The played move matches the best move, and no loss or mate consequence is demonstrated in the supplied lines.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 2562,
+      "metrics": {
+        "total_duration": 2549734833,
+        "load_duration": 438833,
+        "prompt_eval_count": 805,
+        "eval_count": 42
+      }
+    },
+    {
+      "case_id": "case_005",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move f1b5 leads to a position evaluated 11 cp worse than the best move b1c3, but no tactical motif or causal diagnosis is supported by the supplied lines. The refutation line does not demonstrate a forced mate or specific tactical failure beyond the engine evaluation difference.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3752,
+      "metrics": {
+        "total_duration": 3739200000,
+        "load_duration": 688458,
+        "prompt_eval_count": 818,
+        "eval_count": 81
+      }
+    }
+  ]
+}

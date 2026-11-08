@@ -1,6 +1,6 @@
 import type { RunResponse, WorkerResponse, GameAnalysisResponse } from './generated';
 
-async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
+export async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
 	const response = await fetch(`/api/v1${path}`, {
 		method,
 		headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },

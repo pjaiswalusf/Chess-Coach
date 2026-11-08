@@ -1,0 +1,866 @@
+{
+  "dataset_hash": "c3b94dffc4a150483a3dd66d7e977f40305a55f1c453b41f06b00df5366c68fa",
+  "model": "qwen3.5:4b-q4_K_M",
+  "model_digest": "d8b0f5e9760cd1682034f292d7ef72ec46f432149be0df7574bf2d6e92e38c04",
+  "prompt_version": "coaching-v1",
+  "schema_version": "coaching-output-v1",
+  "generation": {
+    "temperature": 0,
+    "num_ctx": 4096,
+    "num_predict": 800,
+    "keep_alive": "1m",
+    "think": false,
+    "timeout": 90.0
+  },
+  "count": 50,
+  "schema_valid": 50,
+  "accepted": 18,
+  "human_reviewed": 0,
+  "factuality": "unmeasured; automated checks do not prove semantic correctness",
+  "results": [
+    {
+      "case_id": "case_001",
+      "human_review": null,
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The provided data contains only the opening move and a best line; it lacks alternative moves or refutation lines required to explain tactical motifs, causal diagnoses, or historical patterns.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 3242,
+      "metrics": {
+        "total_duration": 3230833291,
+        "load_duration": 1067446166,
+        "prompt_eval_count": 665,
+        "eval_count": 46
+      }
+    },
+    {
+      "case_id": "case_002",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 2986,
+      "metrics": {
+        "total_duration": 2973023334,
+        "load_duration": 1049875,
+        "prompt_eval_count": 661,
+        "eval_count": 86
+      }
+    },
+    {
+      "case_id": "case_003",
+      "human_review": null,
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The provided data contains only the opening moves and engine evaluation of a single game line. It does not include alternative move lines, historical frequency data for specific tactical motifs, or comparative analysis required to explain the played move's strategic merit or identify reusable patterns.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 2395,
+      "metrics": {
+        "total_duration": 2389092208,
+        "load_duration": 825000,
+        "prompt_eval_count": 676,
+        "eval_count": 62
+      }
+    },
+    {
+      "case_id": "case_004",
+      "human_review": null,
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied data contains only the played move and a single best line. It does not provide alternative lines, refutation details, or historical pattern IDs required to explain tactical motifs, causal diagnoses, or specific strategic themes.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 2382,
+      "metrics": {
+        "total_duration": 2377746166,
+        "load_duration": 617875,
+        "prompt_eval_count": 680,
+        "eval_count": 64
+      }
+    },
+    {
+      "case_id": "case_005",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3373,
+      "metrics": {
+        "total_duration": 3367800083,
+        "load_duration": 401625,
+        "prompt_eval_count": 693,
+        "eval_count": 96
+      }
+    },
+    {
+      "case_id": "case_006",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 2791,
+      "metrics": {
+        "total_duration": 2785689667,
+        "load_duration": 740875,
+        "prompt_eval_count": 664,
+        "eval_count": 74
+      }
+    },
+    {
+      "case_id": "case_007",
+      "human_review": null,
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied data contains only the played move and a single best line. It does not provide alternative lines, refutation details, or historical frequency data required to explain tactical motifs, causal diagnoses, or reliable strategic reasons for the move.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 2732,
+      "metrics": {
+        "total_duration": 2725445166,
+        "load_duration": 727083,
+        "prompt_eval_count": 688,
+        "eval_count": 67
+      }
+    },
+    {
+      "case_id": "case_008",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 2616,
+      "metrics": {
+        "total_duration": 2610118750,
+        "load_duration": 734083,
+        "prompt_eval_count": 690,
+        "eval_count": 67
+      }
+    },
+    {
+      "case_id": "case_009",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3116,
+      "metrics": {
+        "total_duration": 3106957375,
+        "load_duration": 778000,
+        "prompt_eval_count": 710,
+        "eval_count": 69
+      }
+    },
+    {
+      "case_id": "case_010",
+      "human_review": null,
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied data contains only the played move and a single best line without alternative variations, tactical motifs, or historical pattern IDs required to explain the move's justification or provide a lesson.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 2436,
+      "metrics": {
+        "total_duration": 2424092417,
+        "load_duration": 831959,
+        "prompt_eval_count": 700,
+        "eval_count": 57
+      }
+    },
+    {
+      "case_id": "case_011",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3064,
+      "metrics": {
+        "total_duration": 3042177875,
+        "load_duration": 643667,
+        "prompt_eval_count": 737,
+        "eval_count": 86
+      }
+    },
+    {
+      "case_id": "case_012",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 2722,
+      "metrics": {
+        "total_duration": 2708239875,
+        "load_duration": 459292,
+        "prompt_eval_count": 720,
+        "eval_count": 77
+      }
+    },
+    {
+      "case_id": "case_013",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 2567,
+      "metrics": {
+        "total_duration": 2552627792,
+        "load_duration": 438375,
+        "prompt_eval_count": 733,
+        "eval_count": 67
+      }
+    },
+    {
+      "case_id": "case_014",
+      "human_review": null,
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied data contains only the played move and a single best line. It lacks alternative lines, tactical motifs, or historical pattern frequencies required to explain the move's justification or provide a reusable lesson.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 2489,
+      "metrics": {
+        "total_duration": 2479335125,
+        "load_duration": 543959,
+        "prompt_eval_count": 747,
+        "eval_count": 60
+      }
+    },
+    {
+      "case_id": "case_015",
+      "human_review": null,
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied data contains only the played move and a single best line. It lacks alternative lines, historical frequency data, or comparative analysis required to explain tactical motifs, causal diagnoses, or reusable lessons.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 2376,
+      "metrics": {
+        "total_duration": 2361824083,
+        "load_duration": 884958,
+        "prompt_eval_count": 718,
+        "eval_count": 60
+      }
+    },
+    {
+      "case_id": "case_016",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 2895,
+      "metrics": {
+        "total_duration": 2881873792,
+        "load_duration": 775000,
+        "prompt_eval_count": 727,
+        "eval_count": 72
+      }
+    },
+    {
+      "case_id": "case_017",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 2894,
+      "metrics": {
+        "total_duration": 2884764916,
+        "load_duration": 871250,
+        "prompt_eval_count": 770,
+        "eval_count": 66
+      }
+    },
+    {
+      "case_id": "case_018",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 2690,
+      "metrics": {
+        "total_duration": 2678138875,
+        "load_duration": 948958,
+        "prompt_eval_count": 772,
+        "eval_count": 61
+      }
+    },
+    {
+      "case_id": "case_019",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3209,
+      "metrics": {
+        "total_duration": 3193665292,
+        "load_duration": 904667,
+        "prompt_eval_count": 784,
+        "eval_count": 81
+      }
+    },
+    {
+      "case_id": "case_020",
+      "human_review": null,
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied data contains only the played move and a single best line. It does not provide alternative lines, tactical motifs, or historical pattern frequencies required to explain the move's justification or offer a reusable lesson.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 2641,
+      "metrics": {
+        "total_duration": 2627155250,
+        "load_duration": 814666,
+        "prompt_eval_count": 797,
+        "eval_count": 62
+      }
+    },
+    {
+      "case_id": "case_021",
+      "human_review": null,
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied data contains only the played move and a single best line without alternative variations or tactical motifs to support an explanation.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 2046,
+      "metrics": {
+        "total_duration": 2032385958,
+        "load_duration": 643375,
+        "prompt_eval_count": 772,
+        "eval_count": 45
+      }
+    },
+    {
+      "case_id": "case_022",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 2848,
+      "metrics": {
+        "total_duration": 2834586000,
+        "load_duration": 398417,
+        "prompt_eval_count": 767,
+        "eval_count": 77
+      }
+    },
+    {
+      "case_id": "case_023",
+      "human_review": null,
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied data contains only the played move and a single best line without alternative variations, tactical motifs, or historical pattern IDs required to explain the move's justification or provide a reusable lesson.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 2485,
+      "metrics": {
+        "total_duration": 2472587875,
+        "load_duration": 390792,
+        "prompt_eval_count": 799,
+        "eval_count": 58
+      }
+    },
+    {
+      "case_id": "case_024",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3159,
+      "metrics": {
+        "total_duration": 3146525250,
+        "load_duration": 426541,
+        "prompt_eval_count": 796,
+        "eval_count": 76
+      }
+    },
+    {
+      "case_id": "case_025",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3548,
+      "metrics": {
+        "total_duration": 3519285166,
+        "load_duration": 1594833,
+        "prompt_eval_count": 829,
+        "eval_count": 92
+      }
+    },
+    {
+      "case_id": "case_026",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 2992,
+      "metrics": {
+        "total_duration": 2978811000,
+        "load_duration": 2180042,
+        "prompt_eval_count": 821,
+        "eval_count": 70
+      }
+    },
+    {
+      "case_id": "case_027",
+      "human_review": null,
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied data contains only the played move and a single best line without alternative variations, tactical motifs, or historical pattern IDs required to explain the move's justification or provide a reusable lesson.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 2644,
+      "metrics": {
+        "total_duration": 2631390000,
+        "load_duration": 839792,
+        "prompt_eval_count": 813,
+        "eval_count": 58
+      }
+    },
+    {
+      "case_id": "case_028",
+      "human_review": null,
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied data contains only the played move and a single best line. It does not provide alternative lines, tactical motifs, or historical patterns to explain the move's quality or justify deviations from the engine's recommendation.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 2794,
+      "metrics": {
+        "total_duration": 2780554167,
+        "load_duration": 1199875,
+        "prompt_eval_count": 836,
+        "eval_count": 63
+      }
+    },
+    {
+      "case_id": "case_029",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3562,
+      "metrics": {
+        "total_duration": 3550020833,
+        "load_duration": 816917,
+        "prompt_eval_count": 850,
+        "eval_count": 84
+      }
+    },
+    {
+      "case_id": "case_030",
+      "human_review": null,
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The provided data contains only the played move and a single best line. It lacks alternative lines, refutation analysis, or historical frequency data required to explain tactical motifs, causal diagnoses, or reliable strategic reasons for the move.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 3611,
+      "metrics": {
+        "total_duration": 3599541417,
+        "load_duration": 836167,
+        "prompt_eval_count": 853,
+        "eval_count": 65
+      }
+    },
+    {
+      "case_id": "case_031",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 4601,
+      "metrics": {
+        "total_duration": 4588838667,
+        "load_duration": 888000,
+        "prompt_eval_count": 859,
+        "eval_count": 73
+      }
+    },
+    {
+      "case_id": "case_032",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 5315,
+      "metrics": {
+        "total_duration": 5297030833,
+        "load_duration": 3277666,
+        "prompt_eval_count": 910,
+        "eval_count": 93
+      }
+    },
+    {
+      "case_id": "case_033",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 5339,
+      "metrics": {
+        "total_duration": 5319833416,
+        "load_duration": 828416,
+        "prompt_eval_count": 680,
+        "eval_count": 88
+      }
+    },
+    {
+      "case_id": "case_034",
+      "human_review": null,
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied data contains only the final move and a single prior move without sufficient context to explain tactical motifs or causal diagnoses. The best line provided is an engine evaluation, not a historical pattern or proven tactical sequence.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5035,
+      "metrics": {
+        "total_duration": 4995339458,
+        "load_duration": 1906500,
+        "prompt_eval_count": 668,
+        "eval_count": 63
+      }
+    },
+    {
+      "case_id": "case_035",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 8130,
+      "metrics": {
+        "total_duration": 8116973709,
+        "load_duration": 1845250,
+        "prompt_eval_count": 662,
+        "eval_count": 113
+      }
+    },
+    {
+      "case_id": "case_036",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 6830,
+      "metrics": {
+        "total_duration": 6816529542,
+        "load_duration": 784833,
+        "prompt_eval_count": 712,
+        "eval_count": 77
+      }
+    },
+    {
+      "case_id": "case_037",
+      "human_review": null,
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied data contains only the played move and a single best move line without sufficient tactical or strategic context to explain the move's justification or identify specific motifs.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5190,
+      "metrics": {
+        "total_duration": 5178595709,
+        "load_duration": 878125,
+        "prompt_eval_count": 710,
+        "eval_count": 52
+      }
+    },
+    {
+      "case_id": "case_038",
+      "human_review": null,
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied data contains only the final move and engine evaluation without a complete game history or alternative lines to demonstrate tactical motifs, causal diagnoses, or reliable explanations for the played move versus the best move.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5318,
+      "metrics": {
+        "total_duration": 5304216792,
+        "load_duration": 1325417,
+        "prompt_eval_count": 664,
+        "eval_count": 60
+      }
+    },
+    {
+      "case_id": "case_039",
+      "human_review": null,
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied data contains only the final move sequence and engine evaluation without explicit tactical motifs, historical pattern IDs, or causal explanations for the player's decision-making. The analysis line is provided but does not demonstrate a specific tactical motif requiring explanation.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5949,
+      "metrics": {
+        "total_duration": 5917707042,
+        "load_duration": 473292,
+        "prompt_eval_count": 705,
+        "eval_count": 68
+      }
+    },
+    {
+      "case_id": "case_040",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 5382,
+      "metrics": {
+        "total_duration": 5369572041,
+        "load_duration": 561541,
+        "prompt_eval_count": 682,
+        "eval_count": 60
+      }
+    },
+    {
+      "case_id": "case_041",
+      "human_review": null,
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied data contains only the played move and a single best line without alternative variations or tactical motifs to support an explanation.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 4729,
+      "metrics": {
+        "total_duration": 4703080209,
+        "load_duration": 629375,
+        "prompt_eval_count": 634,
+        "eval_count": 45
+      }
+    },
+    {
+      "case_id": "case_042",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 6220,
+      "metrics": {
+        "total_duration": 6200963166,
+        "load_duration": 498291,
+        "prompt_eval_count": 686,
+        "eval_count": 66
+      }
+    },
+    {
+      "case_id": "case_043",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 5933,
+      "metrics": {
+        "total_duration": 5920248708,
+        "load_duration": 477333,
+        "prompt_eval_count": 650,
+        "eval_count": 72
+      }
+    },
+    {
+      "case_id": "case_044",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 6116,
+      "metrics": {
+        "total_duration": 6107379375,
+        "load_duration": 576708,
+        "prompt_eval_count": 654,
+        "eval_count": 74
+      }
+    },
+    {
+      "case_id": "case_045",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 6220,
+      "metrics": {
+        "total_duration": 6205224417,
+        "load_duration": 453625,
+        "prompt_eval_count": 631,
+        "eval_count": 68
+      }
+    },
+    {
+      "case_id": "case_046",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 7106,
+      "metrics": {
+        "total_duration": 7086263667,
+        "load_duration": 810083,
+        "prompt_eval_count": 669,
+        "eval_count": 97
+      }
+    },
+    {
+      "case_id": "case_047",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 8173,
+      "metrics": {
+        "total_duration": 8157640834,
+        "load_duration": 524542,
+        "prompt_eval_count": 679,
+        "eval_count": 85
+      }
+    },
+    {
+      "case_id": "case_048",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 5757,
+      "metrics": {
+        "total_duration": 5740595083,
+        "load_duration": 2341958,
+        "prompt_eval_count": 635,
+        "eval_count": 70
+      }
+    },
+    {
+      "case_id": "case_049",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 5496,
+      "metrics": {
+        "total_duration": 5481013042,
+        "load_duration": 505750,
+        "prompt_eval_count": 676,
+        "eval_count": 70
+      }
+    },
+    {
+      "case_id": "case_050",
+      "human_review": null,
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 5747,
+      "metrics": {
+        "total_duration": 5729268083,
+        "load_duration": 456291,
+        "prompt_eval_count": 651,
+        "eval_count": 83
+      }
+    }
+  ]
+}

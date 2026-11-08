@@ -8,6 +8,7 @@ from starlette.responses import Response
 from chess_coach.api.errors import ERROR_RESPONSES, error, install_handlers
 from chess_coach.api.routes.analysis import router as analysis_router
 from chess_coach.api.routes.analytics import router as analytics_router
+from chess_coach.api.routes.coaching import router as coaching_router
 from chess_coach.api.routes.queries import router as queries_router
 from chess_coach.api.routes.sync import router as sync_router
 from chess_coach.api.routes.system import router as system_router
@@ -33,6 +34,7 @@ def create_app() -> FastAPI:
         queries_router,
         sync_router,
         analytics_router,
+        coaching_router,
     ):
         app.include_router(router)
 
