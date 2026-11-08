@@ -1,0 +1,27 @@
+{
+  "sample_policy": "All unique source games with existing engine evidence; no new analysis.",
+  "independent_source_games": 30,
+  "selected_games": 30,
+  "analyzed_games": 30,
+  "player_moves": 888,
+  "report_status": "COMPLETE",
+  "first_wall_seconds": 0.5307486670008075,
+  "timings": [
+    {
+      "retrieval_seconds": 0.0426854170000297,
+      "validation_seconds": 0.47942862499985495,
+      "aggregation_seconds": 0.003606374999435502,
+      "ranking_seconds": 0.0008535830002074363,
+      "total_seconds": 0.5305662089995167
+    },
+    {
+      "retrieval_seconds": 0.03977275000033842,
+      "validation_seconds": 0.47136687400052324,
+      "aggregation_seconds": 0.003605542000514106,
+      "ranking_seconds": 0.0008682079987920588,
+      "total_seconds": 0.519799208999757
+    }
+  ],
+  "deterministic_repeat": true,
+  "subprocess_and_network_calls": 0
+}

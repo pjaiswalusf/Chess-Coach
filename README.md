@@ -2,7 +2,7 @@
 
 A local-first chess coach for completed games. Includes historical imports, PGN
 validation, persistent Stockfish analysis, resumable local runs, and a Svelte UI.
-LLM coaching and player-pattern analytics are not yet implemented. Shared development rules live in [AGENTS.md](AGENTS.md).
+Offline deterministic player analytics are available; LLM coaching is not yet implemented. Shared development rules live in [AGENTS.md](AGENTS.md).
 
 ## Backend setup
 
@@ -127,3 +127,14 @@ Use `--profile board-only` for board and clock facts without engine evidence.
 The command resumes by skipping complete matching snapshots and never starts an
 engine or model. See the [feature contract and recovery instructions](docs/FEATURES.md)
 and [validation record](docs/PHASE11_VALIDATION.md).
+
+
+### Longitudinal analytics (Phase 12)
+
+Run `uv run chess-coach analytics-health --player-id PLAYER_ID --profile PROFILE_HASH --window last_100`
+for a read-only JSON report of cohort health, outcomes, segmented errors, contextual
+opportunities, advantage conversion and supported category-specific weaknesses.
+This needs stored analysis, starts no engine/model/server, and preserves pending
+games in the selected window. See [analytics semantics and usage](docs/ANALYTICS.md),
+[troubleshooting](docs/analytics-troubleshooting.md) and
+[validation and performance limits](docs/PHASE12_VALIDATION.md).
