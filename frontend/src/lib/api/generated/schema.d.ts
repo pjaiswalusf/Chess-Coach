@@ -434,6 +434,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/training/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Next Puzzle */
+        get: operations["next_puzzle_api_v1_training_next_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/training/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Progress */
+        get: operations["progress_api_v1_training_progress_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/training/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Statistics */
+        get: operations["statistics_api_v1_training_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/training/{puzzle_id}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Attempt */
+        post: operations["submit_attempt_api_v1_training__puzzle_id__attempts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -528,6 +596,39 @@ export interface components {
             };
             /** Warnings */
             warnings: components["schemas"]["Diagnostic"][];
+        };
+        /** AttemptResult */
+        AttemptResult: {
+            /** Attempt Id */
+            attempt_id: number;
+            /**
+             * Attempted At
+             * Format: date-time
+             */
+            attempted_at: string;
+            /** Correct */
+            correct: boolean;
+            /**
+             * Next Review At
+             * Format: date-time
+             */
+            next_review_at: string;
+            /** Original Move Uci */
+            original_move_uci: string;
+            /** Solution Move Uci */
+            solution_move_uci: string;
+            /** Solution Pv San */
+            solution_pv_san: string[];
+            /** Solution San */
+            solution_san: string;
+            /** Source Game Id */
+            source_game_id: number;
+            /** Source Ply */
+            source_ply: number;
+            /** Source Profile Hash */
+            source_profile_hash: string;
+            /** Submitted Move Uci */
+            submitted_move_uci: string;
         };
         /** ChessEvent */
         ChessEvent: {
@@ -1022,6 +1123,12 @@ export interface components {
             /** Total Loss Cp */
             total_loss_cp: number;
         };
+        /** NextPuzzle */
+        NextPuzzle: {
+            puzzle?: components["schemas"]["PublicPuzzle"] | null;
+            /** Reason */
+            reason?: "NO_PUZZLES_DUE" | null;
+        };
         /** OutcomeMetric */
         OutcomeMetric: {
             /**
@@ -1111,6 +1218,17 @@ export interface components {
             selected_game_ids: number[];
             status: components["schemas"]["ReportStatus"];
         };
+        /** PeriodEvidence */
+        PeriodEvidence: {
+            /** Critical Errors */
+            critical_errors: number;
+            /** Errors Per 100 */
+            errors_per_100: number | null;
+            /** Game Ids */
+            game_ids: number[];
+            /** Moves */
+            moves: number;
+        };
         /**
          * PlayerColor
          * @enum {string}
@@ -1137,6 +1255,22 @@ export interface components {
             /** Configured */
             configured: boolean;
             player: components["schemas"]["chess_coach__api__schemas__contracts__Player"] | null;
+        };
+        /** PublicPuzzle */
+        PublicPuzzle: {
+            /** Attempt Count */
+            attempt_count: number;
+            /** Difficulty */
+            difficulty: string;
+            /** Fen */
+            fen: string;
+            /** Id */
+            id: number;
+            /** Legal Moves */
+            legal_moves: string[];
+            side_to_move: components["schemas"]["PlayerColor"];
+            /** Theme */
+            theme: string;
         };
         /** Rate */
         Rate: {
@@ -1437,6 +1571,16 @@ export interface components {
             /** Positions Cached */
             positions_cached: number;
         };
+        /** SubmitAttempt */
+        SubmitAttempt: {
+            /** Move Uci */
+            move_uci: string;
+            /**
+             * Submission Id
+             * Format: uuid
+             */
+            submission_id: string;
+        };
         /** Summary */
         Summary: {
             /** Draws */
@@ -1528,6 +1672,7 @@ export interface components {
              * @enum {string}
              */
             status: "healthy" | "degraded" | "unavailable";
+            training?: components["schemas"]["TrainingHealth"] | null;
         };
         /** SystemStatusResponse */
         SystemStatusResponse: {
@@ -1535,6 +1680,99 @@ export interface components {
             ollama: components["schemas"]["DependencyStatus"];
             ollama_model: components["schemas"]["DependencyStatus"];
             stockfish: components["schemas"]["DependencyStatus"];
+        };
+        /** ThemeStats */
+        ThemeStats: {
+            /** Accuracy */
+            accuracy: number | null;
+            /** Attempts */
+            attempts: number;
+            /** Correct */
+            correct: number;
+            /** Puzzles */
+            puzzles: number;
+            /** Theme */
+            theme: string;
+        };
+        /** TrainingHealth */
+        TrainingHealth: {
+            /** Detail */
+            detail: string;
+            /**
+             * Generation Status
+             * @enum {string}
+             */
+            generation_status: "verify_with_cli" | "busy" | "unavailable";
+            /**
+             * Practice Status
+             * @enum {string}
+             */
+            practice_status: "ready" | "unavailable";
+            /** Puzzles Due */
+            puzzles_due?: number | null;
+            /** Puzzles Total */
+            puzzles_total?: number | null;
+        };
+        /** TrainingStats */
+        TrainingStats: {
+            /** Accuracy */
+            accuracy: number | null;
+            /** Attempts Total */
+            attempts_total: number;
+            /** Average Attempts */
+            average_attempts: number | null;
+            /** Correct Attempts */
+            correct_attempts: number;
+            /** Incorrect Attempts */
+            incorrect_attempts: number;
+            /** Puzzles Attempted */
+            puzzles_attempted: number;
+            /** Puzzles Due */
+            puzzles_due: number;
+            /** Puzzles Total */
+            puzzles_total: number;
+            /** Themes */
+            themes: components["schemas"]["ThemeStats"][];
+        };
+        /** TransferComparison */
+        TransferComparison: {
+            after: components["schemas"]["PeriodEvidence"];
+            /** Analysis Version */
+            analysis_version: string;
+            before: components["schemas"]["PeriodEvidence"];
+            /** Change Per 100 */
+            change_per_100: number | null;
+            color: components["schemas"]["PlayerColor"];
+            /** Profile Hash */
+            profile_hash: string;
+            /** Relative Change Percent */
+            relative_change_percent: number | null;
+            /** Time Class */
+            time_class: string;
+            /** Time Control */
+            time_control: string;
+        };
+        /** TransferReport */
+        TransferReport: {
+            /** Cohorts */
+            cohorts: components["schemas"]["TransferComparison"][];
+            /**
+             * Critical Loss Cp
+             * @default 150
+             */
+            critical_loss_cp: number;
+            /** First Attempt At */
+            first_attempt_at?: string | null;
+            /**
+             * Min Games Per Period
+             * @default 10
+             */
+            min_games_per_period: number;
+            /**
+             * Min Moves Per Period
+             * @default 100
+             */
+            min_moves_per_period: number;
         };
         /** TrendPeriod */
         TrendPeriod: {
@@ -4149,6 +4387,344 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SystemStatusResponse"];
+                };
+            };
+            /** @description Invalid local Host header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Untrusted browser origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflicting operation or configuration */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Local dependency unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    next_puzzle_api_v1_training_next_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NextPuzzle"];
+                };
+            };
+            /** @description Invalid local Host header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Untrusted browser origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflicting operation or configuration */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Local dependency unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    progress_api_v1_training_progress_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferReport"];
+                };
+            };
+            /** @description Invalid local Host header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Untrusted browser origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflicting operation or configuration */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Local dependency unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    statistics_api_v1_training_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingStats"];
+                };
+            };
+            /** @description Invalid local Host header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Untrusted browser origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflicting operation or configuration */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Local dependency unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submit_attempt_api_v1_training__puzzle_id__attempts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                puzzle_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitAttempt"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptResult"];
                 };
             };
             /** @description Invalid local Host header */

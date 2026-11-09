@@ -189,7 +189,8 @@ class AnalysisRepository:
                 self._transition(run, Status.DONE)
             return run.id
 
-    def compatible(self, s: Session, game: Game, profile: AnalysisProfile) -> bool:
+    @staticmethod
+    def compatible(s: Session, game: Game, profile: AnalysisProfile) -> bool:
         state = s.scalar(
             select(GameAnalysisState).where(
                 GameAnalysisState.game_id == game.id,
@@ -221,10 +222,16 @@ class AnalysisRepository:
         if [r.ply for r in rows] != list(range(1, n + 1)):
             return False
         unknown = bool((game.parsed_metadata or {}).get("history_before_start_unknown"))
+        positions = {
+            row.id: row
+            for row in s.scalars(
+                select(PositionCache).where(PositionCache.id.in_(state.position_ids))
+            )
+        }
         try:
             board = chess.Board(str((game.parsed_metadata or {}).get("initial_fen")))
             for i, identity in enumerate(state.position_ids):
-                cached = s.get(PositionCache, identity)
+                cached = positions.get(identity)
                 if cached is None or (
                     cached.engine_version,
                     cached.analysis_version,
@@ -258,7 +265,7 @@ class AnalysisRepository:
                         cached.pv_json,
                     ):
                         return False
-                    following = s.get(PositionCache, state.position_ids[i + 1])
+                    following = positions.get(state.position_ids[i + 1])
                     if following is None or (
                         row.eval_after_cp_white,
                         row.mate_after_white,

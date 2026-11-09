@@ -70,6 +70,27 @@ test('keeps API failures local and retries without a reload', async ({ page }) =
 });
 
 test('cancels an outstanding game request when navigating away', async ({ page }) => {
+	await page.route('**/api/v1/training/next', (route) =>
+		route.fulfill({ json: { puzzle: null, reason: 'NO_PUZZLES_DUE' } })
+	);
+	await page.route('**/api/v1/training/progress', (route) =>
+		route.fulfill({ json: { first_attempt_at: null, cohorts: [] } })
+	);
+	await page.route('**/api/v1/training/stats', (route) =>
+		route.fulfill({
+			json: {
+				puzzles_total: 0,
+				puzzles_attempted: 0,
+				attempts_total: 0,
+				correct_attempts: 0,
+				incorrect_attempts: 0,
+				accuracy: null,
+				puzzles_due: 0,
+				average_attempts: null,
+				themes: []
+			}
+		})
+	);
 	const gate = Promise.withResolvers<void>();
 	const started = page.waitForRequest('**/api/v1/games?limit=25&offset=0');
 	await page.route('**/api/v1/games?limit=25&offset=0', async (route) => {

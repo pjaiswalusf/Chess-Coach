@@ -1,16 +1,22 @@
 <script lang="ts">
-	import { endpoints, parseFen } from '#lib/utils/board.js';
+	import { endpoints, parseFen, type Square } from '#lib/utils/board.js';
 
 	let {
 		fen,
 		orientation,
 		lastMove,
-		bestMove
+		bestMove,
+		selectSquare,
+		selected = [],
+		disabled = false
 	}: {
 		fen: string;
 		orientation: 'white' | 'black';
 		lastMove?: string | null;
 		bestMove?: string | null;
+		selectSquare?: (square: string) => void;
+		selected?: string[];
+		disabled?: boolean;
 	} = $props();
 
 	const pieces: Record<string, string> = {
@@ -41,55 +47,44 @@
 		{#each squares as square, i (square.coordinate)}
 			{@const isPlayed = played.includes(square.coordinate)}
 			{@const isSuggested = suggested.includes(square.coordinate)}
-			<div
-				class={[
-					'relative grid min-h-0 min-w-0 place-items-center font-serif leading-none',
-					isSuggested
+			{@const isSelected = selected.includes(square.coordinate)}
+			{@const classes = [
+				'relative grid min-h-0 min-w-0 place-items-center font-serif leading-none',
+				isSelected
+					? 'bg-emerald-300 ring-2 ring-emerald-950 ring-inset'
+					: isSuggested
 						? 'bg-sky-300 ring-2 ring-sky-900 ring-inset'
 						: isPlayed
 							? 'bg-amber-400 ring-2 ring-amber-900 ring-inset'
 							: square.dark
 								? 'bg-emerald-700'
 								: 'bg-emerald-100'
-				]}
-				data-square={square.coordinate}
-				title={square.label}
-			>
-				<span class="sr-only"
-					>{square.label}{isPlayed ? ' · Played move' : ''}{isSuggested
-						? ' · Engine suggestion'
-						: ''}</span
-				>
-				{#if i % 8 === 0}
-					<span
-						aria-hidden="true"
-						class={[
-							'absolute top-0.5 left-0.5 font-sans text-[0.6rem] font-bold',
-							square.dark && !isPlayed && !isSuggested ? 'text-white' : 'text-slate-900'
-						]}>{square.coordinate[1]}</span
-					>
-				{/if}
-				{#if i >= 56}
-					<span
-						aria-hidden="true"
-						class={[
-							'absolute right-0.5 bottom-0.5 font-sans text-[0.6rem] font-bold',
-							square.dark && !isPlayed && !isSuggested ? 'text-white' : 'text-slate-900'
-						]}>{square.coordinate[0]}</span
-					>
-				{/if}
-				<span
-					aria-hidden="true"
+			]}
+			{#if selectSquare}
+				<button
+					type="button"
+					{disabled}
 					class={[
-						'text-[clamp(1.1rem,6vw,2.6rem)]',
-						square.piece === square.piece.toUpperCase()
-							? 'text-white [text-shadow:0_1px_2px_#0f172a,0_-1px_2px_#0f172a]'
-							: 'text-slate-950'
+						classes,
+						'focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-slate-950'
 					]}
+					data-square={square.coordinate}
+					aria-label={square.label}
+					aria-pressed={isSelected}
+					onclick={() => selectSquare?.(square.coordinate)}
 				>
-					{pieces[square.piece] ?? ''}
-				</span>
-			</div>
+					{@render squareContents(square, i, isPlayed || isSuggested || isSelected)}
+				</button>
+			{:else}
+				<div class={classes} data-square={square.coordinate} title={square.label}>
+					<span class="sr-only"
+						>{square.label}{isPlayed ? ' · Played move' : ''}{isSuggested
+							? ' · Engine suggestion'
+							: ''}</span
+					>
+					{@render squareContents(square, i, isPlayed || isSuggested)}
+				</div>
+			{/if}
 		{/each}
 	</div>
 {:else}
@@ -97,3 +92,35 @@
 		Position cannot be displayed. Refresh the analysis or check the stored game.
 	</p>
 {/if}
+
+{#snippet squareContents(square: Square, i: number, highlighted: boolean)}
+	{#if i % 8 === 0}
+		<span
+			aria-hidden="true"
+			class={[
+				'absolute top-0.5 left-0.5 font-sans text-[0.6rem] font-bold',
+				square.dark && !highlighted ? 'text-white' : 'text-slate-900'
+			]}>{square.coordinate[1]}</span
+		>
+	{/if}
+	{#if i >= 56}
+		<span
+			aria-hidden="true"
+			class={[
+				'absolute right-0.5 bottom-0.5 font-sans text-[0.6rem] font-bold',
+				square.dark && !highlighted ? 'text-white' : 'text-slate-900'
+			]}>{square.coordinate[0]}</span
+		>
+	{/if}
+	<span
+		aria-hidden="true"
+		class={[
+			'text-[clamp(1.1rem,6vw,2.6rem)]',
+			square.piece === square.piece.toUpperCase()
+				? 'text-white [text-shadow:0_1px_2px_#0f172a,0_-1px_2px_#0f172a]'
+				: 'text-slate-950'
+		]}
+	>
+		{pieces[square.piece] ?? ''}
+	</span>
+{/snippet}

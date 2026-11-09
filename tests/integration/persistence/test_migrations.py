@@ -24,6 +24,8 @@ EXPECTED_TABLES = {
     "move_features",
     "coaching_outputs",
     "motif_event_snapshots",
+    "puzzles",
+    "puzzle_attempts",
     "alembic_version",
 }
 

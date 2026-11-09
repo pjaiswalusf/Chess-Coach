@@ -49,3 +49,18 @@ def test_real_exception_cleanup():
         raise RuntimeError("caller failure")
     assert owned is not None
     owned.returncode.result(timeout=5)
+
+
+def test_real_puzzle_multipv_preserves_history_and_ranks():
+    from chess_coach.domain.training import verify_solution
+
+    board = chess.Board()
+    for uci in ("e2e4", "e7e5", "f1c4", "b8c6", "d1f3", "b7b6"):
+        board.push_uci(uci)
+    original = board.fen(), board.move_stack.copy()
+    with StockfishAdapter(Settings(_env_file=None)) as adapter:
+        lines = adapter.analyze_puzzle_candidate(board, nodes=200_000, multipv=3)
+        solution = verify_solution(board, "g1e2", lines, adapter.engine_name)
+        assert solution.move_uci == "f3f7"
+        assert solution.theme == "forced_mate"
+    assert (board.fen(), board.move_stack) == original

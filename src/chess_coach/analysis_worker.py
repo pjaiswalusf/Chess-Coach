@@ -27,6 +27,12 @@ class JsonFormatter(logging.Formatter):
         }
         for name in (
             "run_id",
+            "source_game_id",
+            "puzzle_id",
+            "next_review_at",
+            "tracked_player_id",
+            "ply",
+            "rejection_reason",
             "game_id",
             "error_code",
             "operation",

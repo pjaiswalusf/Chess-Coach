@@ -16,6 +16,7 @@ def system_report(
     status: SystemStatus,
     statistics: Callable[[], dict[str, int]],
     worker: Callable[[], dict[str, object]] | None = None,
+    training: Callable[[], tuple[int, int, bool]] | None = None,
 ) -> dict[str, object]:
     try:
         counts = statistics()
@@ -27,6 +28,34 @@ def system_report(
         database = "unavailable"
         engine = {}
     stockfish = "available" if engine.get("available") else status.stockfish.state
+    training_status: dict[str, object] | None = None
+    if training is not None:
+        try:
+            total, due, worker_owns_engine = training()
+        except SQLAlchemyError, OSError:
+            logging.getLogger(__name__).exception("training_database_unavailable")
+            training_status = {
+                "practice_status": "unavailable",
+                "generation_status": "unavailable",
+                "detail": "Check database access and run uv run alembic upgrade head.",
+            }
+        else:
+            if stockfish == "unavailable":
+                generation_status = "unavailable"
+                detail = "Install Stockfish to generate new puzzles."
+            elif worker_owns_engine or (counts and counts.get("active_analysis_runs")):
+                generation_status = "busy"
+                detail = "Finish pending analysis and stop the local analysis worker before generating puzzles."
+            else:
+                generation_status = "verify_with_cli"
+                detail = "Use the local training CLI for verification and generation diagnostics."
+            training_status = {
+                "practice_status": "ready",
+                "generation_status": generation_status,
+                "detail": detail,
+                "puzzles_total": total,
+                "puzzles_due": due,
+            }
     return {
         "status": "unavailable"
         if database != "available"
@@ -44,6 +73,7 @@ def system_report(
             },
         },
         "statistics": counts,
+        "training": training_status,
         "checked_at": datetime.now(UTC),
         "analysis_version": ANALYSIS_VERSION,
     }

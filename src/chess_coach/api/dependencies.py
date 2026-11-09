@@ -18,8 +18,10 @@ from chess_coach.application.system import (
     SystemStatus,
     collect_system_status,
 )
+from chess_coach.application.training import TrainingService, practice_counts
 from chess_coach.config import Settings, get_settings
 from chess_coach.domain.coaching_models import LLMHealth
+from chess_coach.infrastructure.analysis_lock import worker_is_locked
 from chess_coach.infrastructure.chesscom.client import ChessComClient
 from chess_coach.infrastructure.persistence.analysis_repository import (
     AnalysisRepository,
@@ -31,6 +33,9 @@ from chess_coach.infrastructure.persistence.engine import create_database_engine
 from chess_coach.infrastructure.persistence.query_repository import QueryRepository
 from chess_coach.infrastructure.persistence.session import create_session_factory
 from chess_coach.infrastructure.persistence.sync_repository import SyncRepository
+from chess_coach.infrastructure.persistence.training_repository import (
+    TrainingRepository,
+)
 from chess_coach.infrastructure.system.probes import probe_ollama
 
 
@@ -125,7 +130,17 @@ def get_system_report(
         finally:
             engine.dispose()
 
-    return system_report(settings, status, statistics, worker)
+    def training() -> tuple[int, int, bool]:
+        engine = create_database_engine(settings.database_url, timeout_seconds=0.25)
+        try:
+            total, due = practice_counts(
+                TrainingRepository(create_session_factory(engine))
+            )
+            return total, due, worker_is_locked(settings.database_path)
+        finally:
+            engine.dispose()
+
+    return system_report(settings, status, statistics, worker, training)
 
 
 def get_coaching_service(
@@ -147,3 +162,9 @@ def get_llm_health(settings: Annotated[Settings, Depends(get_settings)]) -> LLMH
     from chess_coach.infrastructure.llm.health import check_health
 
     return check_health(settings)
+
+
+def get_training_service(
+    queries: Annotated[QueryService, Depends(get_query_service)],
+) -> TrainingService:
+    return TrainingService(TrainingRepository(queries.store.sessions))

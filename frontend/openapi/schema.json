@@ -213,6 +213,79 @@
         "title": "AnalyticsHealthReport",
         "type": "object"
       },
+      "AttemptResult": {
+        "properties": {
+          "attempt_id": {
+            "title": "Attempt Id",
+            "type": "integer"
+          },
+          "attempted_at": {
+            "format": "date-time",
+            "title": "Attempted At",
+            "type": "string"
+          },
+          "correct": {
+            "title": "Correct",
+            "type": "boolean"
+          },
+          "next_review_at": {
+            "format": "date-time",
+            "title": "Next Review At",
+            "type": "string"
+          },
+          "original_move_uci": {
+            "title": "Original Move Uci",
+            "type": "string"
+          },
+          "solution_move_uci": {
+            "title": "Solution Move Uci",
+            "type": "string"
+          },
+          "solution_pv_san": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Solution Pv San",
+            "type": "array"
+          },
+          "solution_san": {
+            "title": "Solution San",
+            "type": "string"
+          },
+          "source_game_id": {
+            "title": "Source Game Id",
+            "type": "integer"
+          },
+          "source_ply": {
+            "title": "Source Ply",
+            "type": "integer"
+          },
+          "source_profile_hash": {
+            "title": "Source Profile Hash",
+            "type": "string"
+          },
+          "submitted_move_uci": {
+            "title": "Submitted Move Uci",
+            "type": "string"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "correct",
+          "submitted_move_uci",
+          "solution_move_uci",
+          "solution_san",
+          "solution_pv_san",
+          "original_move_uci",
+          "source_game_id",
+          "source_ply",
+          "source_profile_hash",
+          "attempted_at",
+          "next_review_at"
+        ],
+        "title": "AttemptResult",
+        "type": "object"
+      },
       "ChessEvent": {
         "additionalProperties": false,
         "properties": {
@@ -1668,6 +1741,34 @@
         "title": "MoveMetrics",
         "type": "object"
       },
+      "NextPuzzle": {
+        "properties": {
+          "puzzle": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicPuzzle"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "const": "NO_PUZZLES_DUE",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "NextPuzzle",
+        "type": "object"
+      },
       "OutcomeMetric": {
         "additionalProperties": false,
         "properties": {
@@ -1957,6 +2058,44 @@
         "title": "PatternsResponse",
         "type": "object"
       },
+      "PeriodEvidence": {
+        "properties": {
+          "critical_errors": {
+            "title": "Critical Errors",
+            "type": "integer"
+          },
+          "errors_per_100": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errors Per 100"
+          },
+          "game_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Game Ids",
+            "type": "array"
+          },
+          "moves": {
+            "title": "Moves",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "game_ids",
+          "moves",
+          "critical_errors",
+          "errors_per_100"
+        ],
+        "title": "PeriodEvidence",
+        "type": "object"
+      },
       "PlayerColor": {
         "enum": [
           "white",
@@ -2014,6 +2153,51 @@
           "player"
         ],
         "title": "PlayerResponse",
+        "type": "object"
+      },
+      "PublicPuzzle": {
+        "properties": {
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "difficulty": {
+            "title": "Difficulty",
+            "type": "string"
+          },
+          "fen": {
+            "title": "Fen",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "legal_moves": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Legal Moves",
+            "type": "array"
+          },
+          "side_to_move": {
+            "$ref": "#/components/schemas/PlayerColor"
+          },
+          "theme": {
+            "title": "Theme",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fen",
+          "side_to_move",
+          "theme",
+          "difficulty",
+          "attempt_count",
+          "legal_moves"
+        ],
+        "title": "PublicPuzzle",
         "type": "object"
       },
       "Rate": {
@@ -2959,6 +3143,26 @@
         "title": "Statistics",
         "type": "object"
       },
+      "SubmitAttempt": {
+        "properties": {
+          "move_uci": {
+            "pattern": "^[a-h][1-8][a-h][1-8][qrbn]?$",
+            "title": "Move Uci",
+            "type": "string"
+          },
+          "submission_id": {
+            "format": "uuid",
+            "title": "Submission Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "submission_id",
+          "move_uci"
+        ],
+        "title": "SubmitAttempt",
+        "type": "object"
+      },
       "Summary": {
         "additionalProperties": false,
         "properties": {
@@ -3251,6 +3455,16 @@
             ],
             "title": "Status",
             "type": "string"
+          },
+          "training": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrainingHealth"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -3285,6 +3499,277 @@
           "ollama_model"
         ],
         "title": "SystemStatusResponse",
+        "type": "object"
+      },
+      "ThemeStats": {
+        "properties": {
+          "accuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy"
+          },
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "correct": {
+            "title": "Correct",
+            "type": "integer"
+          },
+          "puzzles": {
+            "title": "Puzzles",
+            "type": "integer"
+          },
+          "theme": {
+            "title": "Theme",
+            "type": "string"
+          }
+        },
+        "required": [
+          "theme",
+          "puzzles",
+          "attempts",
+          "correct",
+          "accuracy"
+        ],
+        "title": "ThemeStats",
+        "type": "object"
+      },
+      "TrainingHealth": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "generation_status": {
+            "enum": [
+              "verify_with_cli",
+              "busy",
+              "unavailable"
+            ],
+            "title": "Generation Status",
+            "type": "string"
+          },
+          "practice_status": {
+            "enum": [
+              "ready",
+              "unavailable"
+            ],
+            "title": "Practice Status",
+            "type": "string"
+          },
+          "puzzles_due": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Puzzles Due"
+          },
+          "puzzles_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Puzzles Total"
+          }
+        },
+        "required": [
+          "practice_status",
+          "generation_status",
+          "detail"
+        ],
+        "title": "TrainingHealth",
+        "type": "object"
+      },
+      "TrainingStats": {
+        "properties": {
+          "accuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accuracy"
+          },
+          "attempts_total": {
+            "title": "Attempts Total",
+            "type": "integer"
+          },
+          "average_attempts": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Attempts"
+          },
+          "correct_attempts": {
+            "title": "Correct Attempts",
+            "type": "integer"
+          },
+          "incorrect_attempts": {
+            "title": "Incorrect Attempts",
+            "type": "integer"
+          },
+          "puzzles_attempted": {
+            "title": "Puzzles Attempted",
+            "type": "integer"
+          },
+          "puzzles_due": {
+            "title": "Puzzles Due",
+            "type": "integer"
+          },
+          "puzzles_total": {
+            "title": "Puzzles Total",
+            "type": "integer"
+          },
+          "themes": {
+            "items": {
+              "$ref": "#/components/schemas/ThemeStats"
+            },
+            "title": "Themes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "puzzles_total",
+          "puzzles_attempted",
+          "attempts_total",
+          "correct_attempts",
+          "incorrect_attempts",
+          "accuracy",
+          "puzzles_due",
+          "average_attempts",
+          "themes"
+        ],
+        "title": "TrainingStats",
+        "type": "object"
+      },
+      "TransferComparison": {
+        "properties": {
+          "after": {
+            "$ref": "#/components/schemas/PeriodEvidence"
+          },
+          "analysis_version": {
+            "title": "Analysis Version",
+            "type": "string"
+          },
+          "before": {
+            "$ref": "#/components/schemas/PeriodEvidence"
+          },
+          "change_per_100": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Per 100"
+          },
+          "color": {
+            "$ref": "#/components/schemas/PlayerColor"
+          },
+          "profile_hash": {
+            "title": "Profile Hash",
+            "type": "string"
+          },
+          "relative_change_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relative Change Percent"
+          },
+          "time_class": {
+            "title": "Time Class",
+            "type": "string"
+          },
+          "time_control": {
+            "title": "Time Control",
+            "type": "string"
+          }
+        },
+        "required": [
+          "time_class",
+          "time_control",
+          "color",
+          "profile_hash",
+          "analysis_version",
+          "before",
+          "after",
+          "change_per_100",
+          "relative_change_percent"
+        ],
+        "title": "TransferComparison",
+        "type": "object"
+      },
+      "TransferReport": {
+        "properties": {
+          "cohorts": {
+            "items": {
+              "$ref": "#/components/schemas/TransferComparison"
+            },
+            "title": "Cohorts",
+            "type": "array"
+          },
+          "critical_loss_cp": {
+            "default": 150,
+            "title": "Critical Loss Cp",
+            "type": "integer"
+          },
+          "first_attempt_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Attempt At"
+          },
+          "min_games_per_period": {
+            "default": 10,
+            "title": "Min Games Per Period",
+            "type": "integer"
+          },
+          "min_moves_per_period": {
+            "default": 100,
+            "title": "Min Moves Per Period",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cohorts"
+        ],
+        "title": "TransferReport",
         "type": "object"
       },
       "TrendPeriod": {
@@ -7114,6 +7599,391 @@
         "summary": "System Status",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/api/v1/training/next": {
+      "get": {
+        "operationId": "next_puzzle_api_v1_training_next_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NextPuzzle"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Next Puzzle",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/training/progress": {
+      "get": {
+        "operationId": "progress_api_v1_training_progress_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Progress",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/training/stats": {
+      "get": {
+        "operationId": "statistics_api_v1_training_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrainingStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Statistics",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/training/{puzzle_id}/attempts": {
+      "post": {
+        "operationId": "submit_attempt_api_v1_training__puzzle_id__attempts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "puzzle_id",
+            "required": true,
+            "schema": {
+              "title": "Puzzle Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitAttempt"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Submit Attempt",
+        "tags": [
+          "training"
         ]
       }
     },
