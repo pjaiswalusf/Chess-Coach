@@ -6,7 +6,9 @@ from chess_coach.cli import main
 def test_cli_serves_api_on_loopback() -> None:
     with patch("chess_coach.cli.uvicorn.run") as run:
         main([])
-    run.assert_called_once_with("chess_coach.api.app:app", host="127.0.0.1", port=8000)
+    run.assert_called_once_with(
+        "chess_coach.api.app:app", host="127.0.0.1", port=8000, access_log=False
+    )
 
 
 def test_sync_cli_report_and_partial_exit(capsys, tmp_path, monkeypatch):
@@ -33,3 +35,10 @@ def test_sync_cli_missing_schema_actionable_error(capsys, tmp_path, monkeypatch)
     with pytest.raises(SystemExit, match="1"):
         main(["sync-status", "--username", "example"])
     assert "alembic upgrade head" in capsys.readouterr().out
+
+
+def test_serve_can_start_with_invalid_settings(monkeypatch):
+    monkeypatch.setenv("CHESS_COACH_STOCKFISH_THREADS", "0")
+    with patch("chess_coach.cli.uvicorn.run") as run:
+        main(["serve"])
+    run.assert_called_once()

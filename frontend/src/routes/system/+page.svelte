@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getHealth } from '#lib/api/health.js';
-	import { getSystem } from '#lib/api/system.js';
+	import { getComponentHealth, getSystemMetrics } from '#lib/api/system.js';
 	import { asyncRead } from '#lib/async-read.svelte.js';
 	import Button from '#lib/components/ui/Button.svelte';
 	import Card from '#lib/components/ui/Card.svelte';
@@ -10,22 +10,33 @@
 	import StatusBadge from '#lib/components/ui/StatusBadge.svelte';
 
 	const process = asyncRead(getHealth, 'Check that FastAPI is running.');
-	const system = asyncRead(getSystem, 'Check the local backend and retry.');
-	const services = [
-		{ key: 'database', label: 'Database' },
-		{ key: 'stockfish', label: 'Stockfish' },
-		{ key: 'ollama', label: 'Ollama' }
-	] as const;
+	const system = asyncRead(getComponentHealth, 'Check the local backend and retry.');
+	const metrics = asyncRead(getSystemMetrics, 'Check the local database and retry.');
+	const serviceLabels: Record<string, string> = {
+		configuration: 'Configuration',
+		data_directory: 'Data directory',
+		database: 'Database',
+		migrations: 'Database migrations',
+		stockfish: 'Stockfish',
+		ollama: 'Ollama',
+		ollama_model: 'Ollama model'
+	};
 	const labels = {
-		available: 'Available',
-		unavailable: 'Unavailable',
-		unknown: 'Unknown'
+		pass: 'Available',
+		warn: 'Warning',
+		fail: 'Unavailable',
+		skip: 'Unknown'
 	} as const;
-	const tones = { available: 'positive', unavailable: 'negative', unknown: 'caution' } as const;
+	const tones = { pass: 'positive', warn: 'caution', fail: 'negative', skip: 'caution' } as const;
+	const format = (value: number | null | undefined, unit: string) =>
+		value == null
+			? 'Unavailable'
+			: value.toLocaleString(undefined, { maximumFractionDigits: 1 }) + unit;
 
 	function refresh() {
 		void process.refresh();
 		void system.refresh();
+		void metrics.refresh();
 	}
 </script>
 
@@ -61,8 +72,16 @@
 		retry={refresh}
 	/>
 {:else if system.state.status === 'success'}
-	{@const { components, statistics, status, analysis_version, checked_at, training } =
-		system.state.data}
+	{@const {
+		components,
+		overall: status,
+		checked_at,
+		statistics,
+		analysis_version,
+		training,
+		engine_version,
+		model
+	} = system.state.data}
 	<Card>
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<h2 class="text-lg font-semibold">Local services</h2>
@@ -76,47 +95,35 @@
 			/>
 		</div>
 		<dl class="divide-y divide-slate-200">
-			{#each services as service (service.key)}
-				{@const component = components[service.key]}
+			{#each Object.entries(components) as [name, check] (name)}
 				<div class="grid grid-cols-[1fr_auto] items-center gap-2 py-3">
-					<dt class="font-medium">{service.label}</dt>
-					<dd><StatusBadge label={labels[component.status]} tone={tones[component.status]} /></dd>
-					{#if service.key === 'database' && component.status === 'unavailable'}
-						<dd class="col-span-2 text-sm text-slate-600">
-							Check database access and apply pending migrations.
-						</dd>
-					{:else if service.key === 'stockfish'}
-						<dd class="col-span-2 text-sm text-slate-600">
-							{#if component.version}Engine: {component.version}.{/if}
-							{#if component.status !== 'available'}
-								Check your Stockfish installation and start the local analysis worker.{/if}
-						</dd>
-					{:else if service.key === 'ollama' && component.status !== 'available'}
-						<dd class="col-span-2 text-sm text-slate-600">
-							Start Ollama to make local coaching available.
-						</dd>
+					<dt class="font-medium">{serviceLabels[name] ?? name}</dt>
+					<dd><StatusBadge label={labels[check.status]} tone={tones[check.status]} /></dd>
+					<dd class="col-span-2 text-sm text-slate-600">
+						{check.message}
+						{#if name === 'stockfish' && engine_version}{engine_version}.{/if}
+						{#if name === 'ollama_model' && model}Configured model {model}.{/if}
+					</dd>
+					{#if check.action}
+						<dd class="col-span-2 text-sm text-slate-600">{check.action}</dd>
 					{/if}
 				</div>
 			{/each}
-			<div class="grid grid-cols-[1fr_auto] items-center gap-2 py-3">
-				<dt class="font-medium">Ollama model</dt>
-				<dd>
-					<StatusBadge
-						label={labels[components.ollama.model_status ?? 'unknown']}
-						tone={tones[components.ollama.model_status ?? 'unknown']}
-					/>
-				</dd>
-				<dd class="col-span-2 text-sm text-slate-600">
-					{components.ollama.model ?? 'Model not reported'}.
-					{#if components.ollama.status === 'available' && components.ollama.model_status === 'unavailable'}
-						Install the configured model in Ollama.
-					{/if}
-				</dd>
-			</div>
 		</dl>
-		{#if checked_at}<p class="text-sm text-slate-600">
-				Last checked: {new Date(checked_at).toLocaleString()}
-			</p>{/if}
+		{#if status !== 'unavailable'}
+			<p class="text-sm text-slate-600">Stored games and historical analysis are available.</p>
+			{#if components.stockfish?.status === 'warn'}
+				<p class="text-sm text-slate-600">New engine analysis is unavailable.</p>
+			{:else if components.stockfish?.status === 'pass'}
+				<p class="text-sm text-slate-600">New analysis requires a running local analysis worker.</p>
+			{/if}
+			{#if components.ollama_model?.status !== 'pass'}
+				<p class="text-sm text-slate-600">New AI explanations are unavailable.</p>
+			{/if}
+		{/if}
+		<p class="text-sm text-slate-600">
+			Last checked {new Date(checked_at).toLocaleString()}
+		</p>
 	</Card>
 
 	{#if training}
@@ -165,3 +172,51 @@
 		<p class="text-slate-600">Game counts are unavailable.</p>
 	{/if}
 {/if}
+
+<Card>
+	<h2 class="text-lg font-semibold">Performance metrics</h2>
+	{#if metrics.state.status === 'loading'}
+		<Spinner label="Loading performance metrics…" />
+	{:else if metrics.state.status === 'error'}
+		<ErrorMessage
+			title="Metrics unavailable."
+			message={metrics.state.message}
+			retry={metrics.refresh}
+		/>
+	{:else if metrics.state.status === 'success'}
+		{@const { analysis, coaching } = metrics.state.data}
+		<p class="text-sm text-slate-600">
+			{analysis ? 'Latest finished analysis run #' + analysis.run_id : 'No finished analysis runs.'}
+		</p>
+		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+			<MetricCard
+				label="Engine throughput"
+				value={format(analysis?.positions_per_second, ' positions/s')}
+			/>
+			<MetricCard label="Cache hit rate" value={format(analysis?.cache_hit_rate, '%')} />
+			<MetricCard
+				label="Active analysis time"
+				value={format(analysis?.duration_ms == null ? null : analysis.duration_ms / 1000, ' s')}
+			/>
+			<MetricCard label="Games per hour" value={format(analysis?.games_per_hour, '')} />
+		</div>
+		<p class="text-sm text-slate-600">
+			Coaching over {coaching.window_days} days · {coaching.sample_count} measured jobs ·
+			{coaching.first_schema_sample_count} classified first responses
+		</p>
+		<div class="grid gap-3 sm:grid-cols-3">
+			<MetricCard
+				label="LLM latency p50"
+				value={format(
+					coaching.latency_p50_ms == null ? null : coaching.latency_p50_ms / 1000,
+					' s'
+				)}
+			/>
+			<MetricCard
+				label="First-response schema failure rate"
+				value={format(coaching.first_schema_failure_rate, '%')}
+			/>
+			<MetricCard label="Final LLM failure rate" value={format(coaching.final_failure_rate, '%')} />
+		</div>
+	{/if}
+</Card>

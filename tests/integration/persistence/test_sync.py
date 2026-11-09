@@ -362,3 +362,54 @@ def test_source_evidence_backfill_keeps_pgn_immutable(setup_sync, sessions):
     with sessions() as session:
         first = session.get(Game, first_id)
         assert first.source_evidence is None and first.raw_pgn == raw
+
+
+def test_sync_events_use_persisted_ids_and_exclude_source_payload(
+    setup_sync, sessions, capsys
+):
+    from chess_coach.observability.logging import configure_logging
+
+    source, _, service = setup_sync
+    source.fail = 500
+    source.raw["pgn"] = source.raw["pgn"].replace(
+        "[Event ", '[Site "PRIVATE_TEST_USERNAME_123"]\n[Event ', 1
+    )
+    configure_logging("DEBUG")
+    report = service.sync("testplayer")
+    output = capsys.readouterr().err
+    assert "PRIVATE_TEST_USERNAME_123" not in output
+    assert "testplayer" not in output.lower()
+    events = [json.loads(line) for line in output.splitlines()]
+    boundaries = [
+        event
+        for event in events
+        if event["event"] in {"sync_started", "sync_finished", "sync_failed"}
+    ]
+    assert [event["event"] for event in boundaries] == ["sync_started", "sync_failed"]
+    assert all(event["run_id"] == str(report.run_id) for event in events)
+    with sessions() as session:
+        run = session.get(ImportRun, report.run_id)
+        assert run.duration_ms == boundaries[-1]["duration_ms"]
+        assert run.games_inserted == boundaries[-1]["games_inserted"]
+        assert run.games_inserted == sum(
+            event["event"] == "game_inserted" for event in events
+        )
+
+
+def test_sync_preflight_failure_does_not_log_or_return_username(
+    setup_sync, sessions, capsys
+):
+    from chess_coach.observability.logging import configure_logging
+
+    _, store, _ = setup_sync
+    configure_logging()
+    with ChessComClient(
+        transport=httpx.MockTransport(lambda _: httpx.Response(403))
+    ) as provider, pytest.raises(SourceError) as error:
+        SyncGamesService(provider, store).sync("private-test-player")
+    assert "private-test-player" not in str(error.value)
+    event = json.loads(capsys.readouterr().err)
+    assert event["event"] == "sync_preflight_failed"
+    assert event["error_code"] == "HTTP_ERROR"
+    assert "private-test-player" not in json.dumps(event)
+    assert count(sessions, ImportRun) == 0

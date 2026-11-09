@@ -6,7 +6,7 @@ worker processes while upgrading. Do not copy a live SQLite file without its WAL
 
 ```sh
 uv run alembic upgrade head
-uv run chess-coach doctor
+uv run chess-coach engine-check
 uv run chess-coach parse-games --username YOUR_NAME
 ```
 

@@ -79,7 +79,7 @@ class ChessComClient:
                     code = "UNAVAILABLE" if status in (404, 410) else "HTTP_ERROR"
                     raise ChessComError(
                         code,
-                        f"HTTP {status} at {path}.",
+                        f"Chess.com returned HTTP {status}. Check the source and retry.",
                         unavailable=status in (404, 410),
                     )
                 if attempt == self._attempts - 1:

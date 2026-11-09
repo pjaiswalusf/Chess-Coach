@@ -26,6 +26,67 @@
         "title": "AcceptedRun",
         "type": "object"
       },
+      "AnalysisMetrics": {
+        "properties": {
+          "cache_hit_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Hit Rate"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "games_per_hour": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Games Per Hour"
+          },
+          "positions_per_second": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Positions Per Second"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "positions_per_second",
+          "cache_hit_rate",
+          "duration_ms",
+          "games_per_hour"
+        ],
+        "title": "AnalysisMetrics",
+        "type": "object"
+      },
       "AnalysisRunStatus": {
         "enum": [
           "pending",
@@ -355,6 +416,65 @@
         "title": "ChessEventType",
         "type": "string"
       },
+      "CoachingMetrics": {
+        "properties": {
+          "final_failure_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final Failure Rate"
+          },
+          "first_schema_failure_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Schema Failure Rate"
+          },
+          "first_schema_sample_count": {
+            "title": "First Schema Sample Count",
+            "type": "integer"
+          },
+          "latency_p50_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency P50 Ms"
+          },
+          "sample_count": {
+            "title": "Sample Count",
+            "type": "integer"
+          },
+          "window_days": {
+            "title": "Window Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "window_days",
+          "sample_count",
+          "latency_p50_ms",
+          "first_schema_failure_rate",
+          "first_schema_sample_count",
+          "final_failure_rate"
+        ],
+        "title": "CoachingMetrics",
+        "type": "object"
+      },
       "CoachingResponse": {
         "additionalProperties": false,
         "properties": {
@@ -503,6 +623,142 @@
           "status"
         ],
         "title": "Component",
+        "type": "object"
+      },
+      "ComponentCheck": {
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "pass",
+              "warn",
+              "fail",
+              "skip"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "required",
+          "message"
+        ],
+        "title": "ComponentCheck",
+        "type": "object"
+      },
+      "ComponentHealth": {
+        "properties": {
+          "analysis_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis Version"
+          },
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "components": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ComponentCheck"
+            },
+            "title": "Components",
+            "type": "object"
+          },
+          "engine_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine Version"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "overall": {
+            "enum": [
+              "healthy",
+              "degraded",
+              "unavailable"
+            ],
+            "title": "Overall",
+            "type": "string"
+          },
+          "statistics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Statistics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "training": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrainingHealth"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "overall",
+          "components",
+          "checked_at"
+        ],
+        "title": "ComponentHealth",
         "type": "object"
       },
       "Components": {
@@ -3421,6 +3677,29 @@
           "recoverable"
         ],
         "title": "SyncRunResponse",
+        "type": "object"
+      },
+      "SystemMetrics": {
+        "properties": {
+          "analysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalysisMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "coaching": {
+            "$ref": "#/components/schemas/CoachingMetrics"
+          }
+        },
+        "required": [
+          "analysis",
+          "coaching"
+        ],
+        "title": "SystemMetrics",
         "type": "object"
       },
       "SystemResponse": {
@@ -7329,6 +7608,97 @@
         ]
       }
     },
+    "/api/v1/system/health": {
+      "get": {
+        "operationId": "component_health_api_v1_system_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComponentHealth"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComponentHealth"
+                }
+              }
+            },
+            "description": "A core check failed"
+          }
+        },
+        "summary": "Component Health",
+        "tags": [
+          "system"
+        ]
+      }
+    },
     "/api/v1/system/llm": {
       "get": {
         "operationId": "llm_health_api_v1_system_llm_get",
@@ -7417,6 +7787,97 @@
         "summary": "Llm Health",
         "tags": [
           "coaching"
+        ]
+      }
+    },
+    "/api/v1/system/metrics": {
+      "get": {
+        "operationId": "metrics_api_v1_system_metrics_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemMetrics"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Metrics",
+        "tags": [
+          "system"
         ]
       }
     },

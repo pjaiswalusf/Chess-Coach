@@ -1,3 +1,4 @@
+import asyncio
 import subprocess
 from unittest.mock import patch
 
@@ -77,7 +78,7 @@ def test_stockfish_failure_is_safe(settings: Settings, error: Exception) -> None
 @pytest.mark.parametrize(
     ("models", "state"),
     [
-        ([{"name": "qwen3.5:4b-q4_K_M"}], "available"),
+        ([{"name": "qwen3.5:4b-q4_K_M", "digest": "fixture"}], "available"),
         ([], "unavailable"),
         ([{"name": "other:latest"}], "unavailable"),
         ([{}], "unknown"),
@@ -92,10 +93,7 @@ def test_ollama_reports_service_and_model_separately(
         json={"models": models},
         request=httpx.Request("GET", "http://local/api/tags"),
     )
-    with patch(
-        "chess_coach.infrastructure.system.probes.httpx.get", return_value=response
-    ):
-        service, model = probe_ollama(settings)
+    service, model = probe_ollama(settings, httpx.MockTransport(lambda _: response))
     assert service.state == "available"
     assert model.state == state
 
@@ -105,10 +103,7 @@ def test_ollama_invalid_response(settings: Settings, content: bytes) -> None:
     response = httpx.Response(
         200, content=content, request=httpx.Request("GET", "http://local/api/tags")
     )
-    with patch(
-        "chess_coach.infrastructure.system.probes.httpx.get", return_value=response
-    ):
-        service, model = probe_ollama(settings)
+    service, model = probe_ollama(settings, httpx.MockTransport(lambda _: response))
     assert service.state == "available"
     assert model.state == "unknown"
 
@@ -117,8 +112,10 @@ def test_ollama_invalid_response(settings: Settings, content: bytes) -> None:
     "error", [httpx.ConnectError("secret address"), httpx.ReadTimeout("secret address")]
 )
 def test_ollama_network_failure_is_safe(settings: Settings, error: Exception) -> None:
-    with patch("chess_coach.infrastructure.system.probes.httpx.get", side_effect=error):
-        service, model = probe_ollama(settings)
+    def fail(_: httpx.Request) -> httpx.Response:
+        raise error
+
+    service, model = probe_ollama(settings, httpx.MockTransport(fail))
     assert service.state == "unavailable"
     assert model.state == "unknown"
     assert "secret" not in service.detail
@@ -128,10 +125,7 @@ def test_ollama_http_failure_is_safe(settings: Settings) -> None:
     response = httpx.Response(
         500, request=httpx.Request("GET", "http://secret/api/tags")
     )
-    with patch(
-        "chess_coach.infrastructure.system.probes.httpx.get", return_value=response
-    ):
-        service, model = probe_ollama(settings)
+    service, model = probe_ollama(settings, httpx.MockTransport(lambda _: response))
     assert service.state == "unavailable"
     assert model.state == "unknown"
     assert "secret" not in service.detail
@@ -141,11 +135,53 @@ def test_ollama_default_latest_tag(settings: Settings) -> None:
     settings.ollama_model = "example"
     response = httpx.Response(
         200,
-        json={"models": [{"name": "example:latest"}]},
+        json={"models": [{"name": "example:latest", "digest": "fixture"}]},
         request=httpx.Request("GET", "http://local/api/tags"),
     )
-    with patch(
-        "chess_coach.infrastructure.system.probes.httpx.get", return_value=response
-    ):
-        _, model = probe_ollama(settings)
+    _, model = probe_ollama(settings, httpx.MockTransport(lambda _: response))
     assert model.state == "available"
+
+
+def test_ollama_total_timeout_cancels_a_stalled_inventory(settings, monkeypatch):
+    from chess_coach.infrastructure.llm import health
+
+    monkeypatch.setattr(health, "INVENTORY_TIMEOUT_SECONDS", 0.01)
+    cancelled = []
+
+    async def stall(_: httpx.Request) -> httpx.Response:
+        try:
+            await asyncio.Event().wait()
+        finally:
+            cancelled.append(True)
+        raise AssertionError("Expected cancellation")
+
+    service, model = probe_ollama(settings, httpx.MockTransport(stall))
+    assert service.code == "OLLAMA_TIMEOUT"
+    assert model.state == "unknown"
+    assert cancelled == [True]
+
+
+def test_stockfish_timeout_reaps_the_probe(settings, tmp_path, monkeypatch):
+    import os
+    import sys
+    from time import monotonic
+
+    from chess_coach.infrastructure.system import probes
+
+    executable = tmp_path / "unresponsive-stockfish"
+    pidfile = tmp_path / "pid"
+    executable.write_text(
+        f"#!{sys.executable}\n"
+        f"import os, signal\n"
+        f"with open({str(pidfile)!r}, 'w') as file:\n"
+        f"    file.write(str(os.getpid()))\n"
+        f"signal.pause()\n"
+    )
+    executable.chmod(0o700)
+    settings.stockfish_executable = str(executable)
+    monkeypatch.setattr(probes, "STOCKFISH_PROBE_TIMEOUT_SECONDS", 0.5)
+    started = monotonic()
+    assert probe_stockfish(settings).code == "STOCKFISH_UCI_TIMEOUT"
+    assert monotonic() - started < 2
+    with pytest.raises(ProcessLookupError):
+        os.kill(int(pidfile.read_text()), 0)

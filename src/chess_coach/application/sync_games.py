@@ -5,7 +5,10 @@ from collections.abc import Callable
 from contextlib import AbstractContextManager
 from copy import deepcopy
 from datetime import UTC, datetime
+from time import perf_counter
 from typing import Protocol
+
+from structlog.contextvars import bound_contextvars
 
 from chess_coach.domain.sync import (
     Archive,
@@ -16,6 +19,7 @@ from chess_coach.domain.sync import (
     normalize_username,
     should_fetch,
 )
+from chess_coach.observability.logging import elapsed_ms
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +58,7 @@ class SyncStore(Protocol):
         unavailable: bool = False,
         result: MonthResult | None = None,
     ) -> None: ...
-    def finish(self, report: SyncReport, now: datetime) -> None: ...
+    def finish(self, report: SyncReport, now: datetime, duration_ms: int) -> None: ...
 
 
 class SyncGamesService:
@@ -77,13 +81,25 @@ class SyncGamesService:
         month: Archive | None = None,
         queued_run_id: int | None = None,
     ) -> SyncReport:
+        started = perf_counter()
         username = normalize_username(username)
         with self.store.guard():
             if not dry_run:
                 self.store.recover(self.clock())
             # No player/run creation when the public identity cannot be verified.
             if queued_run_id is None:
-                self.provider.get_player(username)
+                try:
+                    self.provider.get_player(username)
+                except SourceError as exc:
+                    logger.warning(
+                        "sync_preflight_failed",
+                        extra={
+                            "component": "sync",
+                            "error_code": exc.code,
+                            "duration_ms": elapsed_ms(started),
+                        },
+                    )
+                    raise
             report = SyncReport()
             if not dry_run:
                 if queued_run_id is None:
@@ -91,6 +107,11 @@ class SyncGamesService:
                 else:
                     self.store.claim(queued_run_id, self.clock())
                     report.run_id = queued_run_id
+            error_code = None
+            if report.run_id is not None:
+                logger.info(
+                    "sync_started", extra={"run_id": report.run_id, "component": "sync"}
+                )
             try:
                 if queued_run_id is not None:
                     self.provider.get_player(username)
@@ -119,6 +140,7 @@ class SyncGamesService:
                     if a not in selected and checkpoints[a].status == "unavailable"
                 ]
                 for archive in unavailable:
+                    error_code = "ARCHIVE_UNAVAILABLE"
                     report.errors.append(
                         f"{archive.key}: UNAVAILABLE; review source and use --force to retry."
                     )
@@ -146,11 +168,19 @@ class SyncGamesService:
                                 "Archive rejected atomically; inspect import_rejections and retry.",
                             )
                         # Mutations to report are restored if the transaction fails.
-                        self.store.commit_archive(
-                            report.run_id, archive, result, report, self.clock()
-                        )
+                        with bound_contextvars(
+                            run_id=str(report.run_id), component="sync"
+                        ):
+                            self.store.commit_archive(
+                                report.run_id, archive, result, report, self.clock()
+                            )
                         completed += 1
                     except Exception as exc:
+                        error_code = (
+                            exc.code
+                            if isinstance(exc, SourceError)
+                            else "PERSISTENCE_FAILURE"
+                        )
                         report = before
                         if result:
                             report.games_received += result.received
@@ -195,13 +225,50 @@ class SyncGamesService:
                     self.prepare_games(username)
             except Exception as exc:
                 report.status = "FAILED"
+                error_code = (
+                    exc.code if isinstance(exc, SourceError) else "SYNC_FAILURE"
+                )
                 report.errors.append(
                     str(exc)
                     if isinstance(exc, SourceError)
                     else "SYNC_FAILURE: inspect backend logs and retry."
                 )
                 if not isinstance(exc, SourceError):
-                    logger.exception("sync_failed", extra={"run_id": report.run_id})
+                    logger.exception(
+                        "sync_processing_error",
+                        extra={"run_id": report.run_id, "error_code": error_code},
+                    )
             if not dry_run:
-                self.store.finish(report, self.clock())
+                duration = elapsed_ms(started)
+                context = {
+                    "run_id": report.run_id,
+                    "component": "sync",
+                    "duration_ms": duration,
+                    "games_inserted": report.games_inserted,
+                    "games_existing": report.games_already_present,
+                }
+                try:
+                    self.store.finish(report, self.clock(), duration)
+                except Exception:
+                    logger.exception(
+                        "sync_failed",
+                        extra={
+                            **context,
+                            "status": "FAILED",
+                            "error_code": "PERSISTENCE_FAILURE",
+                        },
+                    )
+                    raise
+                event = (
+                    "sync_finished" if report.status == "COMPLETED" else "sync_failed"
+                )
+                logger.log(
+                    logging.INFO if report.status == "COMPLETED" else logging.WARNING,
+                    event,
+                    extra={
+                        **context,
+                        "status": report.status,
+                        "error_code": error_code,
+                    },
+                )
             return report

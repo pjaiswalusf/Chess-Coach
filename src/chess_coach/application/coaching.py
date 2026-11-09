@@ -2,11 +2,13 @@
 
 import json
 import logging
+from datetime import UTC, datetime
 from time import perf_counter
 from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.exc import SQLAlchemyError
+from structlog.contextvars import bound_contextvars
 
 from chess_coach.analytics.contracts import (
     AnalyticsReport,
@@ -50,6 +52,7 @@ from chess_coach.infrastructure.persistence.coaching_repository import (
     CoachingRepository,
 )
 from chess_coach.infrastructure.persistence.models import CoachingOutput
+from chess_coach.observability.logging import elapsed_ms
 
 logger = logging.getLogger(__name__)
 
@@ -401,10 +404,31 @@ class CoachingProcessor:
         return True
 
     def process(self, row: CoachingOutput) -> None:
-        started = perf_counter()
+        with bound_contextvars(
+            run_id=str(row.id), component="coaching", model=row.model_name
+        ):
+            started = perf_counter()
+            logger.info("llm_generation_started")
+            try:
+                self._process(row, started)
+            except SQLAlchemyError:
+                logger.exception(
+                    "llm_generation_failed",
+                    extra={
+                        "error_code": "DATABASE_UNAVAILABLE",
+                        "duration_ms": elapsed_ms(started),
+                    },
+                )
+                raise
+
+    def _process(self, row: CoachingOutput, started: float) -> None:
         output: dict[str, object] | None = None
         error: str | None = None
         metrics: dict[str, object] = {}
+        request_seconds = 0.0
+        attempt_count = 0
+        first_schema_valid: bool | None = None
+        schema_valid: bool | None = None
         try:
             evidence = job_evidence(row)
             _, prompt, schema_version = job_config(evidence)
@@ -450,14 +474,21 @@ class CoachingProcessor:
                 )
             for attempt in range(2):
                 self.service.store.attempt(row.id)
+                attempt_count += 1
+                schema_valid = None
                 try:
-                    raw = self.model.generate(payload, schema)
+                    requested = perf_counter()
+                    try:
+                        raw = self.model.generate(payload, schema)
+                    finally:
+                        request_seconds += perf_counter() - requested
                     metrics = self.model.metrics
                     validated = (
                         validate_prediction(raw, evidence)
                         if isinstance(evidence, MotifEvidence)
                         else validated_output(raw, evidence)
                     )
+                    schema_valid = True
                     if not self.current(evidence):
                         raise OperationError(
                             "EVIDENCE_INCOMPLETE",
@@ -468,8 +499,13 @@ class CoachingProcessor:
                     break
                 except ValidationError:
                     error = "INVALID_MODEL_OUTPUT"
+                    schema_valid = False
                 except OperationError as exc:
                     error = exc.code
+                    if error == "INVALID_MODEL_OUTPUT":
+                        schema_valid = False
+                    elif error in {"UNSUPPORTED_CLAIM", "FACT_CONTRADICTION"}:
+                        schema_valid = True
                     if isinstance(evidence, MotifEvidence) and error in {
                         "UNSUPPORTED_CLAIM",
                         "FACT_CONTRADICTION",
@@ -482,23 +518,54 @@ class CoachingProcessor:
                         "OLLAMA_UNAVAILABLE",
                     }:
                         break
+                finally:
+                    if attempt == 0:
+                        first_schema_valid = schema_valid
         except OperationError as exc:
             error = exc.code
         except ValueError:
             error = "EVIDENCE_INCOMPLETE"
         except SQLAlchemyError:
-            logger.exception("coaching_database_error", extra={"run_id": row.id})
             raise
         except Exception:
             logger.exception("coaching_unexpected_failure", extra={"run_id": row.id})
             error = "COACHING_FAILED"
-        latency = round((perf_counter() - started) * 1000)
-        self.service.store.finish(row.id, output, error, latency, metrics)
-        logger.info(
-            "coaching_finished",
+        latency = elapsed_ms(started)
+        diagnostic_code = (
+            {
+                "COACHING_TIMEOUT": "MODEL_REQUEST_TIMEOUT",
+                "OLLAMA_UNAVAILABLE": "OLLAMA_UNREACHABLE",
+                "INVALID_MODEL_OUTPUT": "MODEL_SCHEMA_INVALID",
+                "UNSUPPORTED_CLAIM": "MODEL_FACTUAL_VALIDATION_FAILED",
+                "FACT_CONTRADICTION": "MODEL_FACTUAL_VALIDATION_FAILED",
+            }.get(error, error)
+            if error
+            else None
+        )
+        measured_ms = round(request_seconds * 1000) if attempt_count else None
+        self.service.store.finish(
+            row.id,
+            output,
+            error,
+            latency,
+            {
+                **metrics,
+                "request_duration_ms": measured_ms,
+                "first_schema_valid": first_schema_valid,
+                "schema_valid": schema_valid,
+                "attempt_count": attempt_count,
+                "generation_failed": error is not None,
+                "generation_finished_at": datetime.now(UTC).isoformat(),
+                "diagnostic_code": diagnostic_code,
+            },
+        )
+        logger.log(
+            logging.WARNING if error else logging.INFO,
+            "llm_generation_failed" if error else "llm_generation_finished",
             extra={
-                "run_id": row.id,
-                "error_code": error,
-                "duration_seconds": latency / 1000,
+                "error_code": diagnostic_code,
+                "duration_ms": measured_ms if measured_ms is not None else latency,
+                "schema_valid": schema_valid,
+                "attempt_count": attempt_count,
             },
         )

@@ -58,7 +58,11 @@ def install_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(SQLAlchemyError)
     async def database_error(request: Request, exc: SQLAlchemyError) -> JSONResponse:
-        logging.getLogger(__name__).exception("database_unavailable", exc_info=exc)
+        logging.getLogger(__name__).exception(
+            "database_unavailable",
+            exc_info=exc,
+            extra={"error_code": "DATABASE_UNAVAILABLE"},
+        )
         return error(
             503,
             "DATABASE_UNAVAILABLE",
@@ -73,13 +77,4 @@ def install_handlers(app: FastAPI) -> None:
             "Resource not found."
             if exc.status_code == 404
             else "Request could not be handled.",
-        )
-
-    @app.exception_handler(Exception)
-    async def internal_error(request: Request, exc: Exception) -> JSONResponse:
-        logging.getLogger(__name__).exception("internal_error", exc_info=exc)
-        return error(
-            500,
-            "INTERNAL_ERROR",
-            "An unexpected error occurred. Check backend logs and retry.",
         )

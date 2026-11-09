@@ -2,6 +2,8 @@
 
 import shutil
 from collections.abc import Callable, Iterator
+from dataclasses import asdict
+from datetime import UTC, datetime
 from functools import partial
 from typing import Annotated
 
@@ -9,14 +11,18 @@ import httpx
 from fastapi import Depends
 
 from chess_coach.analytics.service import AnalyticsService
+from chess_coach.api.schemas.contracts import SystemResponse
+from chess_coach.api.schemas.system import ComponentHealth, SystemMetrics
 from chess_coach.application.analysis import AnalysisService
 from chess_coach.application.coaching import CoachingService
 from chess_coach.application.jobs import JobService
 from chess_coach.application.queries import QueryService
 from chess_coach.application.system import (
+    CheckResult,
     DependencyStatus,
     SystemStatus,
     collect_system_status,
+    overall_status,
 )
 from chess_coach.application.training import TrainingService, practice_counts
 from chess_coach.config import Settings, get_settings
@@ -29,14 +35,22 @@ from chess_coach.infrastructure.persistence.analysis_repository import (
 from chess_coach.infrastructure.persistence.analytics_repository import (
     AnalyticsRepository,
 )
-from chess_coach.infrastructure.persistence.engine import create_database_engine
+from chess_coach.infrastructure.persistence.engine import (
+    create_database_engine,
+    create_readonly_engine,
+)
 from chess_coach.infrastructure.persistence.query_repository import QueryRepository
 from chess_coach.infrastructure.persistence.session import create_session_factory
 from chess_coach.infrastructure.persistence.sync_repository import SyncRepository
+from chess_coach.infrastructure.persistence.system_metrics import system_metrics
 from chess_coach.infrastructure.persistence.training_repository import (
     TrainingRepository,
 )
-from chess_coach.infrastructure.system.probes import probe_ollama
+from chess_coach.infrastructure.system.diagnostics import (
+    diagnose,
+    require_current_database,
+)
+from chess_coach.infrastructure.system.probes import probe_ollama, probe_stockfish
 
 
 def get_system_status(
@@ -112,7 +126,7 @@ def get_system_report(
     from chess_coach.application.system_report import system_report
 
     def statistics() -> dict[str, int]:
-        engine = create_database_engine(settings.database_url, timeout_seconds=0.25)
+        engine = create_readonly_engine(settings.database_path)
         try:
             sessions = create_session_factory(engine)
             return QueryRepository(
@@ -122,7 +136,7 @@ def get_system_report(
             engine.dispose()
 
     def worker() -> dict[str, object]:
-        engine = create_database_engine(settings.database_url, timeout_seconds=0.25)
+        engine = create_readonly_engine(settings.database_path)
         try:
             return AnalysisRepository(
                 create_session_factory(engine), settings.database_path
@@ -131,7 +145,7 @@ def get_system_report(
             engine.dispose()
 
     def training() -> tuple[int, int, bool]:
-        engine = create_database_engine(settings.database_url, timeout_seconds=0.25)
+        engine = create_readonly_engine(settings.database_path)
         try:
             total, due = practice_counts(
                 TrainingRepository(create_session_factory(engine))
@@ -168,3 +182,58 @@ def get_training_service(
     queries: Annotated[QueryService, Depends(get_query_service)],
 ) -> TrainingService:
     return TrainingService(TrainingRepository(queries.store.sessions))
+
+
+def get_component_health() -> ComponentHealth:
+    optional: SystemStatus | None = None
+
+    def probe(settings: Settings) -> SystemStatus:
+        nonlocal optional
+        optional = collect_system_status(
+            partial(probe_stockfish, settings), partial(probe_ollama, settings)
+        )
+        return optional
+
+    checks = diagnose(get_settings, probe_optional=probe)
+    status = overall_status(checks)
+    report = None
+    model = None
+    if optional is not None:
+        settings = get_settings()
+        model = settings.ollama_model
+    if optional is not None and status != "unavailable":
+        report = SystemResponse.model_validate(get_system_report(settings, optional))
+        if report.status == "unavailable":
+            checks = [
+                CheckResult(
+                    "database",
+                    "fail",
+                    True,
+                    "Application data could not be read.",
+                    "Check database access and retry.",
+                    "DATABASE_UNAVAILABLE",
+                )
+                if check.name == "database"
+                else check
+                for check in checks
+            ]
+            status = "unavailable"
+    return ComponentHealth.model_validate(
+        {
+            "overall": status,
+            "components": {check.name: asdict(check) for check in checks},
+            "checked_at": datetime.now(UTC),
+            "statistics": report.statistics if report else None,
+            "training": report.training if report else None,
+            "analysis_version": report.analysis_version if report else None,
+            "engine_version": report.components.stockfish.version if report else None,
+            "model": model,
+        }
+    )
+
+
+def get_system_metrics(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> SystemMetrics:
+    require_current_database(settings.database_path)
+    return SystemMetrics.model_validate(system_metrics(settings.database_path))

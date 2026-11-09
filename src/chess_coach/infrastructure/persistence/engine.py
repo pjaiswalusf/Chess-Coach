@@ -40,3 +40,13 @@ def create_database_engine(
             connection.autocommit = previous
 
     return engine
+
+
+def create_readonly_engine(database_path: Path) -> Engine:
+    """Read an existing SQLite file without provisioning or setting journal mode."""
+    url = URL.create(
+        "sqlite+pysqlite",
+        database=database_path.resolve().as_uri(),
+        query={"mode": "ro", "uri": "true"},
+    )
+    return create_engine(url, hide_parameters=True, connect_args={"timeout": 1.0})

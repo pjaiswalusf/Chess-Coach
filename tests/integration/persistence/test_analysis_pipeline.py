@@ -578,3 +578,35 @@ def test_worker_disk_preflight_closes_without_claiming(
         worker_module.run_worker(settings, once=True)
     assert closed == [True]
     assert store.get(run).status == Status.PENDING
+
+
+def test_failed_engine_cache_miss_is_not_a_successful_evaluation(
+    pipeline, sessions, player_id, capsys, monkeypatch
+):
+    import json
+
+    from chess_coach.infrastructure.engine.exceptions import EngineAnalysisError
+    from chess_coach.observability.logging import configure_logging
+
+    store, engine, _, profile = pipeline
+    seed(sessions, player_id)
+
+    def unavailable(*args, **kwargs):
+        raise EngineAnalysisError("SECRET_BOARD_HISTORY")
+
+    monkeypatch.setattr(engine, "analyze", unavailable)
+    run_id = store.create(player_id, profile)
+    configure_logging("DEBUG")
+    process(pipeline, run_id)
+    output = capsys.readouterr().err
+    assert "SECRET_BOARD_HISTORY" not in output
+    events = [json.loads(line) for line in output.splitlines()]
+    assert events[0]["event"] == "analysis_started"
+    assert events[-1]["event"] == "analysis_failed"
+    assert all(event["run_id"] == str(run_id) for event in events)
+    result = store.get(run_id)
+    assert result.cache_misses == events[-1]["cache_misses"] == 1
+    assert result.positions_analyzed == events[-1]["positions_analyzed"] == 0
+    assert result.active_duration_ms == events[-1]["duration_ms"]
+    assert result.engine_seconds > 0
+    assert events[-1]["error_code"] == "ENGINE_UNAVAILABLE"

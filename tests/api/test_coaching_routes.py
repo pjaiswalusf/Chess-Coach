@@ -362,3 +362,46 @@ def test_combined_worker_releases_stockfish_before_processing_coaching(
     analysis_worker.run_worker(service.settings, once=True, with_coaching=True)
     assert client.get(f"/api/v1/coaching-jobs/{job}").json()["status"] == "done"
     assert model.calls == 1
+
+
+@pytest.mark.parametrize(
+    ("raw", "code", "first_rate"),
+    [
+        ("SECRET_TEST_PROMPT_456", "MODEL_SCHEMA_INVALID", 100),
+        (
+            VALID.replace(
+                "The engine prefers the alternative.", "You lose 43% of games."
+            ),
+            "MODEL_FACTUAL_VALIDATION_FAILED",
+            0,
+        ),
+    ],
+)
+def test_coaching_metrics_and_private_failure_logs(
+    coaching, capsys, raw, code, first_rate
+):
+    from chess_coach.observability.logging import configure_logging
+
+    client, repo, service, model = coaching
+    configure_logging()
+    job = client.post(PATH).json()["job_id"]
+    model.raw = raw
+    CoachingProcessor(service, model).process(repo.claim())
+    raw_log = capsys.readouterr().err
+    assert "SECRET_TEST_PROMPT_456" not in raw_log
+    events = [json.loads(line) for line in raw_log.splitlines()]
+    assert [event["event"] for event in events] == [
+        "llm_generation_started",
+        "llm_generation_failed",
+    ]
+    assert all(
+        event["run_id"] == str(job) and "request_id" not in event for event in events
+    )
+    assert events[-1]["error_code"] == code
+    assert events[-1]["schema_valid"] is (first_rate == 0)
+    measured = client.get("/api/v1/system/metrics").json()
+    assert measured["analysis"]["positions_per_second"] > 0
+    assert measured["analysis"]["duration_ms"] >= 0
+    assert measured["coaching"]["sample_count"] == 1
+    assert measured["coaching"]["first_schema_failure_rate"] == first_rate
+    assert measured["coaching"]["final_failure_rate"] == 100

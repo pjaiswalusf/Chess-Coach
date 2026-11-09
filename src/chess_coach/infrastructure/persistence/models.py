@@ -150,6 +150,7 @@ class ImportRun(Base):
     )
     started_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    duration_ms: Mapped[int | None]
     status: Mapped[RunStatus] = mapped_column(
         string_enum(RunStatus, "status"), default=RunStatus.PENDING
     )
@@ -184,6 +185,7 @@ class AnalysisRun(Base):
     )
     started_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    active_duration_ms: Mapped[int | None]
     status: Mapped[AnalysisRunStatus] = mapped_column(
         string_enum(AnalysisRunStatus, "status"), default=AnalysisRunStatus.PENDING
     )

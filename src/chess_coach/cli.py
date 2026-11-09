@@ -3,8 +3,6 @@
 import argparse
 import json
 import logging
-from collections.abc import Iterator
-from contextlib import contextmanager
 from dataclasses import asdict
 
 import uvicorn
@@ -26,23 +24,7 @@ from chess_coach.infrastructure.persistence.parse_repository import ParseReposit
 from chess_coach.infrastructure.persistence.session import create_session_factory
 from chess_coach.infrastructure.persistence.sync_repository import SyncRepository
 from chess_coach.infrastructure.pgn.parser import parse_game
-
-
-@contextmanager
-def _structured_events(name: str, level: str) -> Iterator[None]:
-    from chess_coach.analysis_worker import JsonFormatter
-
-    logger = logging.getLogger(name)
-    previous_level = logger.level
-    handler = logging.StreamHandler()
-    handler.setFormatter(JsonFormatter())
-    logger.setLevel(level)
-    logger.addHandler(handler)
-    try:
-        yield
-    finally:
-        logger.removeHandler(handler)
-        logger.setLevel(previous_level)
+from chess_coach.observability.logging import configure_logging
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -71,7 +53,18 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Explicitly revalidate all stored games for this player",
     )
-    commands.add_parser("doctor", help="Check Stockfish startup, analysis, and cleanup")
+    doctor = commands.add_parser("doctor", help="Check local application dependencies")
+    doctor.add_argument(
+        "--deep", action="store_true", help="Scan SQLite integrity and foreign keys"
+    )
+    doctor.add_argument(
+        "--strict",
+        action="store_true",
+        help="Fail when optional checks warn or are skipped",
+    )
+    commands.add_parser(
+        "engine-check", help="Run the fixed-position Stockfish verification"
+    )
     worker = commands.add_parser(
         "analysis-worker", help="Run the single local analysis worker"
     )
@@ -126,11 +119,56 @@ def main(argv: list[str] | None = None) -> None:
     generate.add_argument("--after-move-id", type=int, default=0)
     generate.add_argument("--limit", type=int)
     args = parser.parse_args(argv)
-    settings = Settings()
-    if args.command in (None, "serve"):
-        with _structured_events("chess_coach.application.training", settings.log_level):
-            uvicorn.run("chess_coach.api.app:app", host="127.0.0.1", port=8000)
+    if args.command == "doctor":
+        from chess_coach.application.system import overall_status
+        from chess_coach.infrastructure.system.diagnostics import diagnose
+
+        configure_logging()
+        try:
+            checks = diagnose(Settings, deep=args.deep)
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "doctor_failed", extra={"error_code": "DIAGNOSTICS_FAILED"}
+            )
+            print("Diagnostics could not finish. Check backend logs and retry.")
+            raise SystemExit(2) from None
+        labels = {"pass": "PASS", "warn": "WARN", "fail": "FAIL", "skip": "SKIP"}
+        print("Chess Coach — Diagnostics")
+        for check in checks:
+            print(
+                f"{labels[check.status]:4}  {check.name.replace('_', ' ').capitalize()}: {check.message}"
+            )
+            if check.action:
+                print(f"      {check.action}")
+        overall = overall_status(checks)
+        print(f"Overall status: {overall.upper()}")
+        if overall != "unavailable":
+            print(
+                "Available: stored games, historical analysis, deterministic analytics, and stored training."
+            )
+            states = {check.name: check.status for check in checks}
+            if states.get("stockfish") == "pass":
+                print(
+                    "Stockfish is ready. Start the analysis worker to run new analysis."
+                )
+            else:
+                print("Unavailable: new Stockfish analysis.")
+            coaching_ready = (
+                states.get("ollama") == states.get("ollama_model") == "pass"
+            )
+            print(
+                f"{'Available' if coaching_ready else 'Unavailable'}: new LLM explanations."
+            )
+        if overall == "unavailable" or (args.strict and overall != "healthy"):
+            raise SystemExit(1)
         return
+    if args.command in (None, "serve"):
+        uvicorn.run(
+            "chess_coach.api.app:app", host="127.0.0.1", port=8000, access_log=False
+        )
+        return
+    settings = Settings()
+    configure_logging(settings.log_level)
     if args.command == "coaching-worker":
         from chess_coach.coaching_worker import run_coaching_worker
 
@@ -146,10 +184,12 @@ def main(argv: list[str] | None = None) -> None:
 
         run_worker(settings, once=args.once, with_coaching=args.with_coaching)
         return
-    if args.command == "doctor":
-        from chess_coach.infrastructure.engine.diagnostics import diagnose
+    if args.command == "engine-check":
+        from chess_coach.infrastructure.engine.diagnostics import (
+            diagnose as diagnose_engine,
+        )
 
-        raise SystemExit(diagnose(settings))
+        raise SystemExit(diagnose_engine(settings))
     engine = create_database_engine(settings.database_url)
     try:
         if args.command == "training":
@@ -165,12 +205,7 @@ def main(argv: list[str] | None = None) -> None:
                 TrainingRepository,
             )
 
-            with (
-                _structured_events(
-                    "chess_coach.application.generate_puzzles", settings.log_level
-                ),
-                worker_guard(settings.database_path),
-            ):
+            with worker_guard(settings.database_path):
                 training_store = TrainingRepository(create_session_factory(engine))
                 guard_idle(training_store)
                 verification_settings = settings.model_copy(

@@ -383,6 +383,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Component Health */
+        get: operations["component_health_api_v1_system_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system/llm": {
         parameters: {
             query?: never;
@@ -392,6 +409,23 @@ export interface paths {
         };
         /** Llm Health */
         get: operations["llm_health_api_v1_system_llm_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Metrics */
+        get: operations["metrics_api_v1_system_metrics_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -533,6 +567,19 @@ export interface components {
              */
             status: "queued" | "running" | "completed" | "failed";
         };
+        /** AnalysisMetrics */
+        AnalysisMetrics: {
+            /** Cache Hit Rate */
+            cache_hit_rate: number | null;
+            /** Duration Ms */
+            duration_ms: number | null;
+            /** Games Per Hour */
+            games_per_hour: number | null;
+            /** Positions Per Second */
+            positions_per_second: number | null;
+            /** Run Id */
+            run_id: string;
+        };
         /**
          * AnalysisRunStatus
          * @enum {string}
@@ -661,6 +708,21 @@ export interface components {
          * @enum {string}
          */
         ChessEventType: "MATE_ALLOWED" | "MATE_MISSED" | "MATERIAL_LOSS" | "WINNING_OPPORTUNITY_LOST";
+        /** CoachingMetrics */
+        CoachingMetrics: {
+            /** Final Failure Rate */
+            final_failure_rate: number | null;
+            /** First Schema Failure Rate */
+            first_schema_failure_rate: number | null;
+            /** First Schema Sample Count */
+            first_schema_sample_count: number;
+            /** Latency P50 Ms */
+            latency_p50_ms: number | null;
+            /** Sample Count */
+            sample_count: number;
+            /** Window Days */
+            window_days: number;
+        };
         /** CoachingResponse */
         CoachingResponse: {
             /**
@@ -701,6 +763,47 @@ export interface components {
             status: "available" | "unavailable" | "unknown";
             /** Version */
             version?: string | null;
+        };
+        /** ComponentCheck */
+        ComponentCheck: {
+            /** Action */
+            action?: string | null;
+            /** Code */
+            code?: string | null;
+            /** Message */
+            message: string;
+            /** Required */
+            required: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pass" | "warn" | "fail" | "skip";
+        };
+        /** ComponentHealth */
+        ComponentHealth: {
+            /** Analysis Version */
+            analysis_version?: string | null;
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at: string;
+            /** Components */
+            components: {
+                [key: string]: components["schemas"]["ComponentCheck"];
+            };
+            /** Engine Version */
+            engine_version?: string | null;
+            /** Model */
+            model?: string | null;
+            /**
+             * Overall
+             * @enum {string}
+             */
+            overall: "healthy" | "degraded" | "unavailable";
+            statistics?: components["schemas"]["Statistics"] | null;
+            training?: components["schemas"]["TrainingHealth"] | null;
         };
         /** Components */
         Components: {
@@ -1655,6 +1758,11 @@ export interface components {
              * @enum {string}
              */
             status: "queued" | "running" | "completed" | "failed";
+        };
+        /** SystemMetrics */
+        SystemMetrics: {
+            analysis: components["schemas"]["AnalysisMetrics"] | null;
+            coaching: components["schemas"]["CoachingMetrics"];
         };
         /** SystemResponse */
         SystemResponse: {
@@ -4205,6 +4313,89 @@ export interface operations {
             };
         };
     };
+    component_health_api_v1_system_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComponentHealth"];
+                };
+            };
+            /** @description Invalid local Host header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Untrusted browser origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflicting operation or configuration */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A core check failed */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComponentHealth"];
+                };
+            };
+        };
+    };
     llm_health_api_v1_system_llm_get: {
         parameters: {
             query?: never;
@@ -4221,6 +4412,89 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LLMHealth"];
+                };
+            };
+            /** @description Invalid local Host header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Untrusted browser origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflicting operation or configuration */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Local dependency unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    metrics_api_v1_system_metrics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemMetrics"];
                 };
             };
             /** @description Invalid local Host header */

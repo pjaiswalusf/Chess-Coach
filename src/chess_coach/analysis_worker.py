@@ -1,6 +1,5 @@
 """Dedicated local process. Own the kernel lock before engine startup/recovery."""
 
-import json
 import logging
 import shutil
 import signal
@@ -17,32 +16,8 @@ from chess_coach.infrastructure.persistence.analysis_repository import (
 )
 from chess_coach.infrastructure.persistence.engine import create_database_engine
 from chess_coach.infrastructure.persistence.session import create_session_factory
-
-
-class JsonFormatter(logging.Formatter):
-    def format(self, record: logging.LogRecord) -> str:
-        data: dict[str, object] = {
-            "event": record.getMessage(),
-            "level": record.levelname,
-        }
-        for name in (
-            "run_id",
-            "source_game_id",
-            "puzzle_id",
-            "next_review_at",
-            "tracked_player_id",
-            "ply",
-            "rejection_reason",
-            "game_id",
-            "error_code",
-            "operation",
-            "duration_seconds",
-        ):
-            if hasattr(record, name):
-                data[name] = getattr(record, name)
-        if record.exc_info:
-            data["exception"] = self.formatException(record.exc_info)
-        return json.dumps(data)
+from chess_coach.infrastructure.system.diagnostics import database_checks
+from chess_coach.observability.logging import configure_logging
 
 
 def run_worker(
@@ -50,10 +25,13 @@ def run_worker(
 ) -> None:
     if with_coaching and settings.llm_keep_alive != "0":
         raise ValueError("Set CHESS_COACH_LLM_KEEP_ALIVE=0 for the combined worker.")
-    handler = logging.StreamHandler()
-    handler.setFormatter(JsonFormatter())
-    logging.getLogger("chess_coach").addHandler(handler)
-    logging.getLogger("chess_coach").setLevel(settings.log_level)
+    configure_logging(settings.log_level)
+    for check in database_checks(settings.database_path):
+        if check.status == "fail":
+            logging.getLogger(__name__).error(
+                "analysis_worker_unavailable", extra={"error_code": check.code}
+            )
+            raise SystemExit(f"{check.message} {check.action or ''}")
     stop, pulse_stop = Event(), Event()
     previous = {
         sig: signal.signal(sig, lambda *_: stop.set())
@@ -100,12 +78,6 @@ def run_worker(
                             )
                         run_id = store.claim(profile)
                         if run_id is not None:
-                            # A preceding coaching job may have shut down Stockfish.
-                            engine.start()
-                            if engine.engine_name != profile.engine:
-                                raise ValueError(
-                                    "Stockfish identity changed; restart the worker."
-                                )
                             processor.process(run_id)
                         elif coaching is not None:
                             row = coaching.service.store.claim()
@@ -134,7 +106,6 @@ def run_worker(
         db.dispose()
         for sig, old in previous.items():
             signal.signal(sig, old)
-        logging.getLogger("chess_coach").removeHandler(handler)
 
 
 if __name__ == "__main__":

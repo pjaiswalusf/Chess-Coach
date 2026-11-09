@@ -3,10 +3,11 @@
 import logging
 from collections.abc import Callable
 from threading import Event
-from time import monotonic
+from time import perf_counter
 from typing import Protocol
 
 import chess
+from structlog.contextvars import bound_contextvars
 
 from chess_coach.application.parse_imported_games import ParseInput, _source_result
 from chess_coach.config import Settings
@@ -23,6 +24,8 @@ from chess_coach.infrastructure.persistence.analysis_repository import (
 )
 from chess_coach.infrastructure.persistence.models import AnalysisRun
 from chess_coach.infrastructure.pgn.parser import parse_game
+from chess_coach.infrastructure.system.diagnostics import require_current_database
+from chess_coach.observability.logging import elapsed_ms
 
 logger = logging.getLogger(__name__)
 
@@ -70,18 +73,80 @@ class AnalysisProcessor:
         self.checkpoint = checkpoint or (lambda event, identity: None)
 
     def process(self, run_id: int) -> None:
-        profile = profile_of(self.store.get(run_id))
+        with bound_contextvars(run_id=str(run_id), component="analysis"):
+            started = perf_counter()
+            try:
+                run = self.store.get(run_id)
+                logger.info(
+                    "analysis_started",
+                    extra={
+                        "game_count": run.games_total,
+                        "engine_version": run.engine_version,
+                    },
+                )
+                result = self._process(run_id, profile_of(run))
+                duration = elapsed_ms(started)
+                if result == "RUN_INTERRUPTED":
+                    self.store.record_interruption(run_id, duration)
+                    logger.info(
+                        "analysis_interrupted",
+                        extra={"duration_ms": duration, "status": "running"},
+                    )
+                    return
+                self.store.finish(run_id, result, duration_ms=duration)
+                run = self.store.get(run_id)
+            except Exception:
+                logger.exception(
+                    "analysis_failed",
+                    extra={
+                        "duration_ms": elapsed_ms(started),
+                        "error_code": "ANALYSIS_PROCESSING_FAILED",
+                    },
+                )
+                raise
+            succeeded = run.status == "done"
+            logger.log(
+                logging.INFO if succeeded else logging.WARNING,
+                "analysis_finished" if succeeded else "analysis_failed",
+                extra={
+                    "status": run.status,
+                    "duration_ms": run.active_duration_ms,
+                    "games_completed": run.games_completed,
+                    "positions_analyzed": run.positions_analyzed,
+                    "terminal_positions": run.terminal_positions,
+                    "cache_hits": run.cache_hits,
+                    "cache_misses": run.cache_misses,
+                    "engine_duration_ms": round(run.engine_seconds * 1000),
+                    "error_code": run.error_code
+                    or {
+                        "cancelled": "RUN_CANCELLED",
+                        "completed_with_errors": "GAMES_FAILED",
+                    }.get(run.status),
+                },
+            )
+
+    def _process(self, run_id: int, profile: AnalysisProfile) -> str | None:
+        try:
+            self.engine.start()
+            if self.engine.engine_name != profile.engine:
+                return "ANALYSIS_PROFILE_MISMATCH"
+        except EngineAnalysisError, EngineUnavailableError:
+            logger.exception(
+                "engine_failure", extra={"error_code": "ENGINE_UNAVAILABLE"}
+            )
+            return "ENGINE_UNAVAILABLE"
         for member in self.store.members(run_id):
             if member.status != "pending":
                 continue
             if self.stop.is_set():
-                return  # RUNNING is explicitly recovered under the lock on restart.
+                return "RUN_INTERRUPTED"  # Recovered under the lock on restart.
             if self.store.get(run_id).cancel_requested:
                 break
             game_id = member.game_id
+            game_started = perf_counter()
             try:
                 game, username = self.store.begin_game(run_id, game_id)
-                parse_started = monotonic()
+                parse_started = perf_counter()
                 expected, final_fen = _source_result(
                     ParseInput(
                         game.id,
@@ -106,13 +171,13 @@ class AnalysisProcessor:
                     parsed.black_username.casefold(),
                 ) != (game.white_username.casefold(), game.black_username.casefold()):
                     raise ValueError("INVALID_GAME: player mismatch")
-                logger.info(
+                logger.debug(
                     "analysis_timing",
                     extra={
                         "run_id": run_id,
                         "game_id": game_id,
                         "operation": "reconstruction",
-                        "duration_seconds": monotonic() - parse_started,
+                        "duration_ms": elapsed_ms(parse_started),
                     },
                 )
                 board = chess.Board(parsed.initial_fen)
@@ -120,21 +185,24 @@ class AnalysisProcessor:
                 cache_seconds = 0.0
                 for i in range(parsed.total_plies + 1):
                     if self.stop.is_set():
-                        return
+                        return "RUN_INTERRUPTED"
                     if self.store.get(run_id).cancel_requested:
-                        self.store.finish(run_id)
-                        return
-                    self.store.heartbeat(run_id)
-                    cache_started = monotonic()
+                        return None
+                    cache_started = perf_counter()
                     row = self.store.cached(
                         board, parsed.history_before_start_unknown, profile
                     )
-                    cache_seconds += monotonic() - cache_started
+                    cache_seconds += perf_counter() - cache_started
+                    hit = row is not None
+                    self.store.record_lookup(run_id, hit=hit)
+                    logger.debug(
+                        "cache_hit" if hit else "cache_miss",
+                        extra={"game_id": game_id, "cache_type": "engine_position"},
+                    )
                     if row is not None:
-                        self.store.hit(run_id)
                         positions.append(row.id)
                     else:
-                        begin = monotonic()
+                        seconds = 0.0
                         outcome = board.outcome(claim_draw=False)
                         if outcome is not None:
                             result = EngineResult(
@@ -148,10 +216,8 @@ class AnalysisProcessor:
                                 0,
                                 0,
                             )
-                            seconds = 0.0
                         else:
-                            result = self._search(board, profile)
-                            seconds = monotonic() - begin
+                            result, seconds = self._search(run_id, board, profile)
                         positions.append(
                             self.store.save_position(
                                 run_id,
@@ -165,24 +231,23 @@ class AnalysisProcessor:
                     self.checkpoint("position", i)
                     if i < parsed.total_plies:
                         board.push_uci(parsed.moves[i].uci)
-                logger.info(
+                logger.debug(
                     "analysis_timing",
                     extra={
                         "run_id": run_id,
                         "game_id": game_id,
                         "operation": "cache_lookup",
-                        "duration_seconds": cache_seconds,
+                        "duration_ms": round(cache_seconds * 1000),
                     },
                 )
-                finalize_started = monotonic()
                 self.store.finalize(run_id, game_id, parsed, profile, positions)
                 logger.info(
                     "game_completed",
                     extra={
                         "run_id": run_id,
                         "game_id": game_id,
-                        "operation": "finalization",
-                        "duration_seconds": monotonic() - finalize_started,
+                        "operation": "game_analysis",
+                        "duration_ms": elapsed_ms(game_started),
                     },
                 )
                 self.checkpoint("game", game_id)
@@ -191,8 +256,7 @@ class AnalysisProcessor:
                     "engine_failure", extra={"run_id": run_id, "game_id": game_id}
                 )
                 self.store.fail_game(run_id, game_id, "ENGINE_UNAVAILABLE")
-                self.store.finish(run_id, "ENGINE_UNAVAILABLE")
-                return
+                return "ENGINE_UNAVAILABLE"
             except (PGNParseError, ValueError) as exc:
                 code = (
                     "ENGINE_INVALID_RESULT"
@@ -204,22 +268,36 @@ class AnalysisProcessor:
                     extra={"run_id": run_id, "game_id": game_id, "error_code": code},
                 )
                 self.store.fail_game(run_id, game_id, code)
-        self.store.finish(run_id)
+        return None
 
-    def _search(self, board: chess.Board, profile: AnalysisProfile) -> EngineResult:
-        for attempt in range(2):
-            try:
-                # New UCI game clears search state for reproducible context isolation.
-                return self.engine.analyze(
-                    board, nodes=int(profile.config["nodes"]), game=object()
-                )
-            except EngineAnalysisError, EngineUnavailableError:
-                if attempt:
-                    raise
-                self.engine.close()
-                self.engine.start()
-                if self.engine.engine_name != profile.engine:
-                    raise EngineUnavailableError("Engine identity changed during retry")
+    def _search(
+        self, run_id: int, board: chess.Board, profile: AnalysisProfile
+    ) -> tuple[EngineResult, float]:
+        seconds = 0.0
+        try:
+            for attempt in range(2):
+                try:
+                    # New UCI game clears search state for reproducible context isolation.
+                    started = perf_counter()
+                    try:
+                        result = self.engine.analyze(
+                            board, nodes=int(profile.config["nodes"]), game=object()
+                        )
+                    finally:
+                        seconds += perf_counter() - started
+                    return result, seconds
+                except EngineAnalysisError, EngineUnavailableError:
+                    if attempt:
+                        raise
+                    self.engine.close()
+                    self.engine.start()
+                    if self.engine.engine_name != profile.engine:
+                        raise EngineUnavailableError(
+                            "Engine identity changed during retry"
+                        )
+        except EngineAnalysisError, EngineUnavailableError:
+            self.store.record_engine_time(run_id, seconds)
+            raise
         raise AssertionError("Unreachable")
 
 
@@ -230,6 +308,7 @@ class AnalysisService:
     def create(self, player_id: int | None = None) -> AnalysisRun:
         from chess_coach.application.errors import OperationError
 
+        require_current_database(self.store.database)
         players = self.store.players()
         if not players:
             raise OperationError(
@@ -240,9 +319,9 @@ class AnalysisService:
                 "PLAYER_MISMATCH", "Select the single configured player."
             )
         player_id = players[0][0]
-        return self.store.get(
-            self.store.create(player_id, self.store.available_profile())
-        )
+        run_id = self.store.create(player_id, self.store.available_profile())
+        logger.info("analysis_queued", extra={"run_id": run_id})
+        return self.store.get(run_id)
 
     def progress(self, run_id: int) -> dict[str, object]:
         run = self.store.get(run_id)
