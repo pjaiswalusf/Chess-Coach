@@ -48,7 +48,8 @@ pnpm install
 pnpm dev
 ```
 
-Vite forwards `/api` requests to the backend on port 8000. Frontend test setup
+Vite forwards `/api/*` and `/health` to FastAPI on port 8000. Open Games → Analysis
+runs for the existing analysis workflow and move coaching. Frontend test setup
 and commands are documented in [frontend/README.md](frontend/README.md).
 Backend checks are listed in [AGENTS.md](AGENTS.md#completion-checks).
 
@@ -152,9 +153,8 @@ imported PGNs. Start the existing analysis worker to process engine requests.
 Both workers are separate local processes; restarting the API preserves queued work.
 Player switching is deliberately unsupported and preserves historical ownership.
 
-The existing analysis UI uses the updated run statuses and analysis response.
-Regenerate its types with `uv run python scripts/generate_api_types.py`, then run
-`pnpm exec prettier --write src/lib/api/generated.ts` from `frontend/`.
+The frontend uses contracts generated from FastAPI's OpenAPI schema. See
+[frontend API type generation](frontend/README.md#api-contracts) after schema changes.
 See [Phase 13 verification](docs/PHASE13_VALIDATION.md) for checks and limitations.
 Run `uv run python scripts/verify_phase13_http.py` with free ports 8000/5173 to
 repeat the disposable API/Vite proxy and loopback verification.

@@ -7,3 +7,5 @@ bun.lockb
 
 # Miscellaneous
 /static/
+/openapi/schema.json
+/src/lib/api/generated/schema.d.ts

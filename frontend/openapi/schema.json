@@ -1,0 +1,6129 @@
+{
+  "components": {
+    "schemas": {
+      "AcceptedRun": {
+        "properties": {
+          "run_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Run Id",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "status"
+        ],
+        "title": "AcceptedRun",
+        "type": "object"
+      },
+      "AnalysisRunStatus": {
+        "enum": [
+          "pending",
+          "running",
+          "done",
+          "completed_with_errors",
+          "failed",
+          "cancelled"
+        ],
+        "title": "AnalysisRunStatus",
+        "type": "string"
+      },
+      "AnalyticsFilters": {
+        "properties": {
+          "color": {
+            "default": "all",
+            "enum": [
+              "white",
+              "black",
+              "all"
+            ],
+            "title": "Color",
+            "type": "string"
+          },
+          "profile_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Hash"
+          },
+          "time_class": {
+            "default": "all",
+            "enum": [
+              "bullet",
+              "blitz",
+              "rapid",
+              "daily",
+              "all"
+            ],
+            "title": "Time Class",
+            "type": "string"
+          },
+          "window": {
+            "default": "last_50",
+            "enum": [
+              "last_20",
+              "last_50",
+              "last_100",
+              "all"
+            ],
+            "title": "Window",
+            "type": "string"
+          }
+        },
+        "title": "AnalyticsFilters",
+        "type": "object"
+      },
+      "AnalyticsHealthReport": {
+        "additionalProperties": false,
+        "properties": {
+          "analysis_coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis Coverage"
+          },
+          "analyzed_games": {
+            "minimum": 0.0,
+            "title": "Analyzed Games",
+            "type": "integer"
+          },
+          "analyzed_player_moves": {
+            "minimum": 0.0,
+            "title": "Analyzed Player Moves",
+            "type": "integer"
+          },
+          "clock_data_coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clock Data Coverage"
+          },
+          "database_integrity": {
+            "title": "Database Integrity",
+            "type": "boolean"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/Diagnostic"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "foreign_keys": {
+            "title": "Foreign Keys",
+            "type": "boolean"
+          },
+          "integrity": {
+            "enum": [
+              "PASS",
+              "FAIL"
+            ],
+            "title": "Integrity",
+            "type": "string"
+          },
+          "move_evidence_coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Move Evidence Coverage"
+          },
+          "opening_data_coverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Data Coverage"
+          },
+          "selected_games": {
+            "minimum": 0.0,
+            "title": "Selected Games",
+            "type": "integer"
+          },
+          "selected_player_moves": {
+            "minimum": 0.0,
+            "title": "Selected Player Moves",
+            "type": "integer"
+          },
+          "statuses": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Statuses",
+            "type": "object"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Diagnostic"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "integrity",
+          "database_integrity",
+          "foreign_keys",
+          "selected_games",
+          "analyzed_games",
+          "analysis_coverage",
+          "statuses",
+          "selected_player_moves",
+          "analyzed_player_moves",
+          "move_evidence_coverage",
+          "clock_data_coverage",
+          "opening_data_coverage",
+          "errors",
+          "warnings"
+        ],
+        "title": "AnalyticsHealthReport",
+        "type": "object"
+      },
+      "ChessEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "detector_version": {
+            "const": "motif-detector-v1",
+            "default": "motif-detector-v1",
+            "title": "Detector Version",
+            "type": "string"
+          },
+          "game_id": {
+            "title": "Game Id",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "material_lost": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material Lost"
+          },
+          "ply": {
+            "title": "Ply",
+            "type": "integer"
+          },
+          "supporting_facts": {
+            "items": {
+              "$ref": "#/components/schemas/FactId"
+            },
+            "title": "Supporting Facts",
+            "type": "array"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ChessEventType"
+          },
+          "verified": {
+            "const": true,
+            "default": true,
+            "title": "Verified",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "game_id",
+          "ply",
+          "supporting_facts"
+        ],
+        "title": "ChessEvent",
+        "type": "object"
+      },
+      "ChessEventType": {
+        "enum": [
+          "MATE_ALLOWED",
+          "MATE_MISSED",
+          "MATERIAL_LOSS",
+          "WINNING_OPPORTUNITY_LOST"
+        ],
+        "title": "ChessEventType",
+        "type": "string"
+      },
+      "CoachingResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt_count": {
+            "default": 0,
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "cached": {
+            "default": false,
+            "title": "Cached",
+            "type": "boolean"
+          },
+          "coach": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MoveExplanation"
+              },
+              {
+                "$ref": "#/components/schemas/HistoricalExplanation"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coach"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MoveCoachingEvidence"
+              },
+              {
+                "$ref": "#/components/schemas/HistoricalEvidence"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "model_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Digest"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "evidence"
+        ],
+        "title": "CoachingResponse",
+        "type": "object"
+      },
+      "Component": {
+        "properties": {
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "status": {
+            "enum": [
+              "available",
+              "unavailable",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "Component",
+        "type": "object"
+      },
+      "Components": {
+        "properties": {
+          "database": {
+            "$ref": "#/components/schemas/Component"
+          },
+          "ollama": {
+            "$ref": "#/components/schemas/Component"
+          },
+          "stockfish": {
+            "$ref": "#/components/schemas/Component"
+          }
+        },
+        "required": [
+          "database",
+          "stockfish",
+          "ollama"
+        ],
+        "title": "Components",
+        "type": "object"
+      },
+      "ContextMetric": {
+        "additionalProperties": false,
+        "properties": {
+          "comparison": {
+            "$ref": "#/components/schemas/MoveMetrics"
+          },
+          "evidence_status": {
+            "$ref": "#/components/schemas/EvidenceStatus"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "opportunities": {
+            "$ref": "#/components/schemas/MoveMetrics"
+          },
+          "strata": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MoveMetrics"
+            },
+            "title": "Strata",
+            "type": "object"
+          },
+          "unknown_moves": {
+            "minimum": 0.0,
+            "title": "Unknown Moves",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "opportunities",
+          "comparison",
+          "unknown_moves",
+          "evidence_status",
+          "strata"
+        ],
+        "title": "ContextMetric",
+        "type": "object"
+      },
+      "CreateRun": {
+        "additionalProperties": false,
+        "properties": {
+          "scope": {
+            "const": "pending",
+            "default": "pending",
+            "title": "Scope",
+            "type": "string"
+          },
+          "tracked_player_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tracked Player Id"
+          }
+        },
+        "title": "CreateRun",
+        "type": "object"
+      },
+      "DependencyStatus": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "state": {
+            "enum": [
+              "available",
+              "unavailable",
+              "unknown"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "title": "DependencyStatus",
+        "type": "object"
+      },
+      "Diagnostic": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "game_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Game Id"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "Diagnostic",
+        "type": "object"
+      },
+      "EngineScore": {
+        "additionalProperties": false,
+        "properties": {
+          "cp_white": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cp White"
+          },
+          "mate_white": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mate White"
+          },
+          "mate_winner": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mate Winner"
+          }
+        },
+        "title": "EngineScore",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "EvidenceStatus": {
+        "enum": [
+          "sufficient",
+          "insufficient",
+          "unavailable"
+        ],
+        "title": "EvidenceStatus",
+        "type": "string"
+      },
+      "FactId": {
+        "enum": [
+          "before",
+          "after",
+          "best_line",
+          "played_line",
+          "previous_before"
+        ],
+        "type": "string"
+      },
+      "GameAnalysisResponse": {
+        "properties": {
+          "analysis_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis Version"
+          },
+          "engine_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine Version"
+          },
+          "game_id": {
+            "title": "Game Id",
+            "type": "integer"
+          },
+          "moves": {
+            "items": {
+              "$ref": "#/components/schemas/MoveResponse"
+            },
+            "title": "Moves",
+            "type": "array"
+          },
+          "profile_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Hash"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "running",
+              "completed",
+              "failed",
+              "incompatible"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "game_id",
+          "status",
+          "profile_hash",
+          "engine_version",
+          "analysis_version",
+          "moves"
+        ],
+        "title": "GameAnalysisResponse",
+        "type": "object"
+      },
+      "GameDetail": {
+        "properties": {
+          "analysis_status": {
+            "enum": [
+              "pending",
+              "running",
+              "completed",
+              "failed",
+              "incompatible"
+            ],
+            "title": "Analysis Status",
+            "type": "string"
+          },
+          "black_rating": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Black Rating"
+          },
+          "black_username": {
+            "title": "Black Username",
+            "type": "string"
+          },
+          "completion_provenance": {
+            "enum": [
+              "chesscom_archive",
+              "pgn_declaration"
+            ],
+            "title": "Completion Provenance",
+            "type": "string"
+          },
+          "eco_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eco Code"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "opening_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Name"
+          },
+          "opponent": {
+            "title": "Opponent",
+            "type": "string"
+          },
+          "played_at": {
+            "format": "date-time",
+            "title": "Played At",
+            "type": "string"
+          },
+          "player_color": {
+            "$ref": "#/components/schemas/PlayerColor"
+          },
+          "raw_pgn": {
+            "title": "Raw Pgn",
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/GameResult"
+          },
+          "time_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Class"
+          },
+          "time_control": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Control"
+          },
+          "white_rating": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "White Rating"
+          },
+          "white_username": {
+            "title": "White Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "played_at",
+          "opponent",
+          "player_color",
+          "result",
+          "time_class",
+          "opening_name",
+          "analysis_status",
+          "white_username",
+          "black_username",
+          "white_rating",
+          "black_rating",
+          "eco_code",
+          "time_control",
+          "raw_pgn",
+          "completion_provenance"
+        ],
+        "title": "GameDetail",
+        "type": "object"
+      },
+      "GameItem": {
+        "properties": {
+          "analysis_status": {
+            "enum": [
+              "pending",
+              "running",
+              "completed",
+              "failed",
+              "incompatible"
+            ],
+            "title": "Analysis Status",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "opening_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Name"
+          },
+          "opponent": {
+            "title": "Opponent",
+            "type": "string"
+          },
+          "played_at": {
+            "format": "date-time",
+            "title": "Played At",
+            "type": "string"
+          },
+          "player_color": {
+            "$ref": "#/components/schemas/PlayerColor"
+          },
+          "result": {
+            "$ref": "#/components/schemas/GameResult"
+          },
+          "time_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Class"
+          }
+        },
+        "required": [
+          "id",
+          "played_at",
+          "opponent",
+          "player_color",
+          "result",
+          "time_class",
+          "opening_name",
+          "analysis_status"
+        ],
+        "title": "GameItem",
+        "type": "object"
+      },
+      "GamePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GameItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "minimum": 0.0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "GamePage",
+        "type": "object"
+      },
+      "GamePhase": {
+        "enum": [
+          "opening",
+          "middlegame",
+          "endgame",
+          "unclassified"
+        ],
+        "title": "GamePhase",
+        "type": "string"
+      },
+      "GameResult": {
+        "enum": [
+          "win",
+          "loss",
+          "draw",
+          "unknown"
+        ],
+        "title": "GameResult",
+        "type": "string"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "const": "ok",
+            "default": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "HistoricalAdvice": {
+        "additionalProperties": false,
+        "properties": {
+          "explanation": {
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Explanation",
+            "type": "string"
+          },
+          "pattern_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Pattern Id",
+            "type": "string"
+          },
+          "practice_tip": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Practice Tip",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pattern_id",
+          "explanation",
+          "practice_tip"
+        ],
+        "title": "HistoricalAdvice",
+        "type": "object"
+      },
+      "HistoricalEvidence": {
+        "additionalProperties": false,
+        "properties": {
+          "analytics_version": {
+            "title": "Analytics Version",
+            "type": "string"
+          },
+          "patterns": {
+            "items": {
+              "$ref": "#/components/schemas/Weakness"
+            },
+            "maxItems": 5,
+            "title": "Patterns",
+            "type": "array"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "ranker_version": {
+            "title": "Ranker Version",
+            "type": "string"
+          },
+          "report_hash": {
+            "title": "Report Hash",
+            "type": "string"
+          },
+          "request": {
+            "additionalProperties": true,
+            "title": "Request",
+            "type": "object"
+          },
+          "schema_version": {
+            "default": "historical-evidence-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "total_games": {
+            "title": "Total Games",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "report_hash",
+          "analytics_version",
+          "policy_version",
+          "ranker_version",
+          "request",
+          "total_games",
+          "patterns"
+        ],
+        "title": "HistoricalEvidence",
+        "type": "object"
+      },
+      "HistoricalExplanation": {
+        "additionalProperties": false,
+        "properties": {
+          "priorities": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/HistoricalAdvice"
+            },
+            "maxItems": 5,
+            "title": "Priorities",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "explained",
+              "insufficient_evidence"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "summary"
+        ],
+        "title": "HistoricalExplanation",
+        "type": "object"
+      },
+      "LLMHealth": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "model_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Digest"
+          },
+          "model_installed": {
+            "title": "Model Installed",
+            "type": "boolean"
+          },
+          "server_reachable": {
+            "title": "Server Reachable",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "ready",
+              "server_unavailable",
+              "model_missing",
+              "check_failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "server_reachable",
+          "model_installed",
+          "model",
+          "message"
+        ],
+        "title": "LLMHealth",
+        "type": "object"
+      },
+      "MotifHealth": {
+        "additionalProperties": false,
+        "properties": {
+          "database_ready": {
+            "title": "Database Ready",
+            "type": "boolean"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "ollama": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LLMHealth"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "ready",
+              "degraded",
+              "blocked"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "taxonomy_version": {
+            "default": "motif-v1",
+            "title": "Taxonomy Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "database_ready",
+          "message"
+        ],
+        "title": "MotifHealth",
+        "type": "object"
+      },
+      "MotifResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "cached": {
+            "default": false,
+            "title": "Cached",
+            "type": "boolean"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/ChessEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "motif": {
+            "title": "Motif",
+            "type": "null"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "taxonomy_version": {
+            "default": "motif-v1",
+            "title": "Taxonomy Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "events"
+        ],
+        "title": "MotifResponse",
+        "type": "object"
+      },
+      "MoveCoachingEvidence": {
+        "additionalProperties": false,
+        "properties": {
+          "after": {
+            "$ref": "#/components/schemas/EngineScore"
+          },
+          "analysis_version": {
+            "title": "Analysis Version",
+            "type": "string"
+          },
+          "before": {
+            "$ref": "#/components/schemas/EngineScore"
+          },
+          "best_line_uci": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "minItems": 1,
+            "title": "Best Line Uci",
+            "type": "array"
+          },
+          "best_move_uci": {
+            "title": "Best Move Uci",
+            "type": "string"
+          },
+          "completion_provenance": {
+            "enum": [
+              "pgn_declaration",
+              "chesscom_archive"
+            ],
+            "title": "Completion Provenance",
+            "type": "string"
+          },
+          "draw_policy": {
+            "title": "Draw Policy",
+            "type": "string"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "feature_version": {
+            "minimum": 1.0,
+            "title": "Feature Version",
+            "type": "integer"
+          },
+          "fen_before": {
+            "title": "Fen Before",
+            "type": "string"
+          },
+          "game_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Game Id",
+            "type": "integer"
+          },
+          "historical_theme_frequency": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Historical Theme Frequency"
+          },
+          "history_before_start_unknown": {
+            "title": "History Before Start Unknown",
+            "type": "boolean"
+          },
+          "history_uci": {
+            "items": {
+              "type": "string"
+            },
+            "title": "History Uci",
+            "type": "array"
+          },
+          "initial_fen": {
+            "title": "Initial Fen",
+            "type": "string"
+          },
+          "loss_cp": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Loss Cp"
+          },
+          "phase": {
+            "$ref": "#/components/schemas/GamePhase"
+          },
+          "played_move_uci": {
+            "title": "Played Move Uci",
+            "type": "string"
+          },
+          "played_refutation_uci": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Played Refutation Uci",
+            "type": "array"
+          },
+          "player_color": {
+            "$ref": "#/components/schemas/PlayerColor"
+          },
+          "player_rating": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Rating"
+          },
+          "ply": {
+            "exclusiveMinimum": 0.0,
+            "title": "Ply",
+            "type": "integer"
+          },
+          "profile_hash": {
+            "title": "Profile Hash",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "move-evidence-v1",
+            "default": "move-evidence-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "source_hash": {
+            "title": "Source Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "game_id",
+          "ply",
+          "player_color",
+          "phase",
+          "fen_before",
+          "initial_fen",
+          "history_uci",
+          "history_before_start_unknown",
+          "played_move_uci",
+          "best_move_uci",
+          "best_line_uci",
+          "played_refutation_uci",
+          "before",
+          "after",
+          "completion_provenance",
+          "source_hash",
+          "profile_hash",
+          "engine_version",
+          "analysis_version",
+          "draw_policy",
+          "feature_version"
+        ],
+        "title": "MoveCoachingEvidence",
+        "type": "object"
+      },
+      "MoveExplanation": {
+        "additionalProperties": false,
+        "properties": {
+          "lesson": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Lesson",
+            "type": "string"
+          },
+          "practice_tip": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Practice Tip",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "explained",
+              "insufficient_evidence"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          },
+          "what_went_wrong": {
+            "default": "",
+            "maxLength": 600,
+            "title": "What Went Wrong",
+            "type": "string"
+          },
+          "why_best_move_works": {
+            "default": "",
+            "maxLength": 600,
+            "title": "Why Best Move Works",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "summary"
+        ],
+        "title": "MoveExplanation",
+        "type": "object"
+      },
+      "MoveMetrics": {
+        "additionalProperties": false,
+        "properties": {
+          "classifiable_moves": {
+            "minimum": 0.0,
+            "title": "Classifiable Moves",
+            "type": "integer"
+          },
+          "comparable_moves": {
+            "minimum": 0.0,
+            "title": "Comparable Moves",
+            "type": "integer"
+          },
+          "critical": {
+            "$ref": "#/components/schemas/Rate"
+          },
+          "excluded_losses": {
+            "minimum": 0.0,
+            "title": "Excluded Losses",
+            "type": "integer"
+          },
+          "games_represented": {
+            "minimum": 0.0,
+            "title": "Games Represented",
+            "type": "integer"
+          },
+          "mean_loss_cp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Loss Cp"
+          },
+          "median_loss_cp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Loss Cp"
+          },
+          "player_moves": {
+            "minimum": 0.0,
+            "title": "Player Moves",
+            "type": "integer"
+          },
+          "significant": {
+            "$ref": "#/components/schemas/Rate"
+          },
+          "total_loss_cp": {
+            "minimum": 0.0,
+            "title": "Total Loss Cp",
+            "type": "number"
+          }
+        },
+        "required": [
+          "player_moves",
+          "games_represented",
+          "comparable_moves",
+          "excluded_losses",
+          "classifiable_moves",
+          "total_loss_cp",
+          "mean_loss_cp",
+          "median_loss_cp",
+          "significant",
+          "critical"
+        ],
+        "title": "MoveMetrics",
+        "type": "object"
+      },
+      "MoveResponse": {
+        "properties": {
+          "best_move_uci": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Move Uci"
+          },
+          "eval_after_cp_white": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eval After Cp White"
+          },
+          "eval_before_cp_white": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eval Before Cp White"
+          },
+          "evidence_kind": {
+            "default": "single_pass_estimate",
+            "title": "Evidence Kind",
+            "type": "string"
+          },
+          "fen_before": {
+            "title": "Fen Before",
+            "type": "string"
+          },
+          "game_id": {
+            "title": "Game Id",
+            "type": "integer"
+          },
+          "loss_cp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Loss Cp"
+          },
+          "mate_after_white": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mate After White"
+          },
+          "mate_after_winner": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mate After Winner"
+          },
+          "mate_before_white": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mate Before White"
+          },
+          "mate_before_winner": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mate Before Winner"
+          },
+          "move_number": {
+            "title": "Move Number",
+            "type": "integer"
+          },
+          "mover": {
+            "title": "Mover",
+            "type": "string"
+          },
+          "played_move_san": {
+            "title": "Played Move San",
+            "type": "string"
+          },
+          "played_move_uci": {
+            "title": "Played Move Uci",
+            "type": "string"
+          },
+          "ply": {
+            "title": "Ply",
+            "type": "integer"
+          },
+          "profile_hash": {
+            "title": "Profile Hash",
+            "type": "string"
+          },
+          "pv_json": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Pv Json",
+            "type": "array"
+          }
+        },
+        "required": [
+          "game_id",
+          "profile_hash",
+          "ply",
+          "move_number",
+          "mover",
+          "played_move_uci",
+          "played_move_san",
+          "fen_before",
+          "best_move_uci",
+          "eval_before_cp_white",
+          "eval_after_cp_white",
+          "mate_before_white",
+          "mate_after_white",
+          "mate_before_winner",
+          "mate_after_winner",
+          "loss_cp",
+          "pv_json"
+        ],
+        "title": "MoveResponse",
+        "type": "object"
+      },
+      "PatternsResponse": {
+        "properties": {
+          "analytics_version": {
+            "default": "longitudinal-v1",
+            "title": "Analytics Version",
+            "type": "string"
+          },
+          "contexts": {
+            "items": {
+              "$ref": "#/components/schemas/ContextMetric"
+            },
+            "title": "Contexts",
+            "type": "array"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/AnalyticsFilters"
+          },
+          "health": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalyticsHealthReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "patterns": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/Weakness"
+              },
+              "type": "array"
+            },
+            "title": "Patterns",
+            "type": "object"
+          },
+          "policy_version": {
+            "default": "support-v1",
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "profile_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Hash"
+          },
+          "ranker_version": {
+            "default": "weakness-ranker-v1",
+            "title": "Ranker Version",
+            "type": "string"
+          },
+          "selected_game_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Selected Game Ids",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReportStatus"
+          }
+        },
+        "required": [
+          "filters",
+          "profile_hash",
+          "status",
+          "selected_game_ids",
+          "health",
+          "patterns",
+          "contexts"
+        ],
+        "title": "PatternsResponse",
+        "type": "object"
+      },
+      "PlayerColor": {
+        "enum": [
+          "white",
+          "black"
+        ],
+        "title": "PlayerColor",
+        "type": "string"
+      },
+      "PlayerInput": {
+        "additionalProperties": false,
+        "properties": {
+          "platform": {
+            "const": "chess.com",
+            "default": "chess.com",
+            "title": "Platform",
+            "type": "string"
+          },
+          "username": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ],
+        "title": "PlayerInput",
+        "type": "object"
+      },
+      "PlayerResponse": {
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "player": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/chess_coach__api__schemas__contracts__Player"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "configured",
+          "player"
+        ],
+        "title": "PlayerResponse",
+        "type": "object"
+      },
+      "Rate": {
+        "additionalProperties": false,
+        "properties": {
+          "denominator": {
+            "minimum": 0.0,
+            "title": "Denominator",
+            "type": "integer"
+          },
+          "numerator": {
+            "minimum": 0.0,
+            "title": "Numerator",
+            "type": "integer"
+          },
+          "per_100": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per 100"
+          }
+        },
+        "required": [
+          "numerator",
+          "denominator",
+          "per_100"
+        ],
+        "title": "Rate",
+        "type": "object"
+      },
+      "ReportStatus": {
+        "enum": [
+          "COMPLETE",
+          "PARTIAL",
+          "INSUFFICIENT_DATA",
+          "DATA_ERROR",
+          "NO_GAMES"
+        ],
+        "title": "ReportStatus",
+        "type": "string"
+      },
+      "RunGame": {
+        "properties": {
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "game_id": {
+            "title": "Game Id",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "game_id",
+          "status",
+          "attempt_count",
+          "error_code"
+        ],
+        "title": "RunGame",
+        "type": "object"
+      },
+      "RunResponse": {
+        "properties": {
+          "analysis_version": {
+            "title": "Analysis Version",
+            "type": "string"
+          },
+          "cache_hits": {
+            "title": "Cache Hits",
+            "type": "integer"
+          },
+          "cache_misses": {
+            "title": "Cache Misses",
+            "type": "integer"
+          },
+          "cancel_requested": {
+            "title": "Cancel Requested",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "draw_policy_version": {
+            "title": "Draw Policy Version",
+            "type": "string"
+          },
+          "engine_config_json": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "title": "Engine Config Json",
+            "type": "object"
+          },
+          "engine_seconds": {
+            "title": "Engine Seconds",
+            "type": "number"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "games": {
+            "items": {
+              "$ref": "#/components/schemas/RunGame"
+            },
+            "title": "Games",
+            "type": "array"
+          },
+          "games_completed": {
+            "title": "Games Completed",
+            "type": "integer"
+          },
+          "games_excluded": {
+            "title": "Games Excluded",
+            "type": "integer"
+          },
+          "games_failed": {
+            "title": "Games Failed",
+            "type": "integer"
+          },
+          "games_skipped": {
+            "title": "Games Skipped",
+            "type": "integer"
+          },
+          "games_total": {
+            "title": "Games Total",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_heartbeat_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Heartbeat At"
+          },
+          "positions_analyzed": {
+            "title": "Positions Analyzed",
+            "type": "integer"
+          },
+          "profile_hash": {
+            "title": "Profile Hash",
+            "type": "string"
+          },
+          "progress_percent": {
+            "title": "Progress Percent",
+            "type": "number"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "integer"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "storage_status": {
+            "$ref": "#/components/schemas/AnalysisRunStatus"
+          },
+          "successful_percent": {
+            "title": "Successful Percent",
+            "type": "number"
+          },
+          "terminal_positions": {
+            "title": "Terminal Positions",
+            "type": "integer"
+          },
+          "tracked_player_id": {
+            "title": "Tracked Player Id",
+            "type": "integer"
+          },
+          "worker_available": {
+            "title": "Worker Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "tracked_player_id",
+          "run_id",
+          "status",
+          "storage_status",
+          "created_at",
+          "started_at",
+          "finished_at",
+          "last_heartbeat_at",
+          "profile_hash",
+          "engine_version",
+          "analysis_version",
+          "engine_config_json",
+          "draw_policy_version",
+          "games_total",
+          "games_completed",
+          "games_failed",
+          "games_skipped",
+          "games_excluded",
+          "positions_analyzed",
+          "terminal_positions",
+          "cache_hits",
+          "cache_misses",
+          "engine_seconds",
+          "cancel_requested",
+          "error_code",
+          "error_message",
+          "progress_percent",
+          "successful_percent",
+          "worker_available",
+          "games"
+        ],
+        "title": "RunResponse",
+        "type": "object"
+      },
+      "Segment": {
+        "additionalProperties": false,
+        "properties": {
+          "color_games": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Color Games",
+            "type": "object"
+          },
+          "early_errors": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Rate"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evidence_status": {
+            "$ref": "#/components/schemas/EvidenceStatus"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "median_first_error_move": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median First Error Move"
+          },
+          "opening_family": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Family"
+          },
+          "opening_moves": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MoveMetrics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "opening_names": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Opening Names",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Summary"
+          },
+          "time_class_games": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Time Class Games",
+            "type": "object"
+          }
+        },
+        "required": [
+          "key",
+          "summary",
+          "evidence_status",
+          "time_class_games",
+          "color_games"
+        ],
+        "title": "Segment",
+        "type": "object"
+      },
+      "SegmentsResponse": {
+        "properties": {
+          "analytics_version": {
+            "default": "longitudinal-v1",
+            "title": "Analytics Version",
+            "type": "string"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/AnalyticsFilters"
+          },
+          "health": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalyticsHealthReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "policy_version": {
+            "default": "support-v1",
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "profile_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Hash"
+          },
+          "selected_game_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Selected Game Ids",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReportStatus"
+          }
+        },
+        "required": [
+          "filters",
+          "profile_hash",
+          "status",
+          "selected_game_ids",
+          "health",
+          "items"
+        ],
+        "title": "SegmentsResponse",
+        "type": "object"
+      },
+      "Statistics": {
+        "properties": {
+          "games_analyzed": {
+            "title": "Games Analyzed",
+            "type": "integer"
+          },
+          "games_stored": {
+            "title": "Games Stored",
+            "type": "integer"
+          },
+          "pending_games": {
+            "title": "Pending Games",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "games_stored",
+          "games_analyzed",
+          "pending_games"
+        ],
+        "title": "Statistics",
+        "type": "object"
+      },
+      "Summary": {
+        "additionalProperties": false,
+        "properties": {
+          "draws": {
+            "minimum": 0.0,
+            "title": "Draws",
+            "type": "integer"
+          },
+          "games_played": {
+            "minimum": 0.0,
+            "title": "Games Played",
+            "type": "integer"
+          },
+          "losses": {
+            "minimum": 0.0,
+            "title": "Losses",
+            "type": "integer"
+          },
+          "moves": {
+            "$ref": "#/components/schemas/MoveMetrics"
+          },
+          "score_percentage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Percentage"
+          },
+          "win_rate": {
+            "$ref": "#/components/schemas/Rate"
+          },
+          "wins": {
+            "minimum": 0.0,
+            "title": "Wins",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "games_played",
+          "wins",
+          "draws",
+          "losses",
+          "score_percentage",
+          "win_rate",
+          "moves"
+        ],
+        "title": "Summary",
+        "type": "object"
+      },
+      "SummaryResponse": {
+        "properties": {
+          "analytics_version": {
+            "default": "longitudinal-v1",
+            "title": "Analytics Version",
+            "type": "string"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/AnalyticsFilters"
+          },
+          "health": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalyticsHealthReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "metrics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Summary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "policy_version": {
+            "default": "support-v1",
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "profile_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Hash"
+          },
+          "selected_game_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Selected Game Ids",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReportStatus"
+          }
+        },
+        "required": [
+          "filters",
+          "profile_hash",
+          "status",
+          "selected_game_ids",
+          "health",
+          "metrics"
+        ],
+        "title": "SummaryResponse",
+        "type": "object"
+      },
+      "SyncInput": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "SyncInput",
+        "type": "object"
+      },
+      "SyncProgress": {
+        "properties": {
+          "archives_processed": {
+            "minimum": 0.0,
+            "title": "Archives Processed",
+            "type": "integer"
+          },
+          "archives_total": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archives Total"
+          },
+          "games_existing": {
+            "minimum": 0.0,
+            "title": "Games Existing",
+            "type": "integer"
+          },
+          "games_failed": {
+            "minimum": 0.0,
+            "title": "Games Failed",
+            "type": "integer"
+          },
+          "games_inserted": {
+            "minimum": 0.0,
+            "title": "Games Inserted",
+            "type": "integer"
+          },
+          "games_seen": {
+            "minimum": 0.0,
+            "title": "Games Seen",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "archives_total",
+          "archives_processed",
+          "games_seen",
+          "games_inserted",
+          "games_existing",
+          "games_failed"
+        ],
+        "title": "SyncProgress",
+        "type": "object"
+      },
+      "SyncRunResponse": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/SyncProgress"
+          },
+          "recoverable": {
+            "title": "Recoverable",
+            "type": "boolean"
+          },
+          "run_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Run Id",
+            "type": "integer"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "status",
+          "started_at",
+          "finished_at",
+          "progress",
+          "error",
+          "recoverable"
+        ],
+        "title": "SyncRunResponse",
+        "type": "object"
+      },
+      "SystemResponse": {
+        "properties": {
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "components": {
+            "$ref": "#/components/schemas/Components"
+          },
+          "statistics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Statistics"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "healthy",
+              "degraded",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "components",
+          "statistics",
+          "checked_at"
+        ],
+        "title": "SystemResponse",
+        "type": "object"
+      },
+      "SystemStatusResponse": {
+        "properties": {
+          "api": {
+            "$ref": "#/components/schemas/DependencyStatus"
+          },
+          "ollama": {
+            "$ref": "#/components/schemas/DependencyStatus"
+          },
+          "ollama_model": {
+            "$ref": "#/components/schemas/DependencyStatus"
+          },
+          "stockfish": {
+            "$ref": "#/components/schemas/DependencyStatus"
+          }
+        },
+        "required": [
+          "api",
+          "stockfish",
+          "ollama",
+          "ollama_model"
+        ],
+        "title": "SystemStatusResponse",
+        "type": "object"
+      },
+      "Weakness": {
+        "additionalProperties": false,
+        "properties": {
+          "candidate_key": {
+            "title": "Candidate Key",
+            "type": "string"
+          },
+          "category": {
+            "enum": [
+              "phase",
+              "opening",
+              "context"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "critical_errors": {
+            "minimum": 0.0,
+            "title": "Critical Errors",
+            "type": "integer"
+          },
+          "distinct_games": {
+            "exclusiveMinimum": 0.0,
+            "title": "Distinct Games",
+            "type": "integer"
+          },
+          "evidence_status": {
+            "const": "sufficient",
+            "default": "sufficient",
+            "title": "Evidence Status",
+            "type": "string"
+          },
+          "opportunities": {
+            "exclusiveMinimum": 0.0,
+            "title": "Opportunities",
+            "type": "integer"
+          },
+          "priority_score": {
+            "minimum": 0.0,
+            "title": "Priority Score",
+            "type": "number"
+          },
+          "recency_weight": {
+            "default": 1.0,
+            "maximum": 1.0,
+            "minimum": 1.0,
+            "title": "Recency Weight",
+            "type": "number"
+          },
+          "significant_errors": {
+            "minimum": 0.0,
+            "title": "Significant Errors",
+            "type": "integer"
+          },
+          "source_moves": {
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            "title": "Source Moves",
+            "type": "array"
+          }
+        },
+        "required": [
+          "candidate_key",
+          "category",
+          "opportunities",
+          "significant_errors",
+          "critical_errors",
+          "distinct_games",
+          "priority_score",
+          "source_moves"
+        ],
+        "title": "Weakness",
+        "type": "object"
+      },
+      "WorkerResponse": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "database": {
+            "title": "Database",
+            "type": "string"
+          },
+          "engine_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine Version"
+          },
+          "heartbeat_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heartbeat At"
+          },
+          "players": {
+            "items": {
+              "$ref": "#/components/schemas/chess_coach__api__schemas__analysis__Player"
+            },
+            "title": "Players",
+            "type": "array"
+          }
+        },
+        "required": [
+          "available",
+          "engine_version",
+          "heartbeat_at",
+          "database",
+          "players"
+        ],
+        "title": "WorkerResponse",
+        "type": "object"
+      },
+      "chess_coach__api__schemas__analysis__Player": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "username"
+        ],
+        "title": "Player",
+        "type": "object"
+      },
+      "chess_coach__api__schemas__contracts__Player": {
+        "properties": {
+          "id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Id",
+            "type": "integer"
+          },
+          "platform": {
+            "const": "chess.com",
+            "title": "Platform",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "platform",
+          "username"
+        ],
+        "title": "Player",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Chess Coach API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/analysis-runs": {
+      "get": {
+        "operationId": "list_runs_api_v1_analysis_runs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RunResponse"
+                  },
+                  "title": "Response List Runs Api V1 Analysis Runs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "List Runs",
+        "tags": [
+          "analysis"
+        ]
+      },
+      "post": {
+        "operationId": "create_run_api_v1_analysis_runs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRun"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Create Run",
+        "tags": [
+          "analysis"
+        ]
+      }
+    },
+    "/api/v1/analysis-runs/{run_id}": {
+      "get": {
+        "operationId": "get_run_api_v1_analysis_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Run Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Get Run",
+        "tags": [
+          "analysis"
+        ]
+      }
+    },
+    "/api/v1/analysis-runs/{run_id}/cancel": {
+      "post": {
+        "operationId": "cancel_run_api_v1_analysis_runs__run_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Run Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Cancel Run",
+        "tags": [
+          "analysis"
+        ]
+      }
+    },
+    "/api/v1/analysis-worker": {
+      "get": {
+        "operationId": "worker_status_api_v1_analysis_worker_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkerResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Worker Status",
+        "tags": [
+          "analysis"
+        ]
+      }
+    },
+    "/api/v1/analytics/openings": {
+      "get": {
+        "operationId": "openings_api_v1_analytics_openings_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": "last_50",
+              "enum": [
+                "last_20",
+                "last_50",
+                "last_100",
+                "all"
+              ],
+              "title": "Window",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "color",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "white",
+                "black",
+                "all"
+              ],
+              "title": "Color",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "time_class",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "bullet",
+                "blitz",
+                "rapid",
+                "daily",
+                "all"
+              ],
+              "title": "Time Class",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "profile_hash",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profile Hash"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SegmentsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Read opening cohorts and evidence sufficiency",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/patterns": {
+      "get": {
+        "operationId": "patterns_api_v1_analytics_patterns_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": "last_50",
+              "enum": [
+                "last_20",
+                "last_50",
+                "last_100",
+                "all"
+              ],
+              "title": "Window",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "color",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "white",
+                "black",
+                "all"
+              ],
+              "title": "Color",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "time_class",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "bullet",
+                "blitz",
+                "rapid",
+                "daily",
+                "all"
+              ],
+              "title": "Time Class",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "profile_hash",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profile Hash"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatternsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Read ranked weaknesses and source move references",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/phases": {
+      "get": {
+        "operationId": "phases_api_v1_analytics_phases_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": "last_50",
+              "enum": [
+                "last_20",
+                "last_50",
+                "last_100",
+                "all"
+              ],
+              "title": "Window",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "color",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "white",
+                "black",
+                "all"
+              ],
+              "title": "Color",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "time_class",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "bullet",
+                "blitz",
+                "rapid",
+                "daily",
+                "all"
+              ],
+              "title": "Time Class",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "profile_hash",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profile Hash"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SegmentsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Read persisted phase evidence aggregates",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/summary": {
+      "get": {
+        "operationId": "summary_api_v1_analytics_summary_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": "last_50",
+              "enum": [
+                "last_20",
+                "last_50",
+                "last_100",
+                "all"
+              ],
+              "title": "Window",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "color",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "white",
+                "black",
+                "all"
+              ],
+              "title": "Color",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "time_class",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "bullet",
+                "blitz",
+                "rapid",
+                "daily",
+                "all"
+              ],
+              "title": "Time Class",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "profile_hash",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profile Hash"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Read deterministic results, loss metrics, and coverage",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/coaching-jobs/{job_id}": {
+      "get": {
+        "operationId": "job_api_v1_coaching_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Job Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoachingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Job",
+        "tags": [
+          "coaching"
+        ]
+      }
+    },
+    "/api/v1/coaching/history": {
+      "get": {
+        "operationId": "get_historical_coaching",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "pattern": "^(all|last_20|last_50|last_100)$",
+              "title": "Window",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "color",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "pattern": "^(all|white|black)$",
+              "title": "Color",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "time_class",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "maxLength": 32,
+              "title": "Time Class",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "profile_hash",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profile Hash"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoachingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "History",
+        "tags": [
+          "coaching"
+        ]
+      },
+      "post": {
+        "operationId": "request_historical_coaching",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "pattern": "^(all|last_20|last_50|last_100)$",
+              "title": "Window",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "color",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "pattern": "^(all|white|black)$",
+              "title": "Color",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "time_class",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "maxLength": 32,
+              "title": "Time Class",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "profile_hash",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profile Hash"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoachingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "History",
+        "tags": [
+          "coaching"
+        ]
+      }
+    },
+    "/api/v1/games": {
+      "get": {
+        "operationId": "games_api_v1_games_get",
+        "parameters": [
+          {
+            "description": "Maximum games returned",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "Maximum games returned",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Games skipped in date/ID descending order",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Games skipped in date/ID descending order",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "time_class",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "bullet",
+                    "blitz",
+                    "rapid",
+                    "daily"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time Class"
+            }
+          },
+          {
+            "in": "query",
+            "name": "player_color",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "white",
+                    "black"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Player Color"
+            }
+          },
+          {
+            "in": "query",
+            "name": "analysis_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending",
+                    "running",
+                    "completed",
+                    "failed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Analysis Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GamePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "List completed historical games",
+        "tags": [
+          "games and player"
+        ]
+      }
+    },
+    "/api/v1/games/{game_id}": {
+      "get": {
+        "operationId": "game_api_v1_games__game_id__get",
+        "parameters": [
+          {
+            "description": "Persistent database integer ID",
+            "in": "path",
+            "name": "game_id",
+            "required": true,
+            "schema": {
+              "description": "Persistent database integer ID",
+              "exclusiveMinimum": 0,
+              "title": "Game Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Read one stored game and its PGN",
+        "tags": [
+          "games and player"
+        ]
+      }
+    },
+    "/api/v1/games/{game_id}/analysis": {
+      "get": {
+        "operationId": "game_analysis_api_v1_games__game_id__analysis_get",
+        "parameters": [
+          {
+            "description": "Persistent database integer ID",
+            "in": "path",
+            "name": "game_id",
+            "required": true,
+            "schema": {
+              "description": "Persistent database integer ID",
+              "exclusiveMinimum": 0,
+              "title": "Game Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Explicit analysis profile; otherwise use the registered/latest profile",
+            "in": "query",
+            "name": "profile_hash",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Explicit analysis profile; otherwise use the registered/latest profile",
+              "title": "Profile Hash"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameAnalysisResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Read stored engine evidence without starting analysis",
+        "tags": [
+          "games and player"
+        ]
+      }
+    },
+    "/api/v1/games/{game_id}/moves/{ply}/explanation": {
+      "get": {
+        "operationId": "get_explanation_api_v1_games__game_id__moves__ply__explanation_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "game_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Game Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ply",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Ply",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "profile_hash",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profile Hash"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoachingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Get Explanation",
+        "tags": [
+          "coaching"
+        ]
+      },
+      "post": {
+        "operationId": "request_explanation_api_v1_games__game_id__moves__ply__explanation_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "game_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Game Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ply",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Ply",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "profile_hash",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profile Hash"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoachingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Request Explanation",
+        "tags": [
+          "coaching"
+        ]
+      }
+    },
+    "/api/v1/games/{game_id}/moves/{ply}/motif": {
+      "get": {
+        "operationId": "get_motif_api_v1_games__game_id__moves__ply__motif_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "game_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Game Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ply",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Ply",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "profile_hash",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profile Hash"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MotifResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Get Motif",
+        "tags": [
+          "coaching"
+        ]
+      },
+      "post": {
+        "operationId": "request_motif_api_v1_games__game_id__moves__ply__motif_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "game_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Game Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ply",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Ply",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "profile_hash",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profile Hash"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MotifResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Request Motif",
+        "tags": [
+          "coaching"
+        ]
+      }
+    },
+    "/api/v1/player": {
+      "get": {
+        "operationId": "player_api_v1_player_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Read the tracked player",
+        "tags": [
+          "games and player"
+        ]
+      },
+      "put": {
+        "operationId": "set_player_api_v1_player_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlayerInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Configure the tracked player without importing games",
+        "tags": [
+          "games and player"
+        ]
+      }
+    },
+    "/api/v1/sync-runs": {
+      "post": {
+        "operationId": "start_sync_api_v1_sync_runs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedRun"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Queue a persistent archive synchronization",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
+    "/api/v1/sync-runs/{run_id}": {
+      "get": {
+        "operationId": "sync_progress_api_v1_sync_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Run Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncRunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Read persisted synchronization progress",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
+    "/api/v1/system": {
+      "get": {
+        "operationId": "report_api_v1_system_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Check local component availability and stored-game counts",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/system/llm": {
+      "get": {
+        "operationId": "llm_health_api_v1_system_llm_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LLMHealth"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Llm Health",
+        "tags": [
+          "coaching"
+        ]
+      }
+    },
+    "/api/v1/system/motifs": {
+      "get": {
+        "operationId": "motif_health_api_v1_system_motifs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MotifHealth"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Motif Health",
+        "tags": [
+          "coaching"
+        ]
+      }
+    },
+    "/api/v1/system/status": {
+      "get": {
+        "operationId": "system_status_api_v1_system_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "System Status",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Check HTTP liveness without probing dependencies",
+        "tags": [
+          "health"
+        ]
+      }
+    }
+  }
+}

@@ -3,7 +3,7 @@ import { coachingApi } from './coaching';
 
 afterEach(() => vi.unstubAllGlobals());
 it('uses only relative backend endpoints with an explicit analysis profile', async () => {
-	const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ status: 'queued' }) });
+	const fetch = vi.fn().mockImplementation(() => Response.json({ status: 'queued' }));
 	vi.stubGlobal('fetch', fetch);
 	await coachingApi.generate(1, 3, 'profile');
 	expect(fetch).toHaveBeenCalledWith(

@@ -22,6 +22,33 @@ browsers or install dependencies.
 pnpm dev
 ```
 
+Vite binds to `127.0.0.1:5173` and forwards `/health` and `/api/*` to FastAPI on
+`127.0.0.1:8000`. Start FastAPI using the [root setup instructions](../README.md#backend-setup).
+The header checks FastAPI liveness on mount and on demand. Open System to check
+database, Stockfish, and Ollama availability separately. Games shows a short
+preview of completed history and links to the existing analysis and move coaching workflow.
+
+## API contracts
+
+After changing a FastAPI route or Pydantic schema, run this from the repository root:
+
+```sh
+uv run python scripts/export_openapi.py
+pnpm --dir frontend run api:types
+pnpm --dir frontend check
+```
+
+Commit the snapshot and generated declaration together. The exporter calls the
+same FastAPI schema builder that serves `/openapi.json` and does not need a running
+server. The generator consumes the local snapshot. It declares a TypeScript 5
+peer range, so pnpm reports a warning with the project's TypeScript 6. Generation
+and type checking have been verified with the versions in the lockfile.
+
+API requests go through `src/lib/api/`. Use generated types for endpoint contracts,
+and validate the response fields a screen needs when malformed data could look
+like a valid empty or healthy state. Retry requests explicitly. A timeout on a
+mutation can occur after the backend accepts the operation.
+
 ## Tests and build
 
 - `pnpm lint`: Prettier and ESLint checks.
@@ -32,6 +59,10 @@ pnpm dev
 - `pnpm build`: production build.
 - `pnpm preview`: preview the production build.
 
+With ports 5173 and 8000 free and the root Python environment synced, run
+`PHASE16_LIVE=1 pnpm test:e2e recovery-live.spec.ts` from this directory. It uses a
+temporary migrated database, disables access to real Stockfish and Ollama, and
+verifies browser behavior through Vite while stopping and restarting FastAPI.
+
 Style application markup with Tailwind classes. `src/routes/layout.css` contains
-only Tailwind setup. The current app is a scaffold; production serving will need
-a deliberate adapter choice when that feature is implemented.
+only Tailwind setup.

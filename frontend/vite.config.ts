@@ -4,6 +4,8 @@ import tailwindcss from '@tailwindcss/vite';
 import adapter from '@sveltejs/adapter-auto';
 import { sveltekit } from '@sveltejs/kit/vite';
 
+const backend = { target: 'http://127.0.0.1:8000', changeOrigin: false };
+
 export default defineConfig({
 	plugins: [
 		tailwindcss(),
@@ -22,14 +24,12 @@ export default defineConfig({
 	],
 
 	// Development-only proxy.
-	// Requests from the frontend beginning with /api
-	// are forwarded to the FastAPI backend.
+	// Local FastAPI transport for both versioned requests and liveness.
 	server: {
+		host: '127.0.0.1',
 		proxy: {
-			'/api': {
-				target: 'http://127.0.0.1:8000',
-				changeOrigin: true
-			}
+			'/api/': backend,
+			'^/health(?:$|\\?)': backend
 		}
 	},
 

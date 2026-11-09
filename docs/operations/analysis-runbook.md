@@ -129,11 +129,11 @@ and changes the node budget. Screenshots go to ignored local `data/` artifacts.
 See the [measured baseline](../benchmarks/phase10-baseline.md) for separate
 throughput and deterministic hard-stop reproduction commands.
 
-Regenerate API types after schema changes:
+Regenerate API types after schema changes. From the repository root:
 
 ```sh
-uv run python scripts/generate_api_types.py
-cd frontend && pnpm exec prettier --write src/lib/api/generated.ts
+uv run python scripts/export_openapi.py
+pnpm --dir frontend run api:types
 ```
 
 Do not hand-edit generated types. Migration downgrade refuses to discard new
