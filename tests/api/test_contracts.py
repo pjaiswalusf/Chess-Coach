@@ -6,7 +6,11 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
-from chess_coach.api.dependencies import get_query_service, get_system_status
+from chess_coach.api.dependencies import (
+    get_chesscom_verifier,
+    get_query_service,
+    get_system_status,
+)
 from chess_coach.application.analysis import AnalysisProcessor
 from chess_coach.application.sync_games import SyncGamesService
 from chess_coach.application.system import DependencyStatus, SystemStatus
@@ -30,6 +34,10 @@ def test_empty_player_games_and_analytics(api):
         "offset": 0,
     }
     assert client.post("/api/v1/sync-runs", json={}).status_code == 409
+    assert client.get("/api/v1/sync-runs/latest-work").json() == {
+        "sync_run_id": None,
+        "analysis_run_id": None,
+    }
     assert (
         client.post("/api/v1/analysis-runs", json={"scope": "pending"}).status_code
         == 409
@@ -69,6 +77,45 @@ def test_player_normalization_idempotence_switch_and_invalid_input(api):
         ).status_code
         == 422
     )
+
+
+def test_first_browser_sync_rejects_missing_account_before_persisting_player(api):
+    client, _, _, _, _, _, app = api
+
+    def verify(username):
+        if username == "not-found":
+            raise SourceError("PLAYER_NOT_FOUND", "private upstream detail")
+        return username
+
+    app.dependency_overrides[get_chesscom_verifier] = lambda: verify
+    bad = client.put("/api/v1/player", json={"username": "not-found", "verify": True})
+    assert bad.status_code == 404
+    assert bad.json()["code"] == "PLAYER_NOT_FOUND"
+    assert "private upstream detail" not in bad.text
+    assert client.get("/api/v1/player").json() == {"configured": False, "player": None}
+    assert (
+        client.put(
+            "/api/v1/player", json={"username": "correct", "verify": True}
+        ).status_code
+        == 200
+    )
+
+
+def test_result_filter_and_rating_use_tracked_player_perspective(seeded):
+    client, sessions, *_ = seeded
+    with sessions.begin() as session:
+        game = session.get(Game, 1)
+        game.player_color, game.result = "black", "loss"
+        game.white_rating, game.black_rating = 1800, 1400
+    page = client.get("/api/v1/games?result=loss&player_color=black&limit=1").json()
+    assert page["total"] == 1
+    (item,) = page["items"]
+    assert (
+        item["id"],
+        item["result"],
+        item["player_rating"],
+        item["critical_errors"],
+    ) == (1, "loss", 1400, None)
 
 
 @pytest.mark.parametrize(
@@ -128,9 +175,27 @@ def test_missing_and_invalid_resources(api, path, status):
 def test_analysis_evidence_and_analytics_match_existing_service(analyzed):
     client, _, _, engine, _, profile, _app = analyzed
     before = engine.calls
+    latest = client.get("/api/v1/sync-runs/latest-work").json()
+    assert latest["sync_run_id"] is None
+    progress = client.get(
+        f"/api/v1/analysis-runs/{latest['analysis_run_id']}/progress"
+    ).json()
+    assert progress["games_completed"] == 25
+    assert progress["games_remaining"] == 0
+    assert "games" not in progress
     result = client.get("/api/v1/games/1/analysis").json()
     assert result["status"] == "completed"
     assert [m["ply"] for m in result["moves"]] == [1, 2, 3, 4]
+    import chess
+
+    board = chess.Board()
+    assert result["initial_fen"] == board.fen()
+    for move in result["moves"]:
+        assert move["fen_before"] == board.fen()
+        board.push_san(move["played_move_san"])
+        assert move["fen_after"] == board.fen()
+        assert move["severity"] == "normal"
+    assert client.get("/api/v1/games").json()["items"][0]["critical_errors"] == 0
     assert [m["eval_before_cp_white"] for m in result["moves"]] == [0, 20, 40, 60]
     assert [m["loss_cp"] for m in result["moves"]] == [0, 20, 0, 20]
     assert all(m["mate_before_white"] is None for m in result["moves"])
@@ -156,6 +221,13 @@ def test_analysis_evidence_and_analytics_match_existing_service(analyzed):
             s.model_dump(mode="json") for s in getattr(report, field)
         ]
         assert body["selected_game_ids"] == summary["selected_game_ids"]
+    opening = next(
+        item
+        for item in client.get("/api/v1/analytics/phases").json()["items"]
+        if item["key"] == "opening"
+    )
+    assert opening["evidence_status"] == "sufficient"
+    assert opening["summary"]["moves"]["classifiable_moves"] == 50
     assert (
         client.get("/api/v1/analytics/patterns").json()["patterns"]
         == report.model_dump(mode="json")["ranked_weaknesses"]
@@ -196,6 +268,10 @@ def test_sync_persistence_worker_transitions_and_restart(api):
     run = accepted.json()["run_id"]
     store = SyncRepository(sessions, settings.database_path)
     assert client.get(f"/api/v1/sync-runs/{run}").json()["status"] == "queued"
+    assert client.get("/api/v1/sync-runs/latest-work").json() == {
+        "sync_run_id": run,
+        "analysis_run_id": None,
+    }
     assert client.post("/api/v1/sync-runs", json={}).status_code == 409
     assert client.put("/api/v1/player", json={"username": "other"}).status_code == 409
     SyncGamesService(Provider(), store).sync("testplayer", queued_run_id=run)
@@ -332,6 +408,10 @@ def test_system_counts_completed_profiles(analyzed):
         "games_stored": 25,
         "games_analyzed": 25,
         "pending_games": 0,
+        "positions_cached": 5,
+        "active_sync_runs": 0,
+        "active_analysis_runs": 0,
+        "active_coaching_jobs": 0,
     }
 
 

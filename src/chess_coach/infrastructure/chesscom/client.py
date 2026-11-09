@@ -31,18 +31,21 @@ class ChessComClient:
         self,
         *,
         transport: httpx.BaseTransport | None = None,
+        timeout: httpx.Timeout = TIMEOUT,
+        attempts: int = 3,
         sleep: Callable[[float], None] = time.sleep,
         jitter: Callable[[], float] = random.random,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ):
         self._http = httpx.Client(
-            timeout=TIMEOUT,
+            timeout=timeout,
             follow_redirects=False,
             headers={"User-Agent": USER_AGENT},
             transport=transport,
             trust_env=False,
         )
         self._sleep, self._jitter, self._clock = sleep, jitter, clock
+        self._attempts = attempts
 
     def __enter__(self) -> Self:
         return self
@@ -59,12 +62,12 @@ class ChessComClient:
         self._http.close()
 
     def _get(self, path: str, headers: dict[str, str] | None = None) -> httpx.Response:
-        for attempt in range(3):
+        for attempt in range(self._attempts):
             delay = 2**attempt + self._jitter()
             try:
                 response = self._http.get(BASE_URL + path, headers=headers)
             except httpx.TimeoutException, httpx.NetworkError:
-                if attempt == 2:
+                if attempt == self._attempts - 1:
                     raise ChessComError(
                         "TRANSPORT_FAILURE", "Retry synchronization later."
                     ) from None
@@ -79,7 +82,7 @@ class ChessComClient:
                         f"HTTP {status} at {path}.",
                         unavailable=status in (404, 410),
                     )
-                if attempt == 2:
+                if attempt == self._attempts - 1:
                     raise ChessComError(
                         "RETRY_EXHAUSTED", f"HTTP {status}; retry later."
                     )
@@ -123,7 +126,11 @@ class ChessComClient:
                 ) from None
             raise
         name = self._json(response, "username", str)
-        if not isinstance(name, str) or normalize_username(name) != username:
+        try:
+            matches = isinstance(name, str) and normalize_username(name) == username
+        except ValueError:
+            matches = False
+        if not matches:
             raise ChessComError(
                 "PLAYER_MISMATCH", "Profile identity does not match the request."
             )

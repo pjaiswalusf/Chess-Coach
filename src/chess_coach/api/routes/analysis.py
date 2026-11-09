@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Path
 from chess_coach.api.dependencies import get_analysis_service
 from chess_coach.api.schemas.analysis import (
     CreateRun,
+    RunProgressResponse,
     RunResponse,
     WorkerResponse,
 )
@@ -27,6 +28,13 @@ def list_runs(service: Service) -> list[dict[str, object]]:
 @router.get("/analysis-runs/{run_id}", response_model=RunResponse)
 def get_run(run_id: Annotated[int, Path(gt=0)], service: Service) -> dict[str, object]:
     return service.detail(run_id)
+
+
+@router.get("/analysis-runs/{run_id}/progress", response_model=RunProgressResponse)
+def get_progress(
+    run_id: Annotated[int, Path(gt=0)], service: Service
+) -> dict[str, object]:
+    return service.progress(run_id)
 
 
 @router.post("/analysis-runs/{run_id}/cancel", response_model=RunResponse)

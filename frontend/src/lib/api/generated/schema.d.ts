@@ -56,6 +56,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analysis-runs/{run_id}/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Progress */
+        get: operations["get_progress_api_v1_analysis_runs__run_id__progress_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analysis-worker": {
         parameters: {
             query?: never;
@@ -82,6 +99,23 @@ export interface paths {
         };
         /** Read opening cohorts and evidence sufficiency */
         get: operations["openings_api_v1_analytics_openings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one consistent analytics snapshot for the dashboard */
+        get: operations["overview_api_v1_analytics_overview_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -292,6 +326,23 @@ export interface paths {
         put?: never;
         /** Queue a persistent archive synchronization */
         post: operations["start_sync_api_v1_sync_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sync-runs/latest-work": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Latest Work */
+        get: operations["latest_work_api_v1_sync_runs_latest_work_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -540,6 +591,8 @@ export interface components {
         Component: {
             /** Model */
             model?: string | null;
+            /** Model Status */
+            model_status?: ("available" | "unavailable" | "unknown") | null;
             /**
              * Status
              * @enum {string}
@@ -631,8 +684,10 @@ export interface components {
             engine_version: string | null;
             /** Game Id */
             game_id: number;
+            /** Initial Fen */
+            initial_fen: string | null;
             /** Moves */
-            moves: components["schemas"]["MoveResponse"][];
+            moves: components["schemas"]["ReviewMove"][];
             /** Profile Hash */
             profile_hash: string | null;
             /**
@@ -657,6 +712,8 @@ export interface components {
              * @enum {string}
              */
             completion_provenance: "chesscom_archive" | "pgn_declaration";
+            /** Critical Errors */
+            critical_errors?: number | null;
             /** Eco Code */
             eco_code: string | null;
             /** Id */
@@ -671,6 +728,8 @@ export interface components {
              */
             played_at: string;
             player_color: components["schemas"]["PlayerColor"];
+            /** Player Rating */
+            player_rating?: number | null;
             /** Raw Pgn */
             raw_pgn: string;
             result: components["schemas"]["GameResult"];
@@ -690,6 +749,8 @@ export interface components {
              * @enum {string}
              */
             analysis_status: "pending" | "running" | "completed" | "failed" | "incompatible";
+            /** Critical Errors */
+            critical_errors?: number | null;
             /** Id */
             id: number;
             /** Opening Name */
@@ -702,6 +763,8 @@ export interface components {
              */
             played_at: string;
             player_color: components["schemas"]["PlayerColor"];
+            /** Player Rating */
+            player_rating?: number | null;
             result: components["schemas"]["GameResult"];
             /** Time Class */
             time_class: string | null;
@@ -801,6 +864,13 @@ export interface components {
              * @enum {string}
              */
             status: "ready" | "server_unavailable" | "model_missing" | "check_failed";
+        };
+        /** LatestRuns */
+        LatestRuns: {
+            /** Analysis Run Id */
+            analysis_run_id: number | null;
+            /** Sync Run Id */
+            sync_run_id: number | null;
         };
         /** MotifHealth */
         MotifHealth: {
@@ -952,8 +1022,153 @@ export interface components {
             /** Total Loss Cp */
             total_loss_cp: number;
         };
-        /** MoveResponse */
-        MoveResponse: {
+        /** OutcomeMetric */
+        OutcomeMetric: {
+            /**
+             * Collapsed Game Ids
+             * @default []
+             */
+            collapsed_game_ids: number[];
+            draws: components["schemas"]["Rate"];
+            /** Eligible Game Ids */
+            eligible_game_ids: number[];
+            evidence_status: components["schemas"]["EvidenceStatus"];
+            /** Excluded Game Ids */
+            excluded_game_ids: number[];
+            losses: components["schemas"]["Rate"];
+            nonloss: components["schemas"]["Rate"];
+            wins: components["schemas"]["Rate"];
+        };
+        /** OverviewResponse */
+        OverviewResponse: {
+            /**
+             * Analytics Version
+             * @default longitudinal-v1
+             */
+            analytics_version: string;
+            conversion: components["schemas"]["OutcomeMetric"] | null;
+            /** Conversion Strength */
+            conversion_strength: boolean;
+            filters: components["schemas"]["AnalyticsFilters"];
+            health: components["schemas"]["AnalyticsHealthReport"] | null;
+            metrics: components["schemas"]["Summary"] | null;
+            /** Openings */
+            openings: components["schemas"]["Segment"][];
+            /** Patterns */
+            patterns: {
+                [key: string]: components["schemas"]["Weakness"][];
+            };
+            /** Phases */
+            phases: components["schemas"]["Segment"][];
+            /**
+             * Policy Version
+             * @default support-v1
+             */
+            policy_version: string;
+            /** Profile Hash */
+            profile_hash: string | null;
+            /** Recent Trends */
+            recent_trends: components["schemas"]["RecentTrend"][];
+            /** Selected Game Ids */
+            selected_game_ids: number[];
+            status: components["schemas"]["ReportStatus"];
+        };
+        /** PatternsResponse */
+        PatternsResponse: {
+            /**
+             * Analytics Version
+             * @default longitudinal-v1
+             */
+            analytics_version: string;
+            /** Contexts */
+            contexts: components["schemas"]["ContextMetric"][];
+            conversion: components["schemas"]["OutcomeMetric"] | null;
+            /** Conversion Strength */
+            conversion_strength: boolean;
+            filters: components["schemas"]["AnalyticsFilters"];
+            health: components["schemas"]["AnalyticsHealthReport"] | null;
+            /** Patterns */
+            patterns: {
+                [key: string]: components["schemas"]["Weakness"][];
+            };
+            /**
+             * Policy Version
+             * @default support-v1
+             */
+            policy_version: string;
+            /** Profile Hash */
+            profile_hash: string | null;
+            /**
+             * Ranker Version
+             * @default weakness-ranker-v1
+             */
+            ranker_version: string;
+            /** Recent Trends */
+            recent_trends: components["schemas"]["RecentTrend"][];
+            /** Report Hash */
+            report_hash: string | null;
+            /** Selected Game Ids */
+            selected_game_ids: number[];
+            status: components["schemas"]["ReportStatus"];
+        };
+        /**
+         * PlayerColor
+         * @enum {string}
+         */
+        PlayerColor: "white" | "black";
+        /** PlayerInput */
+        PlayerInput: {
+            /**
+             * Platform
+             * @default chess.com
+             * @constant
+             */
+            platform: "chess.com";
+            /** Username */
+            username: string;
+            /**
+             * Verify
+             * @default false
+             */
+            verify: boolean;
+        };
+        /** PlayerResponse */
+        PlayerResponse: {
+            /** Configured */
+            configured: boolean;
+            player: components["schemas"]["chess_coach__api__schemas__contracts__Player"] | null;
+        };
+        /** Rate */
+        Rate: {
+            /** Denominator */
+            denominator: number;
+            /** Numerator */
+            numerator: number;
+            /** Per 100 */
+            per_100: number | null;
+        };
+        /** RecentTrend */
+        RecentTrend: {
+            color: components["schemas"]["PlayerColor"];
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "lower" | "higher" | "unchanged";
+            earlier: components["schemas"]["TrendPeriod"];
+            recent: components["schemas"]["TrendPeriod"];
+            /** Time Class */
+            time_class: string;
+            /** Time Control */
+            time_control: string;
+        };
+        /**
+         * ReportStatus
+         * @enum {string}
+         */
+        ReportStatus: "COMPLETE" | "PARTIAL" | "INSUFFICIENT_DATA" | "DATA_ERROR" | "NO_GAMES";
+        /** ReviewMove */
+        ReviewMove: {
             /** Best Move Uci */
             best_move_uci: string | null;
             /** Eval After Cp White */
@@ -965,6 +1180,8 @@ export interface components {
              * @default single_pass_estimate
              */
             evidence_kind: string;
+            /** Fen After */
+            fen_after: string;
             /** Fen Before */
             fen_before: string;
             /** Game Id */
@@ -993,74 +1210,8 @@ export interface components {
             profile_hash: string;
             /** Pv Json */
             pv_json: string[];
+            severity: components["schemas"]["Severity"] | null;
         };
-        /** PatternsResponse */
-        PatternsResponse: {
-            /**
-             * Analytics Version
-             * @default longitudinal-v1
-             */
-            analytics_version: string;
-            /** Contexts */
-            contexts: components["schemas"]["ContextMetric"][];
-            filters: components["schemas"]["AnalyticsFilters"];
-            health: components["schemas"]["AnalyticsHealthReport"] | null;
-            /** Patterns */
-            patterns: {
-                [key: string]: components["schemas"]["Weakness"][];
-            };
-            /**
-             * Policy Version
-             * @default support-v1
-             */
-            policy_version: string;
-            /** Profile Hash */
-            profile_hash: string | null;
-            /**
-             * Ranker Version
-             * @default weakness-ranker-v1
-             */
-            ranker_version: string;
-            /** Selected Game Ids */
-            selected_game_ids: number[];
-            status: components["schemas"]["ReportStatus"];
-        };
-        /**
-         * PlayerColor
-         * @enum {string}
-         */
-        PlayerColor: "white" | "black";
-        /** PlayerInput */
-        PlayerInput: {
-            /**
-             * Platform
-             * @default chess.com
-             * @constant
-             */
-            platform: "chess.com";
-            /** Username */
-            username: string;
-        };
-        /** PlayerResponse */
-        PlayerResponse: {
-            /** Configured */
-            configured: boolean;
-            player: components["schemas"]["chess_coach__api__schemas__contracts__Player"] | null;
-        };
-        /** Rate */
-        Rate: {
-            /** Denominator */
-            denominator: number;
-            /** Numerator */
-            numerator: number;
-            /** Per 100 */
-            per_100: number | null;
-        };
-        /**
-         * ReportStatus
-         * @enum {string}
-         */
-        ReportStatus: "COMPLETE" | "PARTIAL" | "INSUFFICIENT_DATA" | "DATA_ERROR" | "NO_GAMES";
         /** RunGame */
         RunGame: {
             /** Attempt Count */
@@ -1071,6 +1222,78 @@ export interface components {
             game_id: number;
             /** Status */
             status: string;
+        };
+        /** RunProgressResponse */
+        RunProgressResponse: {
+            /** Analysis Version */
+            analysis_version: string;
+            /** Cache Hits */
+            cache_hits: number;
+            /** Cache Misses */
+            cache_misses: number;
+            /** Cancel Requested */
+            cancel_requested: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Draw Policy Version */
+            draw_policy_version: string;
+            /** Engine Config Json */
+            engine_config_json: {
+                [key: string]: number | string;
+            };
+            /** Engine Seconds */
+            engine_seconds: number;
+            /** Engine Version */
+            engine_version: string;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /** Games Completed */
+            games_completed: number;
+            /** Games Excluded */
+            games_excluded: number;
+            /** Games Failed */
+            games_failed: number;
+            /** Games Remaining */
+            games_remaining: number;
+            /** Games Skipped */
+            games_skipped: number;
+            /** Games Total */
+            games_total: number;
+            /** Id */
+            id: number;
+            /** Last Heartbeat At */
+            last_heartbeat_at: string | null;
+            /** Positions Analyzed */
+            positions_analyzed: number;
+            /** Profile Hash */
+            profile_hash: string;
+            /** Progress Percent */
+            progress_percent: number;
+            /** Run Id */
+            run_id: number;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "completed" | "failed";
+            storage_status: components["schemas"]["AnalysisRunStatus"];
+            /** Successful Percent */
+            successful_percent: number;
+            /** Terminal Positions */
+            terminal_positions: number;
+            /** Tracked Player Id */
+            tracked_player_id: number;
+            /** Worker Available */
+            worker_available: boolean;
         };
         /** RunResponse */
         RunResponse: {
@@ -1192,14 +1415,27 @@ export interface components {
             selected_game_ids: number[];
             status: components["schemas"]["ReportStatus"];
         };
+        /**
+         * Severity
+         * @enum {string}
+         */
+        Severity: "normal" | "minor" | "significant" | "critical";
         /** Statistics */
         Statistics: {
+            /** Active Analysis Runs */
+            active_analysis_runs: number;
+            /** Active Coaching Jobs */
+            active_coaching_jobs: number;
+            /** Active Sync Runs */
+            active_sync_runs: number;
             /** Games Analyzed */
             games_analyzed: number;
             /** Games Stored */
             games_stored: number;
             /** Pending Games */
             pending_games: number;
+            /** Positions Cached */
+            positions_cached: number;
         };
         /** Summary */
         Summary: {
@@ -1253,12 +1489,16 @@ export interface components {
             games_inserted: number;
             /** Games Seen */
             games_seen: number;
+            /** Games Skipped */
+            games_skipped: number;
         };
         /** SyncRunResponse */
         SyncRunResponse: {
             error: components["schemas"]["ErrorResponse"] | null;
             /** Finished At */
             finished_at: string | null;
+            /** Partial */
+            partial: boolean;
             progress: components["schemas"]["SyncProgress"];
             /** Recoverable */
             recoverable: boolean;
@@ -1274,6 +1514,8 @@ export interface components {
         };
         /** SystemResponse */
         SystemResponse: {
+            /** Analysis Version */
+            analysis_version: string;
             /**
              * Checked At
              * Format: date-time
@@ -1293,6 +1535,22 @@ export interface components {
             ollama: components["schemas"]["DependencyStatus"];
             ollama_model: components["schemas"]["DependencyStatus"];
             stockfish: components["schemas"]["DependencyStatus"];
+        };
+        /** TrendPeriod */
+        TrendPeriod: {
+            critical: components["schemas"]["Rate"];
+            /**
+             * First Game At
+             * Format: date-time
+             */
+            first_game_at: string;
+            /** Game Ids */
+            game_ids: number[];
+            /**
+             * Last Game At
+             * Format: date-time
+             */
+            last_game_at: string;
         };
         /** Weakness */
         Weakness: {
@@ -1711,6 +1969,91 @@ export interface operations {
             };
         };
     };
+    get_progress_api_v1_analysis_runs__run_id__progress_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunProgressResponse"];
+                };
+            };
+            /** @description Invalid local Host header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Untrusted browser origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflicting operation or configuration */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Local dependency unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     worker_status_api_v1_analysis_worker_get: {
         parameters: {
             query?: never;
@@ -1815,6 +2158,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SegmentsResponse"];
+                };
+            };
+            /** @description Invalid local Host header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Untrusted browser origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflicting operation or configuration */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Local dependency unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    overview_api_v1_analytics_overview_get: {
+        parameters: {
+            query?: {
+                window?: "last_20" | "last_50" | "last_100" | "all";
+                color?: "white" | "black" | "all";
+                time_class?: "bullet" | "blitz" | "rapid" | "daily" | "all";
+                profile_hash?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverviewResponse"];
                 };
             };
             /** @description Invalid local Host header */
@@ -2238,6 +2669,7 @@ export interface operations {
                 color?: string;
                 time_class?: string;
                 profile_hash?: string | null;
+                expected_report_hash?: string | null;
             };
             header?: never;
             path?: never;
@@ -2326,6 +2758,7 @@ export interface operations {
                 color?: string;
                 time_class?: string;
                 profile_hash?: string | null;
+                expected_report_hash?: string | null;
             };
             header?: never;
             path?: never;
@@ -2417,6 +2850,7 @@ export interface operations {
                 time_class?: ("bullet" | "blitz" | "rapid" | "daily") | null;
                 player_color?: ("white" | "black") | null;
                 analysis_status?: ("pending" | "running" | "completed" | "failed") | null;
+                result?: ("win" | "loss" | "draw") | null;
             };
             header?: never;
             path?: never;
@@ -3215,6 +3649,89 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AcceptedRun"];
+                };
+            };
+            /** @description Invalid local Host header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Untrusted browser origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflicting operation or configuration */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Local dependency unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    latest_work_api_v1_sync_runs_latest_work_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LatestRuns"];
                 };
             };
             /** @description Invalid local Host header */

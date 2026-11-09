@@ -5,6 +5,8 @@ import adapter from '@sveltejs/adapter-auto';
 import { sveltekit } from '@sveltejs/kit/vite';
 
 const backend = { target: 'http://127.0.0.1:8000', changeOrigin: false };
+const proxy = { '/api/': backend, '^/health(?:$|\\?)': backend };
+const loopback = { host: '127.0.0.1', strictPort: true, cors: false, proxy };
 
 export default defineConfig({
 	plugins: [
@@ -23,15 +25,9 @@ export default defineConfig({
 		})
 	],
 
-	// Development-only proxy.
-	// Local FastAPI transport for both versioned requests and liveness.
-	server: {
-		host: '127.0.0.1',
-		proxy: {
-			'/api/': backend,
-			'^/health(?:$|\\?)': backend
-		}
-	},
+	// Both local modes use the same same-origin FastAPI transport.
+	server: { ...loopback, port: 5173 },
+	preview: { ...loopback, port: 4173 },
 
 	test: {
 		expect: {

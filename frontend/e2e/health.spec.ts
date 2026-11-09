@@ -69,3 +69,52 @@ test('reports unavailable database counts without treating them as zero', async 
 	await expect(page.getByText('Game counts are unavailable.')).toBeVisible();
 	await expect(page.getByText('Games stored', { exact: true })).toHaveCount(0);
 });
+
+test('distinguishes a missing local model and clears connectivity on refresh', async ({ page }) => {
+	let offline = false;
+	await page.route('**/health', (route) =>
+		offline ? route.abort() : route.fulfill({ json: { status: 'ok' } })
+	);
+	await page.route('**/api/v1/system', (route) =>
+		offline
+			? route.abort()
+			: route.fulfill({
+					json: {
+						status: 'degraded',
+						checked_at: '2026-01-01T00:00:00Z',
+						analysis_version: 'single-v1',
+						components: {
+							database: { status: 'available' },
+							stockfish: { status: 'available', version: 'Stockfish fixture' },
+							ollama: { status: 'available', model: 'local-fixture', model_status: 'unavailable' }
+						},
+						statistics: {
+							games_stored: 24,
+							games_analyzed: 12,
+							pending_games: 12,
+							positions_cached: 240,
+							active_sync_runs: 0,
+							active_analysis_runs: 1,
+							active_coaching_jobs: 0
+						}
+					}
+				})
+	);
+	await page.goto('/system');
+	await expect(page.getByText('Backend connected', { exact: true })).toHaveCount(1);
+	await expect(
+		page.getByText('Ollama', { exact: true }).locator('..').getByText('Available', { exact: true })
+	).toBeVisible();
+	await expect(
+		page
+			.getByText('Ollama model', { exact: true })
+			.locator('..')
+			.getByText('Unavailable', { exact: true })
+	).toBeVisible();
+	await expect(page.getByText('240', { exact: true })).toBeVisible();
+	offline = true;
+	await page.getByRole('button', { name: 'Refresh status' }).click();
+	await expect(page.getByText('Backend unavailable', { exact: true })).toBeVisible();
+	await expect(page.getByText('Backend connected', { exact: true })).toHaveCount(0);
+	await expect(page.getByText('240', { exact: true })).toHaveCount(0);
+});

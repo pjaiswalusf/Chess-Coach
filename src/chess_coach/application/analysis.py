@@ -244,7 +244,7 @@ class AnalysisService:
             self.store.create(player_id, self.store.available_profile())
         )
 
-    def detail(self, run_id: int) -> dict[str, object]:
+    def progress(self, run_id: int) -> dict[str, object]:
         run = self.store.get(run_id)
         processed = run.games_completed + run.games_failed + run.games_skipped
         return {
@@ -271,6 +271,11 @@ class AnalysisService:
             if run.games_total
             else 100,
             "worker_available": self.store.worker_status()["available"],
+            "games_remaining": max(0, run.games_total - processed),
+        }
+
+    def detail(self, run_id: int) -> dict[str, object]:
+        return self.progress(run_id) | {
             "games": [
                 {
                     "game_id": m.game_id,

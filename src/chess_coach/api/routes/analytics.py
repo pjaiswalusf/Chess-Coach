@@ -4,10 +4,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from chess_coach.analytics.contracts import ReportStatus
+from chess_coach.analytics.contracts import ReportStatus, coaching_report_hash
+from chess_coach.analytics.sample_policy import has_conversion_strength
 from chess_coach.api.dependencies import get_query_service
 from chess_coach.api.schemas.contracts import (
     AnalyticsFilters,
+    OverviewResponse,
     PatternsResponse,
     SegmentsResponse,
     SummaryResponse,
@@ -36,11 +38,37 @@ def projection(
     }
     if section == "summary":
         return common | {"metrics": report.overall if report else None}
+    conversion = (
+        report.advantage_metrics.conversion
+        if report and report.advantage_metrics
+        else None
+    )
+    progress = {
+        "conversion": conversion,
+        "conversion_strength": has_conversion_strength(report),
+        "recent_trends": report.recent_trends if report else (),
+    }
+    if section == "overview":
+        return (
+            common
+            | progress
+            | {
+                "metrics": report.overall if report else None,
+                "phases": report.phase_metrics if report else (),
+                "openings": report.opening_metrics if report else (),
+                "patterns": report.ranked_weaknesses if report else {},
+            }
+        )
     if section == "patterns":
-        return common | {
-            "patterns": report.ranked_weaknesses if report else {},
-            "contexts": report.behavioral_metrics if report else (),
-        }
+        return (
+            common
+            | progress
+            | {
+                "patterns": report.ranked_weaknesses if report else {},
+                "contexts": report.behavioral_metrics if report else (),
+            "report_hash": coaching_report_hash(report) if report else None,
+            }
+        )
     return common | {
         "items": (
             report.opening_metrics if section == "openings" else report.phase_metrics
@@ -48,6 +76,15 @@ def projection(
         if report
         else ()
     }
+
+
+@router.get(
+    "/overview",
+    response_model=OverviewResponse,
+    summary="Read one consistent analytics snapshot for the dashboard",
+)
+def overview(service: Service, filters: Filters) -> dict[str, object]:
+    return projection(service, filters, "overview")
 
 
 @router.get(

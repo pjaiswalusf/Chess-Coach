@@ -8,6 +8,9 @@ class JobService:
     def __init__(self, queries: QueryRepository, sync: SyncRepository):
         self.queries, self.sync = queries, sync
 
+    def latest_runs(self) -> dict[str, int | None]:
+        return self.queries.latest_runs()
+
     def start_sync(self) -> dict[str, object]:
         run_id = self.sync.enqueue(self.queries.player_id())
         return {"run_id": run_id, "status": "queued"}

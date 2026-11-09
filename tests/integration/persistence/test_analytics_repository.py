@@ -56,7 +56,6 @@ def test_real_snapshot_roundtrip_read_only_no_engine(
     pipeline, sessions, player_id, monkeypatch
 ):
     ids, _, profile = prepared(pipeline, sessions, player_id, 10)
-    ExtractFeatures(FeatureRepository(sessions)).run("testplayer", profile)
     monkeypatch.setattr(
         pipeline[1], "analyze", lambda *a, **k: pytest.fail("engine called")
     )
@@ -73,7 +72,22 @@ def test_real_snapshot_roundtrip_read_only_no_engine(
     assert AnalyticsReport.model_validate_json(report.model_dump_json()) == report
     assert build(sessions, player_id, profile) == report
     assert dump(sessions) == before
+    assert (
+        sum(
+            phase.summary.moves.player_moves
+            for phase in report.phase_metrics
+            if phase.key != "unclassified"
+        )
+        == 20
+    )
     assert set(report.selected_game_ids) == set(ids)
+    assert (
+        ExtractFeatures(FeatureRepository(sessions))
+        .run("testplayer", profile)
+        .games_completed
+        == 10
+    )
+    assert build(sessions, player_id, profile) == report
 
 
 def test_last_twenty_before_analysis_filter_and_query_count(
@@ -115,11 +129,10 @@ def test_profile_isolation_missing_features_and_other_players(
     ids, _, profile = prepared(pipeline, sessions, player_id)
     report = build(sessions, player_id, profile)
     assert report.health.integrity == "PASS"
-    assert all(
-        m.key == "unclassified" or m.summary.moves.player_moves == 0
+    assert any(
+        m.key != "unclassified" and m.summary.moves.player_moves > 0
         for m in report.phase_metrics
     )
-    assert "FEATURES_NOT_READY" in [w.code for w in report.health.warnings]
     assert build(sessions, player_id, "other").health.statuses == {"incompatible": 1}
     with sessions.begin() as s:
         p = TrackedPlayer(username="other", platform="pgn")

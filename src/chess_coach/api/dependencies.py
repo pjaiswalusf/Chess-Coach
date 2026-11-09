@@ -1,10 +1,11 @@
 """Wire application use cases to concrete local integrations."""
 
 import shutil
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from functools import partial
 from typing import Annotated
 
+import httpx
 from fastapi import Depends
 
 from chess_coach.analytics.service import AnalyticsService
@@ -19,6 +20,7 @@ from chess_coach.application.system import (
 )
 from chess_coach.config import Settings, get_settings
 from chess_coach.domain.coaching_models import LLMHealth
+from chess_coach.infrastructure.chesscom.client import ChessComClient
 from chess_coach.infrastructure.persistence.analysis_repository import (
     AnalysisRepository,
 )
@@ -62,8 +64,17 @@ def get_analysis_service(
         engine.dispose()
 
 
+def get_chesscom_verifier() -> Callable[[str], str]:
+    def verify(username: str) -> str:
+        with ChessComClient(timeout=httpx.Timeout(3.0), attempts=1) as client:
+            return client.get_player(username)
+
+    return verify
+
+
 def get_query_service(
     settings: Annotated[Settings, Depends(get_settings)],
+    verify_player: Annotated[Callable[[str], str], Depends(get_chesscom_verifier)],
 ) -> Iterator[QueryService]:
     engine = create_database_engine(settings.database_url)
     sessions = create_session_factory(engine)
@@ -73,6 +84,7 @@ def get_query_service(
                 sessions, AnalysisRepository(sessions, settings.database_path)
             ),
             AnalyticsService(AnalyticsRepository(sessions)),
+            verify_player,
         )
     finally:
         engine.dispose()
@@ -107,7 +119,9 @@ def get_system_report(
     def worker() -> dict[str, object]:
         engine = create_database_engine(settings.database_url, timeout_seconds=0.25)
         try:
-            return AnalysisRepository(create_session_factory(engine), settings.database_path).worker_status()
+            return AnalysisRepository(
+                create_session_factory(engine), settings.database_path
+            ).worker_status()
         finally:
             engine.dispose()
 
@@ -124,7 +138,9 @@ def get_coaching_service(
         CoachingRepository,
     )
 
-    return CoachingService(CoachingRepository(queries.store), settings, partial(check_health, settings))
+    return CoachingService(
+        CoachingRepository(queries.store), settings, partial(check_health, settings)
+    )
 
 
 def get_llm_health(settings: Annotated[Settings, Depends(get_settings)]) -> LLMHealth:

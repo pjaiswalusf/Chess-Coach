@@ -3,8 +3,9 @@
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from chess_coach.analytics.sample_policy import CRITICAL_LOSS_CP
 from chess_coach.application.errors import OperationError
-from chess_coach.domain.analysis import ANALYSIS_VERSION
+from chess_coach.domain.analysis import ACTIVE, ANALYSIS_VERSION
 from chess_coach.infrastructure.persistence.analysis_repository import (
     AnalysisRepository,
     profile_of,
@@ -13,11 +14,15 @@ from chess_coach.infrastructure.persistence.analysis_repository import (
 from chess_coach.infrastructure.persistence.models import (
     AnalysisRun,
     AnalysisWorkerState,
+    CoachingOutput,
     Game,
     GameAnalysisState,
     GameAnalysisStatus,
+    ImportRun,
     MoveAnalysis,
     Platform,
+    PositionCache,
+    RunStatus,
     TrackedPlayer,
 )
 from chess_coach.infrastructure.persistence.operations import ensure_idle, reserve
@@ -88,6 +93,33 @@ class QueryRepository:
                 s.add(TrackedPlayer(platform=Platform.CHESS_COM, username=username))
         return self.player()
 
+    def latest_runs(self) -> dict[str, int | None]:
+        with self.sessions() as s:
+            player = self._player(s)
+            if player is None:
+                return {"sync_run_id": None, "analysis_run_id": None}
+            return {
+                "sync_run_id": s.scalar(
+                    select(ImportRun.id)
+                    .where(ImportRun.tracked_player_id == player.id)
+                    .order_by(
+                        ImportRun.status.in_(
+                            (RunStatus.PENDING, RunStatus.RUNNING)
+                        ).desc(),
+                        ImportRun.id.desc(),
+                    )
+                    .limit(1)
+                ),
+                "analysis_run_id": s.scalar(
+                    select(AnalysisRun.id)
+                    .where(AnalysisRun.tracked_player_id == player.id)
+                    .order_by(
+                        AnalysisRun.status.in_(ACTIVE).desc(), AnalysisRun.id.desc()
+                    )
+                    .limit(1)
+                ),
+            }
+
     def profile(self) -> str | None:
         with self.sessions() as s:
             worker = s.get(AnalysisWorkerState, 1)
@@ -109,7 +141,9 @@ class QueryRepository:
         )
 
     @staticmethod
-    def _item(g: Game, state: GameAnalysisState | None) -> dict[str, object]:
+    def _item(
+        g: Game, state: GameAnalysisState | None, critical: int | None = None
+    ) -> dict[str, object]:
         return {
             k: getattr(g, k)
             for k in (
@@ -124,6 +158,10 @@ class QueryRepository:
             "opponent": g.black_username
             if g.player_color == "white"
             else g.white_username,
+            "player_rating": g.white_rating
+            if g.player_color == "white"
+            else g.black_rating,
+            "critical_errors": critical,
             "analysis_status": "pending"
             if state is None
             else "completed"
@@ -138,6 +176,7 @@ class QueryRepository:
         time_class: str | None,
         color: str | None,
         status: str | None,
+        result: str | None = None,
     ) -> dict[str, object]:
         profile = self.profile()
         with self.sessions() as s:
@@ -149,6 +188,8 @@ class QueryRepository:
                 query = query.where(Game.time_class == time_class)
             if color:
                 query = query.where(Game.player_color == color)
+            if result:
+                query = query.where(Game.result == result)
             # Bounded game page plus one state query; no move analyses are loaded.
             if status:
                 matching = select(GameAnalysisState.id).where(
@@ -182,8 +223,46 @@ class QueryRepository:
                     self._state(profile).where(GameAnalysisState.game_id.in_(ids))
                 )
             }
+            compatible = {
+                g.id: (g.parsed_metadata or {}).get("total_plies")
+                for g in games
+                if public_game_status(found.get(g.id), g) == "completed"
+            }
+            # Bounded aggregate over this page only. The review endpoint still
+            # performs deep evidence validation before exposing specific moves.
+            losses = (
+                {
+                    game_id: critical
+                    for game_id, total_moves, classifiable, critical in s.execute(
+                        select(
+                            MoveAnalysis.game_id,
+                            func.count(),
+                            func.count().filter(
+                                MoveAnalysis.mover == Game.player_color,
+                                MoveAnalysis.loss_cp.is_not(None),
+                            ),
+                            func.count().filter(
+                                MoveAnalysis.mover == Game.player_color,
+                                MoveAnalysis.loss_cp >= CRITICAL_LOSS_CP,
+                            ),
+                        )
+                        .join(Game, Game.id == MoveAnalysis.game_id)
+                        .where(
+                            MoveAnalysis.game_id.in_(compatible),
+                            MoveAnalysis.profile_hash == profile,
+                            MoveAnalysis.analysis_version == ANALYSIS_VERSION,
+                        )
+                        .group_by(MoveAnalysis.game_id)
+                    )
+                    if total_moves == compatible[game_id] and classifiable
+                }
+                if compatible
+                else {}
+            )
             return {
-                "items": [self._item(g, found.get(g.id)) for g in games],
+                "items": [
+                    self._item(g, found.get(g.id), losses.get(g.id)) for g in games
+                ],
                 "total": total,
                 "limit": limit,
                 "offset": offset,
@@ -222,7 +301,9 @@ class QueryRepository:
                 }
             )
 
-    def game_analysis(self, game_id: int, profile: str | None) -> dict[str, object]:
+    def game_analysis(
+        self, game_id: int, profile: str | None
+    ) -> tuple[dict[str, object], list[dict[str, object]]]:
         self.game(game_id)  # enforce single-player ownership and not-found semantics
         profile = profile or self.profile()
         with self.sessions() as s:
@@ -238,6 +319,7 @@ class QueryRepository:
                 else None
             )
             moves: list[dict[str, object]] = []
+            initial_fen: str | None = None
             if status == "completed":
                 if (
                     state is None
@@ -249,25 +331,38 @@ class QueryRepository:
                 ):
                     status = "incompatible"
                 else:
-                    moves = [
-                        {c.name: getattr(m, c.name) for c in m.__table__.columns}
-                        for m in s.scalars(
-                            select(MoveAnalysis)
-                            .where(
-                                MoveAnalysis.game_id == game_id,
-                                MoveAnalysis.profile_hash == profile,
-                            )
-                            .order_by(MoveAnalysis.ply)
+                    rows = s.scalars(
+                        select(MoveAnalysis)
+                        .where(
+                            MoveAnalysis.game_id == game_id,
+                            MoveAnalysis.profile_hash == profile,
                         )
-                    ]
+                        .order_by(MoveAnalysis.ply)
+                    ).all()
+                    assert state.position_ids
+                    final = s.get(PositionCache, state.position_ids[-1])
+                    if final is None:
+                        status = "incompatible"
+                    else:
+                        initial_fen = rows[0].fen_before if rows else final.fen
+                        next_fens = (
+                            [m.fen_before for m in rows[1:]] + [final.fen]
+                            if rows
+                            else []
+                        )
+                        moves = [
+                            {c.name: getattr(m, c.name) for c in m.__table__.columns}
+                            | {"fen_after": after}
+                            for m, after in zip(rows, next_fens, strict=True)
+                        ]
             return {
                 "game_id": game_id,
                 "status": status,
                 "profile_hash": profile,
                 "engine_version": run.engine_version if run else None,
                 "analysis_version": run.analysis_version if run else None,
-                "moves": moves,
-            }
+                "initial_fen": initial_fen,
+            }, moves
 
     def statistics(self) -> dict[str, int]:
         profile = self.profile()
@@ -310,4 +405,26 @@ class QueryRepository:
                 "games_stored": total,
                 "games_analyzed": completed,
                 "pending_games": total - completed,
+                "positions_cached": s.scalar(
+                    select(func.count()).select_from(PositionCache)
+                )
+                or 0,
+                "active_sync_runs": s.scalar(
+                    select(func.count())
+                    .select_from(ImportRun)
+                    .where(ImportRun.status.in_((RunStatus.PENDING, RunStatus.RUNNING)))
+                )
+                or 0,
+                "active_analysis_runs": s.scalar(
+                    select(func.count())
+                    .select_from(AnalysisRun)
+                    .where(AnalysisRun.status.in_(ACTIVE))
+                )
+                or 0,
+                "active_coaching_jobs": s.scalar(
+                    select(func.count())
+                    .select_from(CoachingOutput)
+                    .where(CoachingOutput.status.in_(("queued", "running")))
+                )
+                or 0,
             }

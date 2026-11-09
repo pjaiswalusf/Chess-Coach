@@ -7,7 +7,10 @@ import { resolve } from 'node:path';
 import { createServer } from 'node:net';
 
 test('recovers in the browser after stopping and restarting real FastAPI', async ({ page }) => {
-	test.skip(process.env.PHASE16_LIVE !== '1', 'Opt-in live proxy and FastAPI verification');
+	test.skip(
+		!['1', 'preview'].includes(process.env.PHASE16_LIVE ?? ''),
+		'Opt-in live proxy and FastAPI verification'
+	);
 	test.setTimeout(45_000);
 
 	// Fail before spawning if port 8000 already belongs to another process.
@@ -70,6 +73,16 @@ test('recovers in the browser after stopping and restarting real FastAPI', async
 	try {
 		execFileSync(python, ['-m', 'alembic', 'upgrade', 'head'], { cwd: root, env });
 		await start();
+		const origin = 'http://127.0.0.1:9999';
+		const read = await page.request.get('/api/v1/games', { headers: { Origin: origin } });
+		expect(read.status()).toBe(200);
+		expect(read.headers()['access-control-allow-origin']).toBeUndefined();
+		const write = await page.request.post('/api/v1/sync-runs', {
+			headers: { Origin: origin },
+			data: {}
+		});
+		expect(write.status()).toBe(403);
+		expect((await write.json()).code).toBe('ORIGIN_NOT_ALLOWED');
 		await page.goto('/');
 		await expect(page.getByText('Backend connected', { exact: true })).toBeVisible();
 		const nav = page.getByRole('navigation');

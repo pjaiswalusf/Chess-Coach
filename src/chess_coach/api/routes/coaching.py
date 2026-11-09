@@ -101,6 +101,7 @@ def history(
     color: Annotated[str, Query(pattern="^(all|white|black)$")] = "all",
     time_class: Annotated[str, Query(max_length=32)] = "all",
     profile_hash: Profile = None,
+    expected_report_hash: Annotated[str | None, Query(pattern="^[a-f0-9]{64}$")] = None,
 ) -> CoachingResponse:
     # GET is strictly read-only; only POST admits generation.
     from chess_coach.application.errors import OperationError
@@ -111,6 +112,10 @@ def history(
             "PLAYER_NOT_CONFIGURED",
             "Set the tracked player before requesting historical coaching.",
         )
-    result = service.history(report, generate=request.method == "POST")
+    result = service.history(
+        report,
+        generate=request.method == "POST",
+        expected_report_hash=expected_report_hash,
+    )
     response.status_code = 202 if result.status in {"queued", "running"} else 200
     return result

@@ -276,21 +276,89 @@ def test_prompt_evidence_excludes_imported_prose(coaching):
     client.post(PATH)
     captured = []
     original = model.generate
+
     def generate(evidence, schema):
         captured.append(json.loads(evidence))
         return original(evidence, schema)
+
     model.generate = generate
     CoachingProcessor(service, model).process(repo.claim())
     assert captured
-    assert all(key not in captured[0] for key in ("raw_pgn", "opening_name", "white_username", "comments"))
+    assert all(
+        key not in captured[0]
+        for key in ("raw_pgn", "opening_name", "white_username", "comments")
+    )
     assert captured[0]["fen_before"] and captured[0]["best_line_uci"]
-
 
 
 def test_prompt_version_change_misses_existing_success(coaching, monkeypatch):
     client, repo, service, model = coaching
     first = client.post(PATH).json()["job_id"]
     CoachingProcessor(service, model).process(repo.claim())
-    monkeypatch.setattr("chess_coach.application.coaching.MOVE_EXPLANATION_PROMPT_VERSION", "next-version")
+    monkeypatch.setattr(
+        "chess_coach.application.coaching.MOVE_EXPLANATION_PROMPT_VERSION",
+        "next-version",
+    )
     assert client.get(PATH).json()["status"] == "not_generated"
     assert client.post(PATH).json()["job_id"] != first
+
+
+def test_changed_history_report_cannot_admit_generation(coaching):
+    client, repo, service, _ = coaching
+
+    def unexpected_health():
+        pytest.fail("Stale admission must reject before probing Ollama")
+
+    service.health = unexpected_health
+    response = client.post(
+        "/api/v1/coaching/history",
+        params={"window": "last_20", "expected_report_hash": "b" * 64},
+    )
+    assert response.status_code == 409
+    assert response.json()["code"] == "COACHING_REPORT_CHANGED"
+    assert repo.claim() is None
+
+
+def test_combined_worker_releases_stockfish_before_processing_coaching(
+    coaching, monkeypatch
+):
+    from chess_coach import analysis_worker, coaching_worker
+
+    client, _, service, model = coaching
+    active = False
+
+    class FixtureStockfish:
+        engine_name = "fixture-engine"
+
+        def __init__(self, settings):
+            pass
+
+        def __enter__(self):
+            nonlocal active
+            active = True
+            return self
+
+        def close(self):
+            nonlocal active
+            active = False
+
+        def __exit__(self, *_):
+            self.close()
+
+    generate = model.generate
+
+    def check_engine_released(*args):
+        assert not active
+        return generate(*args)
+
+    model.generate = check_engine_released
+    monkeypatch.setattr(analysis_worker, "StockfishAdapter", FixtureStockfish)
+    monkeypatch.setattr(
+        coaching_worker,
+        "make_coaching_processor",
+        lambda *_: CoachingProcessor(service, model),
+    )
+    job = client.post(PATH).json()["job_id"]
+    analysis_worker.run_worker(service.settings, once=True, with_coaching=True)
+    assert client.get(f"/api/v1/coaching-jobs/{job}").json()["status"] == "done"
+    assert model.calls == 1

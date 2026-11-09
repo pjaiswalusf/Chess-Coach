@@ -57,6 +57,10 @@ def main(argv: list[str] | None = None) -> None:
     worker.add_argument(
         "--once", action="store_true", help="Process one pending run and exit"
     )
+    worker.add_argument(
+        "--with-coaching", action="store_true",
+        help="Process queued coaching while no analysis is pending, using the same worker lock",
+    )
     coaching_worker = commands.add_parser("coaching-worker", help="Process persisted local coaching requests; stop the analysis worker first")
     coaching_worker.add_argument("--once", action="store_true")
     sync_worker = commands.add_parser(
@@ -102,7 +106,7 @@ def main(argv: list[str] | None = None) -> None:
     if args.command == "analysis-worker":
         from chess_coach.analysis_worker import run_worker
 
-        run_worker(settings, once=args.once)
+        run_worker(settings, once=args.once, with_coaching=args.with_coaching)
         return
     if args.command == "doctor":
         from chess_coach.infrastructure.engine.diagnostics import diagnose

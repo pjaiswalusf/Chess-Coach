@@ -8,6 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from chess_coach.application.system import SystemStatus
 from chess_coach.config import Settings
+from chess_coach.domain.analysis import ANALYSIS_VERSION
 
 
 def system_report(
@@ -36,8 +37,13 @@ def system_report(
         "components": {
             "database": {"status": database},
             "stockfish": {"status": stockfish, "version": engine.get("engine_version")},
-            "ollama": {"status": status.ollama.state, "model": settings.ollama_model},
+            "ollama": {
+                "status": status.ollama.state,
+                "model": settings.ollama_model,
+                "model_status": status.ollama_model.state,
+            },
         },
         "statistics": counts,
         "checked_at": datetime.now(UTC),
+        "analysis_version": ANALYSIS_VERSION,
     }
