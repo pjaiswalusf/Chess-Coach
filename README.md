@@ -2,7 +2,7 @@
 
 A local-first chess coach for completed games. Includes historical imports, PGN
 validation, persistent Stockfish analysis, resumable local runs, and a Svelte UI.
-Offline deterministic player analytics are available; LLM coaching is not yet implemented. Shared development rules live in [AGENTS.md](AGENTS.md).
+The UI includes deterministic player analytics and optional explanations from a local Ollama model. Shared development rules live in [AGENTS.md](AGENTS.md).
 
 ## Backend setup
 
@@ -40,7 +40,20 @@ directory. Launch from the repository root for consistent paths. Run `uv run ale
 
 ## Frontend setup
 
-In a second terminal:
+After applying migrations and starting FastAPI, start each local worker from the
+repository root in its own terminal:
+
+```sh
+uv run chess-coach sync-worker
+uv run chess-coach analysis-worker --with-coaching
+```
+
+Use the combined worker with the default `CHESS_COACH_LLM_KEEP_ALIVE=0`. It
+finishes pending engine work first and releases Stockfish before processing an
+explicit coaching request. Ollama is optional for imports, engine review, and
+measured analytics.
+
+Start the frontend from another terminal:
 
 ```sh
 cd frontend
@@ -48,10 +61,15 @@ pnpm install
 pnpm dev
 ```
 
-Vite forwards `/api/*` and `/health` to FastAPI on port 8000. Open Games → Analysis
-runs for the existing analysis workflow and move coaching. Frontend test setup
-and commands are documented in [frontend/README.md](frontend/README.md).
-Backend checks are listed in [AGENTS.md](AGENTS.md#completion-checks).
+Open [Chess Coach](http://127.0.0.1:5173). In **Sync**, enter a Chess.com username
+and start the import. After it finishes, select **Analyze Pending Games**. You can
+reload or leave while work runs; Sync rediscovers the persisted runs. Open
+**Games** to review a position and **Coach** to inspect recurring weaknesses and
+their source moves. **System** shows which local capabilities are available.
+
+Both Vite development and local preview forward `/api/*` and `/health` to
+FastAPI. See [frontend setup and checks](frontend/README.md) and
+[backend checks](AGENTS.md#completion-checks).
 
 ## Interfaces reserved for future features
 
@@ -168,7 +186,8 @@ environment and restart it for server-level cloud disablement. The application
 accepts loopback Ollama hosts and local model tags only; it never downloads models
 or falls back to cloud inference.
 
-After completing engine analysis, stop the analysis worker and run:
+The browser workflow above uses the combined worker. To run coaching separately,
+stop the analysis worker and run:
 
 ```sh
 uv run chess-coach coaching-worker
@@ -176,13 +195,14 @@ uv run chess-coach coaching-worker
 uv run chess-coach coaching-worker --once
 ```
 
-The two workers share a kernel guard and cannot run simultaneously. Stop the
-coaching worker before restarting analysis. This conservative memory policy uses
+The standalone workers share a kernel guard. Stop the standalone coaching
+worker before restarting analysis. This conservative memory policy uses
 the existing local worker pattern; no queue service is required. Queued coaching
 survives process exit, and interrupted generation requeues when its worker starts.
 
-In the existing game review, view saved moves, choose **Explain ply**, then
-**Explain this move**. Requests are explicit, duplicate generation is guarded, and
+In **Games**, open a completed analysis, select a move, and choose
+**Explain this move**. In **Coach**, choose **Generate historical coaching**
+when the measured report has supported weaknesses. Requests are explicit, duplicate generation is guarded, and
 saved coaching reopens without inference. The API exposes move explanation
 GET/POST endpoints, `/api/v1/coaching-jobs/{job_id}`, read-only readiness at
 `/api/v1/system/llm`, and historical coaching GET/POST at
@@ -213,7 +233,8 @@ CHESS_COACH_REAL_OLLAMA=1 uv run pytest tests/api/test_coaching_routes.py -k rea
 Normal tests fake the model and require no Ollama or public network. The fixed
 50-case synthetic development dataset is not a reviewed mistake benchmark and
 does not satisfy the future 200-case held-out acceptance criteria. Human labels
-and explanation-quality scores must be supplied before release approval.
+and explanation-quality scores are needed before claiming the future model-quality
+targets or publishing experimental model-suggested motifs.
 
 ## Motif evidence (Phase 15, experimental)
 

@@ -59,10 +59,11 @@ content hashes and indexed fields. PGN completion is a trusted declaration;
 Chess.com completion requires archive evidence. Unknown pre-FEN history stays
 explicit and is never treated as full history.
 
-Missing current feature snapshots produce FEATURES_NOT_READY; phase stays
-UNCLASSIFIED, castling/time data unavailable, and supported engine statistics
-remain available. A partially present matching snapshot is a data error, rather
-than a plausible complete phase partition. Older feature snapshots are ignored.
+When no compatible feature snapshot exists, the reader derives features in memory
+from validated source and engine evidence using the same versioned extractor as
+the offline command. This makes phase and opening statistics available after a
+normal analysis run without changing persisted state. A partially present or
+invalid matching snapshot remains a data error. Older snapshots are ignored.
 
 NO_GAMES is a valid empty report. PARTIAL retains exploratory descriptive results
 but no ranked weaknesses. With fully compatible engine evidence, fewer than ten
@@ -156,12 +157,24 @@ V1 score is:
 `100 * (significant + 2 * critical) / classifiable opportunities * min(1, opportunities/50, distinct games/10)`
 
 This equals the proposed frequency × severity × support formula. Recency stays
-1.0; no trend comparison is implemented or invented without comparable earlier
-periods. No intermediate rounding occurs. Sort by descending score then candidate
+1.0 and trends do not affect the rankings. No intermediate rounding occurs. Sort by descending score then candidate
 key. Every ranked error carries a real `(game_id, ply)` reference checked against
 the report's analyzed move references. Counts, ratios and partitions validate
 before serialization. These are descriptive coaching priorities, not causal or
 unqualified statistical conclusions.
+
+The UI labels sustained-advantage conversion a strength only for a COMPLETE
+report with at least ten eligible games and at least an 80% win rate in that
+eligible population. This is a descriptive support rule, not a rating or a
+comparison against other players.
+
+Trend periods use the latest ten and the preceding ten selected games within
+the same tracked-player color and exact known clock control and time class. Each
+period needs ten completed analyses with classifiable moves in every game and
+at least 50 classifiable player moves total. The critical-error numerator and
+move denominator are unchanged from the existing severity policy; direction
+compares the exact rates. No pending game in these periods is silently skipped.
+The result describes these samples without a claim about cause or significance.
 
 ## Operation
 

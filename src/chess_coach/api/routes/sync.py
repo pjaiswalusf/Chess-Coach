@@ -3,7 +3,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path
 
 from chess_coach.api.dependencies import get_job_service
-from chess_coach.api.schemas.contracts import AcceptedRun, SyncInput, SyncRunResponse
+from chess_coach.api.schemas.contracts import (
+    AcceptedRun,
+    LatestRuns,
+    SyncInput,
+    SyncRunResponse,
+)
 from chess_coach.application.jobs import JobService
 
 router = APIRouter(prefix="/api/v1/sync-runs", tags=["sync"])
@@ -18,6 +23,11 @@ Service = Annotated[JobService, Depends(get_job_service)]
 )
 def start_sync(body: SyncInput, service: Service) -> dict[str, object]:
     return service.start_sync()
+
+
+@router.get("/latest-work", response_model=LatestRuns)
+def latest_work(service: Service) -> dict[str, int | None]:
+    return service.latest_runs()
 
 
 @router.get(

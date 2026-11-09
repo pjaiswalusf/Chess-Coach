@@ -389,6 +389,22 @@
             ],
             "title": "Model"
           },
+          "model_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "available",
+                  "unavailable",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Status"
+          },
           "status": {
             "enum": [
               "available",
@@ -667,9 +683,20 @@
             "title": "Game Id",
             "type": "integer"
           },
+          "initial_fen": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initial Fen"
+          },
           "moves": {
             "items": {
-              "$ref": "#/components/schemas/MoveResponse"
+              "$ref": "#/components/schemas/ReviewMove"
             },
             "title": "Moves",
             "type": "array"
@@ -703,6 +730,7 @@
           "profile_hash",
           "engine_version",
           "analysis_version",
+          "initial_fen",
           "moves"
         ],
         "title": "GameAnalysisResponse",
@@ -744,6 +772,18 @@
             "title": "Completion Provenance",
             "type": "string"
           },
+          "critical_errors": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Critical Errors"
+          },
           "eco_code": {
             "anyOf": [
               {
@@ -781,6 +821,17 @@
           },
           "player_color": {
             "$ref": "#/components/schemas/PlayerColor"
+          },
+          "player_rating": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Rating"
           },
           "raw_pgn": {
             "title": "Raw Pgn",
@@ -861,6 +912,18 @@
             "title": "Analysis Status",
             "type": "string"
           },
+          "critical_errors": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Critical Errors"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -887,6 +950,17 @@
           },
           "player_color": {
             "$ref": "#/components/schemas/PlayerColor"
+          },
+          "player_rating": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Rating"
           },
           "result": {
             "$ref": "#/components/schemas/GameResult"
@@ -1150,6 +1224,38 @@
           "message"
         ],
         "title": "LLMHealth",
+        "type": "object"
+      },
+      "LatestRuns": {
+        "properties": {
+          "analysis_run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis Run Id"
+          },
+          "sync_run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sync Run Id"
+          }
+        },
+        "required": [
+          "sync_run_id",
+          "analysis_run_id"
+        ],
+        "title": "LatestRuns",
         "type": "object"
       },
       "MotifHealth": {
@@ -1562,7 +1668,440 @@
         "title": "MoveMetrics",
         "type": "object"
       },
-      "MoveResponse": {
+      "OutcomeMetric": {
+        "additionalProperties": false,
+        "properties": {
+          "collapsed_game_ids": {
+            "default": [],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Collapsed Game Ids",
+            "type": "array"
+          },
+          "draws": {
+            "$ref": "#/components/schemas/Rate"
+          },
+          "eligible_game_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Eligible Game Ids",
+            "type": "array"
+          },
+          "evidence_status": {
+            "$ref": "#/components/schemas/EvidenceStatus"
+          },
+          "excluded_game_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Excluded Game Ids",
+            "type": "array"
+          },
+          "losses": {
+            "$ref": "#/components/schemas/Rate"
+          },
+          "nonloss": {
+            "$ref": "#/components/schemas/Rate"
+          },
+          "wins": {
+            "$ref": "#/components/schemas/Rate"
+          }
+        },
+        "required": [
+          "eligible_game_ids",
+          "excluded_game_ids",
+          "wins",
+          "draws",
+          "losses",
+          "nonloss",
+          "evidence_status"
+        ],
+        "title": "OutcomeMetric",
+        "type": "object"
+      },
+      "OverviewResponse": {
+        "properties": {
+          "analytics_version": {
+            "default": "longitudinal-v1",
+            "title": "Analytics Version",
+            "type": "string"
+          },
+          "conversion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutcomeMetric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "conversion_strength": {
+            "title": "Conversion Strength",
+            "type": "boolean"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/AnalyticsFilters"
+          },
+          "health": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalyticsHealthReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "metrics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Summary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "openings": {
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            },
+            "title": "Openings",
+            "type": "array"
+          },
+          "patterns": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/Weakness"
+              },
+              "type": "array"
+            },
+            "title": "Patterns",
+            "type": "object"
+          },
+          "phases": {
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            },
+            "title": "Phases",
+            "type": "array"
+          },
+          "policy_version": {
+            "default": "support-v1",
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "profile_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Hash"
+          },
+          "recent_trends": {
+            "items": {
+              "$ref": "#/components/schemas/RecentTrend"
+            },
+            "title": "Recent Trends",
+            "type": "array"
+          },
+          "selected_game_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Selected Game Ids",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReportStatus"
+          }
+        },
+        "required": [
+          "conversion",
+          "conversion_strength",
+          "recent_trends",
+          "filters",
+          "profile_hash",
+          "status",
+          "selected_game_ids",
+          "health",
+          "metrics",
+          "phases",
+          "openings",
+          "patterns"
+        ],
+        "title": "OverviewResponse",
+        "type": "object"
+      },
+      "PatternsResponse": {
+        "properties": {
+          "analytics_version": {
+            "default": "longitudinal-v1",
+            "title": "Analytics Version",
+            "type": "string"
+          },
+          "contexts": {
+            "items": {
+              "$ref": "#/components/schemas/ContextMetric"
+            },
+            "title": "Contexts",
+            "type": "array"
+          },
+          "conversion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutcomeMetric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "conversion_strength": {
+            "title": "Conversion Strength",
+            "type": "boolean"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/AnalyticsFilters"
+          },
+          "health": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalyticsHealthReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "patterns": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/Weakness"
+              },
+              "type": "array"
+            },
+            "title": "Patterns",
+            "type": "object"
+          },
+          "policy_version": {
+            "default": "support-v1",
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "profile_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Hash"
+          },
+          "ranker_version": {
+            "default": "weakness-ranker-v1",
+            "title": "Ranker Version",
+            "type": "string"
+          },
+          "recent_trends": {
+            "items": {
+              "$ref": "#/components/schemas/RecentTrend"
+            },
+            "title": "Recent Trends",
+            "type": "array"
+          },
+          "report_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Hash"
+          },
+          "selected_game_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Selected Game Ids",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReportStatus"
+          }
+        },
+        "required": [
+          "conversion",
+          "conversion_strength",
+          "recent_trends",
+          "filters",
+          "profile_hash",
+          "status",
+          "selected_game_ids",
+          "health",
+          "report_hash",
+          "patterns",
+          "contexts"
+        ],
+        "title": "PatternsResponse",
+        "type": "object"
+      },
+      "PlayerColor": {
+        "enum": [
+          "white",
+          "black"
+        ],
+        "title": "PlayerColor",
+        "type": "string"
+      },
+      "PlayerInput": {
+        "additionalProperties": false,
+        "properties": {
+          "platform": {
+            "const": "chess.com",
+            "default": "chess.com",
+            "title": "Platform",
+            "type": "string"
+          },
+          "username": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Username",
+            "type": "string"
+          },
+          "verify": {
+            "default": false,
+            "title": "Verify",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "username"
+        ],
+        "title": "PlayerInput",
+        "type": "object"
+      },
+      "PlayerResponse": {
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "player": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/chess_coach__api__schemas__contracts__Player"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "configured",
+          "player"
+        ],
+        "title": "PlayerResponse",
+        "type": "object"
+      },
+      "Rate": {
+        "additionalProperties": false,
+        "properties": {
+          "denominator": {
+            "minimum": 0.0,
+            "title": "Denominator",
+            "type": "integer"
+          },
+          "numerator": {
+            "minimum": 0.0,
+            "title": "Numerator",
+            "type": "integer"
+          },
+          "per_100": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per 100"
+          }
+        },
+        "required": [
+          "numerator",
+          "denominator",
+          "per_100"
+        ],
+        "title": "Rate",
+        "type": "object"
+      },
+      "RecentTrend": {
+        "additionalProperties": false,
+        "properties": {
+          "color": {
+            "$ref": "#/components/schemas/PlayerColor"
+          },
+          "direction": {
+            "enum": [
+              "lower",
+              "higher",
+              "unchanged"
+            ],
+            "title": "Direction",
+            "type": "string"
+          },
+          "earlier": {
+            "$ref": "#/components/schemas/TrendPeriod"
+          },
+          "recent": {
+            "$ref": "#/components/schemas/TrendPeriod"
+          },
+          "time_class": {
+            "title": "Time Class",
+            "type": "string"
+          },
+          "time_control": {
+            "title": "Time Control",
+            "type": "string"
+          }
+        },
+        "required": [
+          "color",
+          "time_class",
+          "time_control",
+          "earlier",
+          "recent",
+          "direction"
+        ],
+        "title": "RecentTrend",
+        "type": "object"
+      },
+      "ReportStatus": {
+        "enum": [
+          "COMPLETE",
+          "PARTIAL",
+          "INSUFFICIENT_DATA",
+          "DATA_ERROR",
+          "NO_GAMES"
+        ],
+        "title": "ReportStatus",
+        "type": "string"
+      },
+      "ReviewMove": {
         "properties": {
           "best_move_uci": {
             "anyOf": [
@@ -1600,6 +2139,10 @@
           "evidence_kind": {
             "default": "single_pass_estimate",
             "title": "Evidence Kind",
+            "type": "string"
+          },
+          "fen_after": {
+            "title": "Fen After",
             "type": "string"
           },
           "fen_before": {
@@ -1695,6 +2238,16 @@
             },
             "title": "Pv Json",
             "type": "array"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Severity"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -1714,189 +2267,12 @@
           "mate_before_winner",
           "mate_after_winner",
           "loss_cp",
-          "pv_json"
+          "pv_json",
+          "fen_after",
+          "severity"
         ],
-        "title": "MoveResponse",
+        "title": "ReviewMove",
         "type": "object"
-      },
-      "PatternsResponse": {
-        "properties": {
-          "analytics_version": {
-            "default": "longitudinal-v1",
-            "title": "Analytics Version",
-            "type": "string"
-          },
-          "contexts": {
-            "items": {
-              "$ref": "#/components/schemas/ContextMetric"
-            },
-            "title": "Contexts",
-            "type": "array"
-          },
-          "filters": {
-            "$ref": "#/components/schemas/AnalyticsFilters"
-          },
-          "health": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/AnalyticsHealthReport"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "patterns": {
-            "additionalProperties": {
-              "items": {
-                "$ref": "#/components/schemas/Weakness"
-              },
-              "type": "array"
-            },
-            "title": "Patterns",
-            "type": "object"
-          },
-          "policy_version": {
-            "default": "support-v1",
-            "title": "Policy Version",
-            "type": "string"
-          },
-          "profile_hash": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Profile Hash"
-          },
-          "ranker_version": {
-            "default": "weakness-ranker-v1",
-            "title": "Ranker Version",
-            "type": "string"
-          },
-          "selected_game_ids": {
-            "items": {
-              "type": "integer"
-            },
-            "title": "Selected Game Ids",
-            "type": "array"
-          },
-          "status": {
-            "$ref": "#/components/schemas/ReportStatus"
-          }
-        },
-        "required": [
-          "filters",
-          "profile_hash",
-          "status",
-          "selected_game_ids",
-          "health",
-          "patterns",
-          "contexts"
-        ],
-        "title": "PatternsResponse",
-        "type": "object"
-      },
-      "PlayerColor": {
-        "enum": [
-          "white",
-          "black"
-        ],
-        "title": "PlayerColor",
-        "type": "string"
-      },
-      "PlayerInput": {
-        "additionalProperties": false,
-        "properties": {
-          "platform": {
-            "const": "chess.com",
-            "default": "chess.com",
-            "title": "Platform",
-            "type": "string"
-          },
-          "username": {
-            "maxLength": 100,
-            "minLength": 1,
-            "title": "Username",
-            "type": "string"
-          }
-        },
-        "required": [
-          "username"
-        ],
-        "title": "PlayerInput",
-        "type": "object"
-      },
-      "PlayerResponse": {
-        "properties": {
-          "configured": {
-            "title": "Configured",
-            "type": "boolean"
-          },
-          "player": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/chess_coach__api__schemas__contracts__Player"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "configured",
-          "player"
-        ],
-        "title": "PlayerResponse",
-        "type": "object"
-      },
-      "Rate": {
-        "additionalProperties": false,
-        "properties": {
-          "denominator": {
-            "minimum": 0.0,
-            "title": "Denominator",
-            "type": "integer"
-          },
-          "numerator": {
-            "minimum": 0.0,
-            "title": "Numerator",
-            "type": "integer"
-          },
-          "per_100": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Per 100"
-          }
-        },
-        "required": [
-          "numerator",
-          "denominator",
-          "per_100"
-        ],
-        "title": "Rate",
-        "type": "object"
-      },
-      "ReportStatus": {
-        "enum": [
-          "COMPLETE",
-          "PARTIAL",
-          "INSUFFICIENT_DATA",
-          "DATA_ERROR",
-          "NO_GAMES"
-        ],
-        "title": "ReportStatus",
-        "type": "string"
       },
       "RunGame": {
         "properties": {
@@ -1931,6 +2307,227 @@
           "error_code"
         ],
         "title": "RunGame",
+        "type": "object"
+      },
+      "RunProgressResponse": {
+        "properties": {
+          "analysis_version": {
+            "title": "Analysis Version",
+            "type": "string"
+          },
+          "cache_hits": {
+            "title": "Cache Hits",
+            "type": "integer"
+          },
+          "cache_misses": {
+            "title": "Cache Misses",
+            "type": "integer"
+          },
+          "cancel_requested": {
+            "title": "Cancel Requested",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "draw_policy_version": {
+            "title": "Draw Policy Version",
+            "type": "string"
+          },
+          "engine_config_json": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "title": "Engine Config Json",
+            "type": "object"
+          },
+          "engine_seconds": {
+            "title": "Engine Seconds",
+            "type": "number"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "games_completed": {
+            "title": "Games Completed",
+            "type": "integer"
+          },
+          "games_excluded": {
+            "title": "Games Excluded",
+            "type": "integer"
+          },
+          "games_failed": {
+            "title": "Games Failed",
+            "type": "integer"
+          },
+          "games_remaining": {
+            "minimum": 0.0,
+            "title": "Games Remaining",
+            "type": "integer"
+          },
+          "games_skipped": {
+            "title": "Games Skipped",
+            "type": "integer"
+          },
+          "games_total": {
+            "title": "Games Total",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_heartbeat_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Heartbeat At"
+          },
+          "positions_analyzed": {
+            "title": "Positions Analyzed",
+            "type": "integer"
+          },
+          "profile_hash": {
+            "title": "Profile Hash",
+            "type": "string"
+          },
+          "progress_percent": {
+            "title": "Progress Percent",
+            "type": "number"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "integer"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "storage_status": {
+            "$ref": "#/components/schemas/AnalysisRunStatus"
+          },
+          "successful_percent": {
+            "title": "Successful Percent",
+            "type": "number"
+          },
+          "terminal_positions": {
+            "title": "Terminal Positions",
+            "type": "integer"
+          },
+          "tracked_player_id": {
+            "title": "Tracked Player Id",
+            "type": "integer"
+          },
+          "worker_available": {
+            "title": "Worker Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "tracked_player_id",
+          "run_id",
+          "status",
+          "storage_status",
+          "created_at",
+          "started_at",
+          "finished_at",
+          "last_heartbeat_at",
+          "profile_hash",
+          "engine_version",
+          "analysis_version",
+          "engine_config_json",
+          "draw_policy_version",
+          "games_total",
+          "games_completed",
+          "games_failed",
+          "games_skipped",
+          "games_excluded",
+          "positions_analyzed",
+          "terminal_positions",
+          "cache_hits",
+          "cache_misses",
+          "engine_seconds",
+          "cancel_requested",
+          "error_code",
+          "error_message",
+          "progress_percent",
+          "successful_percent",
+          "worker_available",
+          "games_remaining"
+        ],
+        "title": "RunProgressResponse",
         "type": "object"
       },
       "RunResponse": {
@@ -2309,8 +2906,30 @@
         "title": "SegmentsResponse",
         "type": "object"
       },
+      "Severity": {
+        "enum": [
+          "normal",
+          "minor",
+          "significant",
+          "critical"
+        ],
+        "title": "Severity",
+        "type": "string"
+      },
       "Statistics": {
         "properties": {
+          "active_analysis_runs": {
+            "title": "Active Analysis Runs",
+            "type": "integer"
+          },
+          "active_coaching_jobs": {
+            "title": "Active Coaching Jobs",
+            "type": "integer"
+          },
+          "active_sync_runs": {
+            "title": "Active Sync Runs",
+            "type": "integer"
+          },
           "games_analyzed": {
             "title": "Games Analyzed",
             "type": "integer"
@@ -2322,12 +2941,20 @@
           "pending_games": {
             "title": "Pending Games",
             "type": "integer"
+          },
+          "positions_cached": {
+            "title": "Positions Cached",
+            "type": "integer"
           }
         },
         "required": [
           "games_stored",
           "games_analyzed",
-          "pending_games"
+          "pending_games",
+          "positions_cached",
+          "active_sync_runs",
+          "active_analysis_runs",
+          "active_coaching_jobs"
         ],
         "title": "Statistics",
         "type": "object"
@@ -2497,6 +3124,11 @@
             "minimum": 0.0,
             "title": "Games Seen",
             "type": "integer"
+          },
+          "games_skipped": {
+            "minimum": 0.0,
+            "title": "Games Skipped",
+            "type": "integer"
           }
         },
         "required": [
@@ -2505,7 +3137,8 @@
           "games_seen",
           "games_inserted",
           "games_existing",
-          "games_failed"
+          "games_failed",
+          "games_skipped"
         ],
         "title": "SyncProgress",
         "type": "object"
@@ -2533,6 +3166,10 @@
               }
             ],
             "title": "Finished At"
+          },
+          "partial": {
+            "title": "Partial",
+            "type": "boolean"
           },
           "progress": {
             "$ref": "#/components/schemas/SyncProgress"
@@ -2572,6 +3209,7 @@
         "required": [
           "run_id",
           "status",
+          "partial",
           "started_at",
           "finished_at",
           "progress",
@@ -2583,6 +3221,10 @@
       },
       "SystemResponse": {
         "properties": {
+          "analysis_version": {
+            "title": "Analysis Version",
+            "type": "string"
+          },
           "checked_at": {
             "format": "date-time",
             "title": "Checked At",
@@ -2615,7 +3257,8 @@
           "status",
           "components",
           "statistics",
-          "checked_at"
+          "checked_at",
+          "analysis_version"
         ],
         "title": "SystemResponse",
         "type": "object"
@@ -2642,6 +3285,39 @@
           "ollama_model"
         ],
         "title": "SystemStatusResponse",
+        "type": "object"
+      },
+      "TrendPeriod": {
+        "additionalProperties": false,
+        "properties": {
+          "critical": {
+            "$ref": "#/components/schemas/Rate"
+          },
+          "first_game_at": {
+            "format": "date-time",
+            "title": "First Game At",
+            "type": "string"
+          },
+          "game_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Game Ids",
+            "type": "array"
+          },
+          "last_game_at": {
+            "format": "date-time",
+            "title": "Last Game At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "first_game_at",
+          "last_game_at",
+          "game_ids",
+          "critical"
+        ],
+        "title": "TrendPeriod",
         "type": "object"
       },
       "Weakness": {
@@ -3231,6 +3907,109 @@
         ]
       }
     },
+    "/api/v1/analysis-runs/{run_id}/progress": {
+      "get": {
+        "operationId": "get_progress_api_v1_analysis_runs__run_id__progress_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Run Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunProgressResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Get Progress",
+        "tags": [
+          "analysis"
+        ]
+      }
+    },
     "/api/v1/analysis-worker": {
       "get": {
         "operationId": "worker_status_api_v1_analysis_worker_get",
@@ -3475,6 +4254,164 @@
           }
         },
         "summary": "Read opening cohorts and evidence sufficiency",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/overview": {
+      "get": {
+        "operationId": "overview_api_v1_analytics_overview_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": "last_50",
+              "enum": [
+                "last_20",
+                "last_50",
+                "last_100",
+                "all"
+              ],
+              "title": "Window",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "color",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "white",
+                "black",
+                "all"
+              ],
+              "title": "Color",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "time_class",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "bullet",
+                "blitz",
+                "rapid",
+                "daily",
+                "all"
+              ],
+              "title": "Time Class",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "profile_hash",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profile Hash"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Read one consistent analytics snapshot for the dashboard",
         "tags": [
           "analytics"
         ]
@@ -4111,6 +5048,23 @@
               ],
               "title": "Profile Hash"
             }
+          },
+          {
+            "in": "query",
+            "name": "expected_report_hash",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Expected Report Hash"
+            }
           }
         ],
         "responses": {
@@ -4252,6 +5206,23 @@
                 }
               ],
               "title": "Profile Hash"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expected_report_hash",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Expected Report Hash"
             }
           }
         ],
@@ -4436,6 +5407,27 @@
                 }
               ],
               "title": "Analysis Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "result",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "win",
+                    "loss",
+                    "draw"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Result"
             }
           }
         ],
@@ -5562,6 +6554,97 @@
           }
         },
         "summary": "Queue a persistent archive synchronization",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
+    "/api/v1/sync-runs/latest-work": {
+      "get": {
+        "operationId": "latest_work_api_v1_sync_runs_latest_work_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LatestRuns"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Latest Work",
         "tags": [
           "sync"
         ]

@@ -22,6 +22,14 @@ from chess_coach.infrastructure.persistence.query_repository import QueryReposit
 from chess_coach.infrastructure.persistence.session import create_session_factory
 
 
+def make_coaching_processor(
+    analysis: AnalysisRepository, settings: Settings
+) -> CoachingProcessor:
+    store = CoachingRepository(QueryRepository(analysis.sessions, analysis))
+    service = CoachingService(store, settings, partial(check_health, settings))
+    return CoachingProcessor(service, OllamaCoach(settings))
+
+
 def run_coaching_worker(settings: Settings, *, once: bool = False) -> None:
     stop = Event()
     previous = {
@@ -29,11 +37,10 @@ def run_coaching_worker(settings: Settings, *, once: bool = False) -> None:
         for sig in (signal.SIGINT, signal.SIGTERM)
     }
     db = create_database_engine(settings.database_url)
-    sessions = create_session_factory(db)
-    store = CoachingRepository(
-        QueryRepository(sessions, AnalysisRepository(sessions, settings.database_path))
+    processor = make_coaching_processor(
+        AnalysisRepository(create_session_factory(db), settings.database_path), settings
     )
-    service = CoachingService(store, settings, partial(check_health, settings))
+    store = processor.service.store
     handler = logging.StreamHandler()
     handler.setFormatter(JsonFormatter())
     logger = logging.getLogger("chess_coach")
@@ -44,7 +51,6 @@ def run_coaching_worker(settings: Settings, *, once: bool = False) -> None:
         # excludes Stockfish work, so the two memory-heavy workloads cannot overlap.
         with worker_guard(settings.database_path):
             store.recover()
-            processor = CoachingProcessor(service, OllamaCoach(settings))
             while not stop.is_set():
                 row = store.claim()
                 if row:

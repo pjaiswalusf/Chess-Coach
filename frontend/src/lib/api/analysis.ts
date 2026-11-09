@@ -3,7 +3,7 @@ import type { components, paths } from './generated/schema.js';
 
 export type RunResponse = components['schemas']['RunResponse'];
 export type WorkerResponse = components['schemas']['WorkerResponse'];
-export type MoveResponse = components['schemas']['MoveResponse'];
+export type MoveResponse = Omit<components['schemas']['ReviewMove'], 'fen_after' | 'severity'>;
 type GameAnalysis = components['schemas']['GameAnalysisResponse'];
 type StartRun =
 	paths['/api/v1/analysis-runs']['post']['requestBody']['content']['application/json'];

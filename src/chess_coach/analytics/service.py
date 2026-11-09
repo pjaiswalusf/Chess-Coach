@@ -14,6 +14,7 @@ from chess_coach.analytics.contracts import (
 from chess_coach.analytics.health import check_analytics_health
 from chess_coach.analytics.metrics import summarize
 from chess_coach.analytics.sample_policy import OVERALL_GAMES
+from chess_coach.analytics.trends import recent_trends
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +80,7 @@ class AnalyticsService:
             opening_metrics=opening,
             behavioral_metrics=behavioral,
             advantage_metrics=advantage,
+            recent_trends=recent_trends(games),
             castling_metrics=patterns.castling(games),
             ranked_weaknesses=rankings,
         )

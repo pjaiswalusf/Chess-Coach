@@ -1,4 +1,4 @@
-import { onMount } from 'svelte';
+import { untrack } from 'svelte';
 import { apiErrorMessage } from '#lib/api/errors.js';
 
 type ReadState<T> =
@@ -10,13 +10,14 @@ type ReadState<T> =
 export function asyncRead<T>(
 	read: (signal: AbortSignal) => Promise<T>,
 	fallback: string,
-	isEmpty?: (data: T) => boolean
+	isEmpty?: (data: T) => boolean,
+	key?: () => unknown
 ) {
 	let state = $state<ReadState<T>>({ status: 'loading' });
 	let active: AbortController | undefined;
 
 	async function refresh() {
-		if (active) return;
+		active?.abort();
 		const request = new AbortController();
 		active = request;
 		state = { status: 'loading' };
@@ -28,12 +29,13 @@ export function asyncRead<T>(
 			if (!request.signal.aborted)
 				state = { status: 'error', message: apiErrorMessage(error, fallback) };
 		} finally {
-			active = undefined;
+			if (active === request) active = undefined;
 		}
 	}
 
-	onMount(() => {
-		void refresh();
+	$effect(() => {
+		key?.();
+		untrack(() => void refresh());
 		return () => active?.abort();
 	});
 

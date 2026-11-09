@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import Field, model_validator
 
-from chess_coach.domain.analysis import ANALYSIS_VERSION
+from chess_coach.domain.analysis import ANALYSIS_VERSION, fingerprint
 from chess_coach.domain.feature_models import EvidenceModel, GamePhase
 from chess_coach.domain.game_records import GameResult, PlayerColor
 
@@ -349,6 +349,22 @@ class AnalyticsHealthReport(EvidenceModel):
     warnings: tuple[Diagnostic, ...]
 
 
+class TrendPeriod(EvidenceModel):
+    first_game_at: datetime
+    last_game_at: datetime
+    game_ids: tuple[int, ...]
+    critical: Rate
+
+
+class RecentTrend(EvidenceModel):
+    color: PlayerColor
+    time_class: str
+    time_control: str
+    earlier: TrendPeriod
+    recent: TrendPeriod
+    direction: Literal["lower", "higher", "unchanged"]
+
+
 class AnalyticsReport(EvidenceModel):
     analytics_version: Literal["longitudinal-v1"] = "longitudinal-v1"
     policy_version: Literal["support-v1"] = "support-v1"
@@ -367,6 +383,7 @@ class AnalyticsReport(EvidenceModel):
     behavioral_metrics: tuple[ContextMetric, ...] = ()
     advantage_metrics: AdvantageMetrics | None = None
     castling_metrics: CastlingMetrics | None = None
+    recent_trends: tuple[RecentTrend, ...] = ()
     # Category-specific rankings: scores across different populations are not comparable.
     ranked_weaknesses: dict[str, tuple[Weakness, ...]] = Field(default_factory=dict)
 
@@ -423,3 +440,8 @@ class AnalyticsReport(EvidenceModel):
                 ):
                     raise ValueError("Invalid weakness provenance")
         return self
+
+
+def coaching_report_hash(report: AnalyticsReport) -> str:
+    """Stable identity for historical coaching, excluding display-only comparisons."""
+    return fingerprint(report.model_dump(mode="json", exclude={"recent_trends"}))

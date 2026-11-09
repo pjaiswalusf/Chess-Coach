@@ -19,6 +19,7 @@ from chess_coach.analytics.contracts import (
     MoveEvidence,
 )
 from chess_coach.analytics.feature_config import DEFAULT_CONFIG
+from chess_coach.analytics.features import extract_game_features
 from chess_coach.analytics.sample_policy import severity
 from chess_coach.application.parse_imported_games import ParseInput, _source_result
 from chess_coach.domain.analysis import fingerprint, history_hash, validate_result
@@ -168,7 +169,6 @@ class AnalyticsRepository:
         fetched = perf_counter()
         result = []
         errors: list[Diagnostic] = []
-        warnings: list[Diagnostic] = []
         for g in games:
             try:
                 result.append(
@@ -181,7 +181,6 @@ class AnalyticsRepository:
                         features[g.id],
                         runs,
                         positions,
-                        warnings,
                     )
                 )
             except EvidenceError as exc:
@@ -204,7 +203,6 @@ class AnalyticsRepository:
         return EvidenceDataset(
             games=tuple(present[g.id] for g in games),
             errors=tuple(errors),
-            warnings=tuple(warnings),
             retrieval_seconds=fetched - start,
             validation_seconds=perf_counter() - fetched,
         )
@@ -219,7 +217,6 @@ class AnalyticsRepository:
         feature_rows: list[MoveFeature],
         runs: dict[int, AnalysisRun],
         positions: dict[int, PositionCache],
-        warnings: list[Diagnostic],
     ) -> GameEvidence:
         require(
             g.parser_version == PARSER_VERSION
@@ -285,9 +282,9 @@ class AnalyticsRepository:
                     "INCOMPATIBLE_ANALYSIS",
                 )
                 self._validate_analysis(g, parsed, st, rows, run, positions)
-                fs = self._features(g, source, rows, feature_rows, request.profile_hash)
-                if not fs:
-                    warnings.append(Diagnostic(code="FEATURES_NOT_READY", game_id=g.id))
+                fs = self._features(
+                    g, source, parsed, rows, feature_rows, request.profile_hash
+                )
                 previous_capture = None
                 built = []
                 for source_move, row in zip(parsed.moves, rows, strict=True):
@@ -490,6 +487,7 @@ class AnalyticsRepository:
     def _features(
         g: Game,
         source: ParseInput,
+        parsed: ParsedGame,
         rows: list[MoveAnalysis],
         stored: list[MoveFeature],
         profile: str,
@@ -527,7 +525,9 @@ class AnalyticsRepository:
         )
         selected = [r for r in stored if r.input_hash == identity]
         if not selected:
-            return {}
+            # Use the same versioned extractor as the offline snapshot command.
+            # The source and engine rows have already passed deep validation.
+            return {f.ply: f for f in extract_game_features(g.id, parsed, analyses)}
         require(
             [r.ply for r in selected] == list(range(1, len(rows) + 1)),
             "FEATURE_SET_INVALID",

@@ -39,7 +39,11 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(data)
 
 
-def run_worker(settings: Settings, *, once: bool = False) -> None:
+def run_worker(
+    settings: Settings, *, once: bool = False, with_coaching: bool = False
+) -> None:
+    if with_coaching and settings.llm_keep_alive != "0":
+        raise ValueError("Set CHESS_COACH_LLM_KEEP_ALIVE=0 for the combined worker.")
     handler = logging.StreamHandler()
     handler.setFormatter(JsonFormatter())
     logging.getLogger("chess_coach").addHandler(handler)
@@ -56,6 +60,12 @@ def run_worker(settings: Settings, *, once: bool = False) -> None:
             profile = configured_profile(settings, engine.engine_name)
             store.register(profile)
             store.recover(profile)
+            coaching = None
+            if with_coaching:
+                from chess_coach.coaching_worker import make_coaching_processor
+
+                coaching = make_coaching_processor(store, settings)
+                coaching.service.store.recover()
 
             def heartbeat() -> None:
                 while not pulse_stop.wait(5):
@@ -84,7 +94,20 @@ def run_worker(settings: Settings, *, once: bool = False) -> None:
                             )
                         run_id = store.claim(profile)
                         if run_id is not None:
+                            # A preceding coaching job may have shut down Stockfish.
+                            engine.start()
+                            if engine.engine_name != profile.engine:
+                                raise ValueError(
+                                    "Stockfish identity changed; restart the worker."
+                                )
                             processor.process(run_id)
+                        elif coaching is not None:
+                            row = coaching.service.store.claim()
+                            if row is not None:
+                                # Keep the same kernel guard, without retaining Stockfish memory
+                                # while Ollama loads the model. Restart on the next engine run.
+                                engine.close()
+                                coaching.process(row)
                         failures = 0
                         if once:
                             break
@@ -95,6 +118,8 @@ def run_worker(settings: Settings, *, once: bool = False) -> None:
                             raise
                         stop.wait(failures)
                         store.recover(profile)
+                        if coaching is not None:
+                            coaching.service.store.recover()
             finally:
                 pulse_stop.set()
                 pulse.join(timeout=10)

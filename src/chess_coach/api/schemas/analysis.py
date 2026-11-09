@@ -21,7 +21,7 @@ class RunGame(BaseModel):
     error_code: str | None
 
 
-class RunResponse(BaseModel):
+class RunProgress(BaseModel):
     id: int
     tracked_player_id: int
     run_id: int
@@ -52,6 +52,13 @@ class RunResponse(BaseModel):
     progress_percent: float
     successful_percent: float
     worker_available: bool
+
+
+class RunProgressResponse(RunProgress):
+    games_remaining: int = Field(ge=0)
+
+
+class RunResponse(RunProgress):
     games: list[RunGame]
 
 

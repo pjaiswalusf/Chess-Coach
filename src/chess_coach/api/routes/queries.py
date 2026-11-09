@@ -31,7 +31,7 @@ def player(service: Service) -> dict[str, object]:
     summary="Configure the tracked player without importing games",
 )
 def set_player(body: PlayerInput, service: Service) -> dict[str, object]:
-    return service.set_player(body.username)
+    return service.set_player(body.username, body.verify)
 
 
 @router.get(
@@ -48,8 +48,11 @@ def games(
     time_class: TimeClass | None = None,
     player_color: Literal["white", "black"] | None = None,
     analysis_status: Literal["pending", "running", "completed", "failed"] | None = None,
+    result: Literal["win", "loss", "draw"] | None = None,
 ) -> dict[str, object]:
-    return service.games(limit, offset, time_class, player_color, analysis_status)
+    return service.games(
+        limit, offset, time_class, player_color, analysis_status, result
+    )
 
 
 @router.get(

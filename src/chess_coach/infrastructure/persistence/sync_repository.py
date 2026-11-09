@@ -175,6 +175,7 @@ class SyncRepository:
                     RunStatus.FAILED: "failed",
                     RunStatus.PARTIAL: "failed",
                 }[run.status],
+                "partial": run.status == RunStatus.PARTIAL,
                 "started_at": run.started_at,
                 "finished_at": run.finished_at,
                 "progress": {
@@ -192,6 +193,7 @@ class SyncRepository:
                     "games_inserted": run.games_inserted,
                     "games_existing": run.games_existing,
                     "games_failed": run.games_failed,
+                    "games_skipped": run.games_skipped,
                 },
                 "error": {
                     "code": "SYNC_FAILED",

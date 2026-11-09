@@ -24,9 +24,12 @@ pnpm dev
 
 Vite binds to `127.0.0.1:5173` and forwards `/health` and `/api/*` to FastAPI on
 `127.0.0.1:8000`. Start FastAPI using the [root setup instructions](../README.md#backend-setup).
-The header checks FastAPI liveness on mount and on demand. Open System to check
-database, Stockfish, and Ollama availability separately. Games shows a short
-preview of completed history and links to the existing analysis and move coaching workflow.
+The local build preview uses the same proxy on `127.0.0.1:4173`. Neither mode
+enables CORS. System refreshes process health and dependency diagnostics separately.
+Sync rediscovers persistent runs when opened. Dashboard, Games, and Coach read
+fresh data on entry; changing a Games filter or coaching window refreshes from
+the backend and preserves the selection in the URL. Job polling uses GET only,
+one request at a time per run, with capped retry delays on disconnection.
 
 ## API contracts
 
@@ -63,6 +66,7 @@ With ports 5173 and 8000 free and the root Python environment synced, run
 `PHASE16_LIVE=1 pnpm test:e2e recovery-live.spec.ts` from this directory. It uses a
 temporary migrated database, disables access to real Stockfish and Ollama, and
 verifies browser behavior through Vite while stopping and restarting FastAPI.
+Use `PHASE16_LIVE=preview` to run the same check through the build preview.
 
 Style application markup with Tailwind classes. `src/routes/layout.css` contains
 only Tailwind setup.

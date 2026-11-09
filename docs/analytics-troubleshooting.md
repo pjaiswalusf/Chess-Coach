@@ -8,7 +8,7 @@ separately. A valid descriptive report is not proof of sufficient evidence.
 | --- | --- |
 | PLAYER_NOT_FOUND / NO_GAMES | Check player ID, READY completed-game status and filters. Do not manufacture defaults. |
 | ANALYSIS_PARTIAL | Inspect pending/running/failed/incompatible counts; finish a compatible run separately. |
-| FEATURES_NOT_READY | Run offline `extract-features` for this exact profile. Current report retains unknown phase and available engine statistics. |
+| Missing feature snapshot | Analytics derives features in memory from valid completed analysis. The optional offline `extract-features` command stores snapshots for repeated reads. |
 | GAME_REVALIDATION_REQUIRED / PARSED_METADATA_INVALID | Inspect preserved source and explicitly revalidate the earlier parsing layer. |
 | ANALYSIS_SOURCE_CHANGED | Revalidate source, then create a compatible analysis run explicitly. |
 | MISSING_MOVE_ANALYSIS / MISSING_POSITION_EVIDENCE | Inspect interrupted/corrupted engine evidence and repair through its normal resumable workflow. |

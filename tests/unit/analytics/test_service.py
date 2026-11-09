@@ -255,7 +255,13 @@ def test_historical_coaching_keeps_deterministic_ranking_and_refs(factory):
     from chess_coach.application.errors import OperationError
 
     report = build(planted(factory))
+    from chess_coach.domain.analysis import fingerprint
+
     evidence = historical_evidence(report)
+    # A report written before the UI gained trends produces the same coaching cache key.
+    legacy = report.model_dump(mode="json")
+    del legacy["recent_trends"]
+    assert evidence.report_hash == fingerprint(legacy)
     assert evidence.patterns[0].candidate_key == "phase:endgame"
     assert evidence.patterns[0].critical_errors == 24
     assert evidence.patterns[0].source_moves == report.ranked_weaknesses["phase"][0].source_moves[:3]
@@ -265,3 +271,23 @@ def test_historical_coaching_keeps_deterministic_ranking_and_refs(factory):
     raw["priorities"][0]["pattern_id"] = "invented"
     with pytest.raises(OperationError):
         validated_output(json.dumps(raw), evidence)
+
+
+@pytest.mark.parametrize("game_count,wins,expected", [
+    (9, 9, False), (10, 7, False), (10, 8, True), (10, 9, True),
+])
+def test_conversion_strength_requires_supported_history_and_threshold(factory, game_count, wins, expected):
+    from chess_coach.analytics.sample_policy import has_conversion_strength
+    from chess_coach.domain.game_records import GameResult
+
+    games = []
+    for i in range(1, game_count + 1):
+        game = factory(
+            game_id=i,
+            losses=(0, 0),
+            result=GameResult.WIN if i <= wins else GameResult.LOSS,
+        )
+        games.append(game.model_copy(update={
+            "moves": tuple(m.model_copy(update={"before_cp": 150, "after_cp": 150}) for m in game.moves)
+        }))
+    assert has_conversion_strength(build(tuple(games))) is expected

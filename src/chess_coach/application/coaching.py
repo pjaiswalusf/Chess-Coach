@@ -8,7 +8,12 @@ from typing import Literal, Protocol
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
-from chess_coach.analytics.contracts import AnalyticsReport, ReportStatus, Weakness
+from chess_coach.analytics.contracts import (
+    AnalyticsReport,
+    ReportStatus,
+    Weakness,
+    coaching_report_hash,
+)
 from chess_coach.application.coaching_evidence import EvidenceBuilder
 from chess_coach.application.errors import OperationError
 from chess_coach.config import Settings
@@ -129,7 +134,7 @@ def historical_evidence(report: AnalyticsReport) -> HistoricalEvidence:
         for w in report.ranked_weaknesses.get(category, ())
     )[:5]
     return HistoricalEvidence(
-        report_hash=fingerprint(report.model_dump(mode="json")),
+        report_hash=coaching_report_hash(report),
         analytics_version=report.analytics_version,
         policy_version=report.policy_version,
         ranker_version=report.ranker_version,
@@ -191,9 +196,21 @@ class CoachingService:
         return self.request(self.builder.move(game, ply, profile), generate)
 
     def history(
-        self, report: AnalyticsReport, generate: bool = False
+        self,
+        report: AnalyticsReport,
+        generate: bool = False,
+        expected_report_hash: str | None = None,
     ) -> CoachingResponse:
         evidence = historical_evidence(report)
+        if (
+            generate
+            and expected_report_hash is not None
+            and expected_report_hash != evidence.report_hash
+        ):
+            raise OperationError(
+                "COACHING_REPORT_CHANGED",
+                "The historical evidence changed. Refresh the report before generating coaching.",
+            )
         if not evidence.patterns:
             return CoachingResponse(
                 status="insufficient_evidence",

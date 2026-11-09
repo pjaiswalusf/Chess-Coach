@@ -51,9 +51,11 @@
 		</nav>
 	</div>
 	<div class="min-w-0">
-		<header class="border-b border-slate-200 bg-white px-4 py-3 md:px-8">
-			<HealthStatus />
-		</header>
+		{#if page.route.id !== '/system'}
+			<header class="border-b border-slate-200 bg-white px-4 py-3 md:px-8">
+				<HealthStatus />
+			</header>
+		{/if}
 		<main id="main-content" tabindex="-1" class="mx-auto max-w-5xl space-y-6 p-4 md:p-8">
 			{@render children()}
 		</main>

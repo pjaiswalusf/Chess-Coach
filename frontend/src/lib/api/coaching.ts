@@ -1,6 +1,8 @@
 import { apiRequest, invalidResponse, isRecord } from './client.js';
+import type { Window } from './analytics.js';
 import type { components } from './generated/schema.js';
 
+export type LLMHealth = components['schemas']['LLMHealth'];
 export type CoachingResponse = components['schemas']['CoachingResponse'];
 
 function path(game: number, ply: number, profile: string) {
@@ -19,7 +21,23 @@ async function readCoaching(path: string, init: RequestInit): Promise<CoachingRe
 	return data;
 }
 
+export async function getLLMHealth(signal: AbortSignal) {
+	const data = await apiRequest<LLMHealth>('/api/v1/system/llm', { signal, cache: 'no-store' });
+	if (
+		!isRecord(data) ||
+		!['ready', 'server_unavailable', 'model_missing', 'check_failed'].includes(data.status) ||
+		typeof data.model !== 'string'
+	)
+		throw invalidResponse();
+	return data;
+}
+
 export const coachingApi = {
+	history: (window: Window, profile: string, signal: AbortSignal, expectedHash?: string) =>
+		readCoaching(
+			`/api/v1/coaching/history?window=${window}&profile_hash=${encodeURIComponent(profile)}${expectedHash ? '&expected_report_hash=' + encodeURIComponent(expectedHash) : ''}`,
+			{ method: expectedHash ? 'POST' : 'GET', signal }
+		),
 	get: (game: number, ply: number, profile: string, signal?: AbortSignal) =>
 		readCoaching(path(game, ply, profile), { method: 'GET', signal }),
 	generate: (game: number, ply: number, profile: string, signal?: AbortSignal) =>

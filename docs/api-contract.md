@@ -34,6 +34,34 @@ Existing diagnostic extensions remain: `GET /api/v1/system/status`,
 The old game-analysis bare array is now `{game_id, status, profile_hash,
 engine_version, analysis_version, moves}`; the existing frontend client is updated.
 
+## Phase 17 product UI extensions
+
+- `PUT /player` with `verify: true` checks the public Chess.com profile with a
+  bounded request before first binding the library. A missing player returns
+  `PLAYER_NOT_FOUND`; a failed verification leaves the library unconfigured.
+  The browser uses verification, while the legacy local configuration contract
+  still accepts an omitted flag. Neither variant starts an import.
+- `GET /sync-runs/latest-work` returns the latest tracked-player IDs, preferring
+  active runs, so reload and ambiguous admission responses can be reconciled by
+  reading the database. Sync progress exposes `partial` and
+  `progress.games_skipped`. `GET /analysis-runs/{run_id}/progress` includes
+  `games_remaining` and omits the per-game member list.
+- `GET /games` accepts `result=win|loss|draw`. Page items show the tracked
+  player's rating and a nullable critical-error count for the current profile,
+  using only the player's classifiable stored moves. The list checks source
+  identity and move count; review performs deep legality and history validation.
+  The review response adds `initial_fen` and each move's `fen_after` and
+  backend severity. No frontend chess replay is required.
+- `GET /analytics/overview` returns the dashboard projections from one report
+  snapshot. The overview and patterns responses include supported conversion and
+  trend evidence (see [analytics policy](ANALYTICS.md)). Patterns exposes a stable
+  `report_hash`; POST to `/coaching/history` can send
+  `expected_report_hash` to reject changed evidence with `COACHING_REPORT_CHANGED`
+  before checking Ollama or admitting work.
+- `GET /system` also reports configured model readiness, cache size, active work
+  counts, and analysis version. Vite binds to loopback with CORS disabled in
+  both dev and preview.
+
 ## Shared conventions and errors
 
 JSON bodies; UTC ISO 8601 timestamps (nullable when not known); positive database
@@ -169,7 +197,8 @@ See [analytics definitions and sample policy](ANALYTICS.md) for all thresholds.
 Unknown phases remain unclassified. Small cohorts expose insufficient evidence;
 unsupported rankings are suppressed. Weakness source_moves identify game/ply;
 priority_score is a versioned heuristic, not a probability or causal conclusion.
-No upstream lookup, feature generation, inference or analysis occurs during reads.
+Reads start no upstream lookup, engine search, inference, or writes. Validated
+engine evidence can supply transient deterministic features when snapshots are absent.
 Existing analytics may validate/replay stored evidence, so all-history reads can be
 slow: no Phase 13 latency guarantee or cache is claimed.
 

@@ -8,8 +8,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from chess_coach.analytics.contracts import (
     AnalyticsHealthReport,
     ContextMetric,
+    OutcomeMetric,
+    RecentTrend,
     ReportStatus,
     Segment,
+    Severity,
     Summary,
     Weakness,
 )
@@ -36,6 +39,7 @@ class PlayerInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     platform: Literal["chess.com"] = "chess.com"
     username: str = Field(min_length=1, max_length=100)
+    verify: bool = False
 
     @field_validator("username")
     @classmethod
@@ -70,9 +74,16 @@ class SyncProgress(BaseModel):
     games_inserted: int = Field(ge=0)
     games_existing: int = Field(ge=0)
     games_failed: int = Field(ge=0)
+    games_skipped: int = Field(ge=0)
+
+
+class LatestRuns(BaseModel):
+    sync_run_id: int | None
+    analysis_run_id: int | None
 
 
 class SyncRunResponse(AcceptedRun):
+    partial: bool
     started_at: datetime | None
     finished_at: datetime | None
     progress: SyncProgress
@@ -89,6 +100,8 @@ class GameItem(BaseModel):
     time_class: str | None
     opening_name: str | None
     analysis_status: GameStatus
+    player_rating: int | None = None
+    critical_errors: int | None = Field(default=None, ge=0)
 
 
 class GamePage(BaseModel):
@@ -109,13 +122,19 @@ class GameDetail(GameItem):
     completion_provenance: Literal["chesscom_archive", "pgn_declaration"]
 
 
+class ReviewMove(MoveResponse):
+    fen_after: str
+    severity: Severity | None
+
+
 class GameAnalysisResponse(BaseModel):
     game_id: int
     status: GameStatus
     profile_hash: str | None
     engine_version: str | None
     analysis_version: str | None
-    moves: list[MoveResponse]
+    initial_fen: str | None
+    moves: list[ReviewMove]
 
 
 class AnalyticsFilters(BaseModel):
@@ -143,15 +162,29 @@ class SegmentsResponse(AnalyticsBase):
     items: tuple[Segment, ...]
 
 
-class PatternsResponse(AnalyticsBase):
+class ProgressEvidence(BaseModel):
+    conversion: OutcomeMetric | None
+    conversion_strength: bool
+    recent_trends: tuple[RecentTrend, ...]
+
+
+class PatternsResponse(AnalyticsBase, ProgressEvidence):
+    report_hash: str | None
     ranker_version: str = "weakness-ranker-v1"
     patterns: dict[str, tuple[Weakness, ...]]
     contexts: tuple[ContextMetric, ...]
 
 
+class OverviewResponse(SummaryResponse, ProgressEvidence):
+    phases: tuple[Segment, ...]
+    openings: tuple[Segment, ...]
+    patterns: dict[str, tuple[Weakness, ...]]
+
+
 class Component(BaseModel):
     status: Literal["available", "unavailable", "unknown"]
     model: str | None = None
+    model_status: Literal["available", "unavailable", "unknown"] | None = None
     version: str | None = None
 
 
@@ -165,6 +198,10 @@ class Statistics(BaseModel):
     games_stored: int
     games_analyzed: int
     pending_games: int
+    positions_cached: int
+    active_sync_runs: int
+    active_analysis_runs: int
+    active_coaching_jobs: int
 
 
 class SystemResponse(BaseModel):
@@ -172,3 +209,4 @@ class SystemResponse(BaseModel):
     components: Components
     statistics: Statistics | None
     checked_at: datetime
+    analysis_version: str

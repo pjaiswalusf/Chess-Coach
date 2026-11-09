@@ -1,25 +1,35 @@
 /** Opt-in: PHASE10_REAL=1 pnpm test:e2e analysis-real.e2e.ts.
- * Requires local Stockfish and the documented preflight backup; never touches the source DB.
+ * Requires local Stockfish. Uses a newly migrated deterministic fixture database.
  */
 import { expect, test } from '@playwright/test';
 import { spawn, execFileSync, type ChildProcess } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { once } from 'node:events';
 
-test('real UI, API and worker survive hard stop and profile change', async ({ page, context }) => {
+test('real UI, API and worker survive hard stop and profile change', async ({
+	page,
+	context
+}, testInfo) => {
 	test.skip(process.env.PHASE10_REAL !== '1', 'Opt-in local Stockfish integration');
 	test.setTimeout(120000);
 	const root = resolve('..');
 	const python = resolve(root, '.venv/bin/python');
-	const database = resolve(mkdtempSync(resolve(tmpdir(), 'phase10-browser-')), 'test.db');
-	execFileSync(
-		python,
-		['scripts/benchmark_phase10.py', '--games', '10', '--database', database, '--prepare-only'],
-		{ cwd: root, stdio: 'pipe' }
-	);
-	const env = { ...process.env, CHESS_COACH_DATABASE_PATH: database };
+	const cli = resolve(root, '.venv/bin/chess-coach');
+	const directory = mkdtempSync(resolve(tmpdir(), 'phase17-browser-'));
+	const database = resolve(directory, 'test.db');
+	execFileSync(python, ['tests/fixtures/prepare_browser_analysis.py', database], {
+		cwd: root,
+		stdio: 'pipe'
+	});
+	const env = {
+		...process.env,
+		CHESS_COACH_DATABASE_PATH: database,
+		CHESS_COACH_STOCKFISH_NODES: '10000',
+		CHESS_COACH_OLLAMA_HOST: 'http://127.0.0.1:9',
+		CHESS_COACH_LLM_KEEP_ALIVE: '0'
+	};
 	const api = spawn(
 		python,
 		['-m', 'uvicorn', 'chess_coach.api.app:app', '--host', '127.0.0.1', '--port', '8000'],
@@ -38,7 +48,7 @@ test('real UI, API and worker survive hard stop and profile change', async ({ pa
 		return result.json();
 	}
 	try {
-		worker = spawn(python, ['-m', 'chess_coach.analysis_worker'], {
+		worker = spawn(cli, ['analysis-worker', '--with-coaching'], {
 			cwd: root,
 			env,
 			stdio: 'ignore'
@@ -59,8 +69,8 @@ test('real UI, API and worker survive hard stop and profile change', async ({ pa
 				{ timeout: 15000 }
 			)
 			.toBe(true);
-		await page.goto('/games/analysis');
-		await page.getByRole('button', { name: 'Analyze eligible games' }).click();
+		await page.goto('/sync');
+		await page.getByRole('button', { name: 'Analyze Pending Games' }).click({ timeout: 10000 });
 		await expect
 			.poll(async () => (await runs())[0]?.games_completed ?? 0, {
 				intervals: [20],
@@ -73,23 +83,35 @@ test('real UI, API and worker survive hard stop and profile change', async ({ pa
 		expect(interrupted.games_completed).toBeGreaterThanOrEqual(2);
 		expect(interrupted.games_completed).toBeLessThan(10);
 		await page.close();
-		worker = spawn(python, ['-m', 'chess_coach.analysis_worker'], {
+		worker = spawn(cli, ['analysis-worker', '--with-coaching'], {
 			cwd: root,
 			env,
 			stdio: 'ignore'
 		});
 		const reopened = await context.newPage();
-		await reopened.goto('/games/analysis');
+		await reopened.goto('/sync');
 		await expect.poll(async () => (await runs())[0]?.status, { timeout: 30000 }).toBe('completed');
-		await expect(reopened.getByRole('heading', { name: 'Run #1 · completed' })).toBeVisible();
-		await reopened.getByRole('button', { name: 'Analyze eligible games' }).click();
+		await expect(reopened.getByText('Analysis run #1', { exact: true })).toBeVisible();
+		await expect(reopened.getByText(/Analyzed: 10/)).toBeVisible();
+		const overview = await (
+			await context.request.get('http://127.0.0.1:8000/api/v1/analytics/overview')
+		).json();
+		expect(overview.health.analyzed_games).toBe(10);
+		expect(
+			overview.phases.some(
+				(phase: { key: string; evidence_status: string }) =>
+					phase.key !== 'unclassified' && phase.evidence_status === 'sufficient'
+			)
+		).toBe(true);
+		await reopened.getByRole('button', { name: 'Analyze Pending Games' }).click({ timeout: 10000 });
 		await expect.poll(async () => (await runs())[0]?.id).toBe(2);
 		const repeat = (await runs())[0];
 		expect(repeat.games_skipped).toBe(10);
 		expect(repeat.positions_analyzed).toBe(0);
+		await expect(reopened.getByText('No pending games were eligible for analysis.')).toBeVisible();
 		await stop(worker);
 		worker = null;
-		worker = spawn(python, ['-m', 'chess_coach.analysis_worker'], {
+		worker = spawn(cli, ['analysis-worker', '--with-coaching'], {
 			cwd: root,
 			env: { ...env, CHESS_COACH_STOCKFISH_NODES: '20000' },
 			stdio: 'ignore'
@@ -101,26 +123,26 @@ test('real UI, API and worker survive hard stop and profile change', async ({ pa
 						.available
 			)
 			.toBe(true);
-		await reopened.getByRole('button', { name: 'Analyze eligible games' }).click();
+		await reopened.getByRole('button', { name: 'Analyze Pending Games' }).click({ timeout: 10000 });
 		await expect.poll(async () => (await runs())[0]?.id).toBe(3);
 		await expect.poll(async () => (await runs())[0]?.status, { timeout: 30000 }).toBe('completed');
 		const changed = (await runs())[0];
 		expect(changed.profile_hash).not.toBe(repeat.profile_hash);
 		expect(changed.games_skipped).toBe(0);
 		expect(changed.games_completed).toBe(10);
-		await expect(reopened.getByRole('heading', { name: 'Run #3 · completed' })).toBeVisible();
-		await reopened.screenshot({ path: resolve(root, 'data/phase10-browser.png'), fullPage: true });
-		const newest = reopened
-			.locator('article')
-			.filter({ has: reopened.getByRole('heading', { name: 'Run #3 · completed' }) });
-		await newest.getByText('Games and evidence').click();
-		await newest
-			.getByRole('button', { name: /View moves for game/ })
-			.first()
-			.click();
-		await expect(reopened.getByRole('table')).toBeVisible();
+		await expect(reopened.getByText('Analysis run #3', { exact: true })).toBeVisible();
+		await reopened.goto(`/games/${changed.games[0].game_id}`);
+		await expect(reopened.getByRole('group', { name: /Chessboard/ })).toBeVisible();
+		await reopened.getByRole('button', { name: 'Final position' }).click({ timeout: 10000 });
+		await expect(reopened.getByRole('button', { name: 'Next move' })).toBeDisabled();
+		await expect(reopened.getByRole('heading', { name: /Move evidence/ })).toBeVisible();
+		await reopened.screenshot({
+			path: testInfo.outputPath('analysis-browser.png'),
+			fullPage: true
+		});
 	} finally {
 		await stop(worker);
 		await stop(api);
+		rmSync(directory, { recursive: true, force: true });
 	}
 });
