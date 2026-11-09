@@ -7,7 +7,8 @@ from chess_coach.api.app import app
 
 def ts(schema):
     if "const" in schema:
-        return repr(schema["const"])
+        value = schema["const"]
+        return str(value).lower() if isinstance(value, bool) else repr(value)
     if "$ref" in schema:
         return schema["$ref"].rsplit("/", 1)[1]
     if "anyOf" in schema:

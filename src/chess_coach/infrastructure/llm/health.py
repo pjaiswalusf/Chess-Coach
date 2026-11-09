@@ -39,7 +39,7 @@ def check_health(
                 server_reachable=True,
                 model_installed=False,
                 status="model_missing",
-                message="Install the configured local model with ollama pull, then retry.",
+                message="Configure an existing local Ollama model tag, then retry.",
             )
     except httpx.TransportError:
         return LLMHealth(

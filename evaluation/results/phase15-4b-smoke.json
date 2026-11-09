@@ -1,0 +1,38 @@
+{
+  "dataset_hash": "c4e887d5459bc1e6cca2302b7aec3abaf91387a9d40e6c8789ba201201ce38d4",
+  "dataset": "evaluation/datasets/move_explanations_v1.jsonl",
+  "split": "dev",
+  "limit": null,
+  "count": 50,
+  "counts": {
+    "no_verified_event": 43,
+    "schema_valid": 7,
+    "evidence_valid": 7,
+    "abstained": 43,
+    "failed": 0,
+    "suggested": 7,
+    "attempted": 7
+  },
+  "model": "qwen3.5:4b-q4_K_M",
+  "model_digest": "d8b0f5e9760cd1682034f292d7ef72ec46f432149be0df7574bf2d6e92e38c04",
+  "generation": {
+    "temperature": 0,
+    "num_ctx": 4096,
+    "num_predict": 800,
+    "keep_alive": "0",
+    "think": false,
+    "timeout": 90.0
+  },
+  "detector_version": "motif-detector-v1",
+  "schema_version": "motif-prediction-v1",
+  "prompt_version": "motif-prompt-v1",
+  "taxonomy_version": "motif-v1",
+  "first_request_latency_ms": 2726,
+  "median_latency_ms": 2562,
+  "p95_latency_ms": null,
+  "human_grounding_and_usefulness": "unmeasured; requires separate review",
+  "classification": {
+    "reviewed": 0,
+    "quality": "unmeasured; no human labels"
+  }
+}

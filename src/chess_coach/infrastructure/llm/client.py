@@ -8,6 +8,8 @@ from pydantic import BaseModel
 
 from chess_coach.application.errors import OperationError
 from chess_coach.config import Settings
+from chess_coach.domain.motif_models import MotifPrediction
+from chess_coach.infrastructure.llm.motif_classifier import MOTIF_SYSTEM_PROMPT
 from chess_coach.infrastructure.llm.prompts import SYSTEM_PROMPT
 
 
@@ -54,7 +56,12 @@ class OllamaCoach:
                 response = client.chat(
                     model=self.settings.ollama_model,
                     messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {
+                            "role": "system",
+                            "content": MOTIF_SYSTEM_PROMPT
+                            if schema is MotifPrediction
+                            else SYSTEM_PROMPT,
+                        },
                         {"role": "user", "content": evidence_json},
                     ],
                     format=schema.model_json_schema(),

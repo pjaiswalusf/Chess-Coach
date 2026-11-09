@@ -31,6 +31,20 @@ export type AnalyticsHealthReport = {
 	warnings: Array<Diagnostic>;
 };
 
+export type ChessEvent = {
+	id: string;
+	type: ChessEventType;
+	game_id: number;
+	ply: number;
+	verified?: true;
+	detector_version?: 'motif-detector-v1';
+	supporting_facts: Array<FactId>;
+	material_lost?: number | null;
+};
+
+export type ChessEventType =
+	'MATE_ALLOWED' | 'MATE_MISSED' | 'MATERIAL_LOSS' | 'WINNING_OPPORTUNITY_LOST';
+
 export type CoachingResponse = {
 	job_id?: number | null;
 	status: string;
@@ -92,6 +106,8 @@ export type ErrorResponse = {
 };
 
 export type EvidenceStatus = 'sufficient' | 'insufficient' | 'unavailable';
+
+export type FactId = 'before' | 'after' | 'best_line' | 'played_line' | 'previous_before';
 
 export type GameAnalysisResponse = {
 	game_id: number;
@@ -177,6 +193,25 @@ export type LLMHealth = {
 	model: string;
 	model_digest?: string | null;
 	message: string;
+};
+
+export type MotifHealth = {
+	status: 'ready' | 'degraded' | 'blocked';
+	database_ready: boolean;
+	ollama?: LLMHealth | null;
+	taxonomy_version?: string;
+	message: string;
+};
+
+export type MotifResponse = {
+	job_id?: number | null;
+	status: string;
+	events: Array<ChessEvent>;
+	taxonomy_version?: string;
+	motif?: null;
+	error_code?: string | null;
+	message?: string | null;
+	cached?: boolean;
 };
 
 export type MoveCoachingEvidence = {

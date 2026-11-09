@@ -214,3 +214,17 @@ Normal tests fake the model and require no Ollama or public network. The fixed
 50-case synthetic development dataset is not a reviewed mistake benchmark and
 does not satisfy the future 200-case held-out acceptance criteria. Human labels
 and explanation-quality scores must be supplied before release approval.
+
+## Motif evidence (Phase 15, experimental)
+
+Run `uv run alembic upgrade head` to add independent event snapshots. For an
+analyzed move by the tracked player, GET
+`/api/v1/games/{game_id}/moves/{ply}/motif` to see verified events without
+Ollama. POST to save the event snapshot and queue an optional experimental
+suggestion through the same coaching worker. Poll the move's motif URL. Ollama
+failure does not invalidate the event or engine analysis. The read-only
+`/api/v1/system/motifs` endpoint checks schema and local model readiness.
+
+The existing `qwen3.5:4b-q4_K_M` is used for development. Model suggestions
+remain unpublished while the human quality gate is pending. See the
+[smoke results and evaluation commands](docs/evaluation/model-selection.md).

@@ -3,7 +3,7 @@
 import json
 import logging
 from time import perf_counter
-from typing import Protocol
+from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.exc import SQLAlchemyError
@@ -20,7 +20,19 @@ from chess_coach.domain.coaching_models import (
     MoveExplanation,
 )
 from chess_coach.domain.feature_models import EvidenceModel
+from chess_coach.domain.motif_models import (
+    MOTIF_SCHEMA_VERSION,
+    TAXONOMY_VERSION,
+    ChessEvent,
+    MotifEvidence,
+    MotifPrediction,
+)
 from chess_coach.infrastructure.llm.client import generation_settings
+from chess_coach.infrastructure.llm.motif_classifier import (
+    MOTIF_PROMPT_VERSION,
+    motif_input,
+    validate_prediction,
+)
 from chess_coach.infrastructure.llm.prompts import (
     MOVE_EXPLANATION_PROMPT_VERSION,
     OUTPUT_SCHEMA_VERSION,
@@ -69,6 +81,44 @@ class CoachingResponse(EvidenceModel):
     cached: bool = False
     model_digest: str | None = None
     attempt_count: int = 0
+
+
+class MotifResponse(EvidenceModel):
+    job_id: int | None = None
+    status: str
+    events: tuple[ChessEvent, ...]
+    taxonomy_version: str = TAXONOMY_VERSION
+    # The taxonomy is experimental pending the held-out release gate.
+    motif: None = None
+    error_code: str | None = None
+    message: str | None = None
+    cached: bool = False
+
+
+class MotifHealth(EvidenceModel):
+    status: Literal["ready", "degraded", "blocked"]
+    database_ready: bool
+    ollama: LLMHealth | None = None
+    taxonomy_version: str = TAXONOMY_VERSION
+    message: str
+
+
+JobEvidence = MoveCoachingEvidence | HistoricalEvidence | MotifEvidence
+
+
+def job_evidence(row: CoachingOutput) -> JobEvidence:
+    if row.output_type == "motif":
+        return MotifEvidence.model_validate(row.evidence_json)
+    if row.output_type == "move":
+        return MoveCoachingEvidence.model_validate(row.evidence_json)
+    return HistoricalEvidence.model_validate(row.evidence_json)
+
+
+def job_config(evidence: JobEvidence) -> tuple[str, str, str]:
+    if isinstance(evidence, MotifEvidence):
+        return "motif", MOTIF_PROMPT_VERSION, MOTIF_SCHEMA_VERSION
+    kind = "move" if isinstance(evidence, MoveCoachingEvidence) else "historical"
+    return kind, MOVE_EXPLANATION_PROMPT_VERSION, OUTPUT_SCHEMA_VERSION
 
 
 def historical_evidence(report: AnalyticsReport) -> HistoricalEvidence:
@@ -120,6 +170,21 @@ class CoachingService:
         self.store, self.settings, self.health = store, settings, health
         self.builder = EvidenceBuilder(store)
 
+    def motif_health(self) -> MotifHealth:
+        if not self.store.motif_schema_ready():
+            return MotifHealth(
+                status="blocked",
+                database_ready=False,
+                message="Check the database path and apply migrations before retrying.",
+            )
+        llm = self.health()
+        return MotifHealth(
+            status="ready" if llm.status == "ready" else "degraded",
+            database_ready=True,
+            ollama=llm,
+            message=llm.message,
+        )
+
     def move(
         self, game: int, ply: int, generate: bool = False, profile: str | None = None
     ) -> CoachingResponse:
@@ -140,35 +205,87 @@ class CoachingService:
             )
         return self.request(evidence, generate)
 
+    def motif(
+        self, game: int, ply: int, generate: bool = False, profile: str | None = None
+    ) -> MotifResponse:
+        evidence = self.builder.motif(game, ply, profile)
+        if not evidence.events:
+            return MotifResponse(status="insufficient_evidence", events=())
+        if generate:
+            self.store.record_events(evidence)
+        row = self.request_row(evidence, generate)
+        if row and not self.valid_cached_output(row, evidence):
+            return MotifResponse(
+                job_id=row.id,
+                status="failed",
+                events=evidence.events,
+                error_code="INVALID_MODEL_OUTPUT",
+                message="Stored motif failed validation. Request it again to regenerate.",
+            )
+        return MotifResponse(
+            job_id=row.id if row else None,
+            status=row.status if row else "not_generated",
+            events=evidence.events,
+            error_code=row.error_code if row else None,
+            message=(
+                "Check the local coaching worker and Ollama, then retry."
+                if row and row.status == "failed"
+                else None
+            ),
+            cached=bool(row and row.status in {"done", "insufficient_evidence"}),
+        )
+
     def request(
         self, evidence: MoveCoachingEvidence | HistoricalEvidence, generate: bool
     ) -> CoachingResponse:
+        row = self.request_row(evidence, generate)
+        return (
+            self.response(
+                row,
+                evidence,
+                cached=not generate or row.status in {"done", "insufficient_evidence"},
+            )
+            if row
+            else CoachingResponse(status="not_generated", evidence=evidence)
+        )
+
+    @staticmethod
+    def valid_cached_output(row: CoachingOutput, evidence: JobEvidence) -> bool:
+        if row.status not in {"done", "insufficient_evidence"}:
+            return True
+        try:
+            raw = json.dumps(row.output_json)
+            output = (
+                validate_prediction(raw, evidence)
+                if isinstance(evidence, MotifEvidence)
+                else validated_output(raw, evidence)
+            )
+            return (output.status == "insufficient_evidence") == (
+                row.status == "insufficient_evidence"
+            )
+        except ValueError:
+            return False
+
+    def request_row(
+        self, evidence: JobEvidence, generate: bool
+    ) -> CoachingOutput | None:
+        kind, prompt, schema = job_config(evidence)
         payload = evidence.model_dump(mode="json")
         config = generation_settings(self.settings)
+        evidence_hash = fingerprint(payload)
         # Retrieval remains available offline. POST resolves the current digest when online.
-        previous = self.store.find(
-            fingerprint(payload),
-            self.settings.ollama_model,
-            config,
-            MOVE_EXPLANATION_PROMPT_VERSION,
-            OUTPUT_SCHEMA_VERSION,
-        )
+        model = self.settings.ollama_model
         if not generate:
-            return (
-                self.response(previous, evidence, cached=True)
-                if previous
-                else CoachingResponse(status="not_generated", evidence=evidence)
-            )
-        if previous and previous.status in {"done", "insufficient_evidence"}:
-            try:
-                self.response(previous, evidence, cached=True)
-            except OperationError:
-                self.store.invalidate(previous.id)
-                previous = None
+            return self.store.find(evidence_hash, model, config, prompt, schema)
         health = self.health()
         if health.status != "ready":
-            if previous and previous.status in {"done", "insufficient_evidence"}:
-                return self.response(previous, evidence, cached=True)
+            previous = self.store.find(evidence_hash, model, config, prompt, schema)
+            if (
+                previous
+                and previous.status in {"done", "insufficient_evidence"}
+                and self.valid_cached_output(previous, evidence)
+            ):
+                return previous
             code = (
                 "MODEL_NOT_INSTALLED"
                 if health.status == "model_missing"
@@ -176,26 +293,29 @@ class CoachingService:
             )
             raise OperationError(code, health.message, 503)
         assert health.model_digest
-        row = self.store.enqueue(
-            "move" if isinstance(evidence, MoveCoachingEvidence) else "historical",
+        previous = self.store.find(
+            evidence_hash, model, config, prompt, schema, digest=health.model_digest
+        )
+        if previous and not self.valid_cached_output(previous, evidence):
+            self.store.invalidate(previous.id)
+        return self.store.enqueue(
+            kind,
             payload,
-            self.settings.ollama_model,
+            model,
             health.model_digest,
             config,
-            MOVE_EXPLANATION_PROMPT_VERSION,
-            OUTPUT_SCHEMA_VERSION,
-        )
-        return self.response(
-            row, evidence, cached=row.status in {"done", "insufficient_evidence"}
+            prompt,
+            schema,
         )
 
     def job(self, job_id: int) -> CoachingResponse:
         row = self.store.get(job_id)
-        evidence = (
-            MoveCoachingEvidence.model_validate(row.evidence_json)
-            if row.output_type == "move"
-            else HistoricalEvidence.model_validate(row.evidence_json)
-        )
+        if row.output_type == "motif":
+            raise OperationError(
+                "COACHING_NOT_FOUND", "Read motif status from the completed move.", 404
+            )
+        evidence = job_evidence(row)
+        assert not isinstance(evidence, MotifEvidence)
         # Verify current source before exposing a stored move result.
         if (
             isinstance(evidence, MoveCoachingEvidence)
@@ -244,19 +364,36 @@ class CoachingProcessor:
     def __init__(self, service: CoachingService, model: CoachModel):
         self.service, self.model = service, model
 
+    def current(self, evidence: JobEvidence) -> bool:
+        if isinstance(evidence, MotifEvidence):
+            move = evidence.move
+            return (
+                bool(evidence.events)
+                and self.service.builder.motif(
+                    move.game_id, move.ply, move.profile_hash
+                )
+                == evidence
+            )
+        if isinstance(evidence, MoveCoachingEvidence):
+            return (
+                self.service.builder.move(
+                    evidence.game_id, evidence.ply, evidence.profile_hash
+                )
+                == evidence
+            )
+        return True
+
     def process(self, row: CoachingOutput) -> None:
         started = perf_counter()
         output: dict[str, object] | None = None
         error: str | None = None
+        metrics: dict[str, object] = {}
         try:
-            evidence = (
-                MoveCoachingEvidence.model_validate(row.evidence_json)
-                if row.output_type == "move"
-                else HistoricalEvidence.model_validate(row.evidence_json)
-            )
+            evidence = job_evidence(row)
+            _, prompt, schema_version = job_config(evidence)
             if (
-                row.prompt_version != MOVE_EXPLANATION_PROMPT_VERSION
-                or row.schema_version != OUTPUT_SCHEMA_VERSION
+                row.prompt_version != prompt
+                or row.schema_version != schema_version
                 or row.generation_json != generation_settings(self.service.settings)
                 or row.model_name != self.service.settings.ollama_model
             ):
@@ -264,13 +401,7 @@ class CoachingProcessor:
                     "COACHING_CONFIG_CHANGED",
                     "Request coaching with the current configuration.",
                 )
-            if (
-                isinstance(evidence, MoveCoachingEvidence)
-                and self.service.builder.move(
-                    evidence.game_id, evidence.ply, evidence.profile_hash
-                )
-                != evidence
-            ):
+            if not self.current(evidence):
                 raise OperationError(
                     "EVIDENCE_INCOMPLETE",
                     "The game evidence changed; request coaching again.",
@@ -288,26 +419,29 @@ class CoachingProcessor:
                     "MODEL_CHANGED",
                     "The installed model changed; request coaching again.",
                 )
-            schema = (
-                MoveExplanation if row.output_type == "move" else HistoricalExplanation
-            )
+            schema: type[BaseModel]
+            if isinstance(evidence, MotifEvidence):
+                schema, payload = MotifPrediction, motif_input(evidence)
+            else:
+                schema = (
+                    MoveExplanation
+                    if isinstance(evidence, MoveCoachingEvidence)
+                    else HistoricalExplanation
+                )
+                payload = json.dumps(
+                    row.evidence_json, sort_keys=True, separators=(",", ":")
+                )
             for attempt in range(2):
                 self.service.store.attempt(row.id)
                 try:
-                    raw = self.model.generate(
-                        json.dumps(
-                            row.evidence_json, sort_keys=True, separators=(",", ":")
-                        ),
-                        schema,
+                    raw = self.model.generate(payload, schema)
+                    metrics = self.model.metrics
+                    validated = (
+                        validate_prediction(raw, evidence)
+                        if isinstance(evidence, MotifEvidence)
+                        else validated_output(raw, evidence)
                     )
-                    validated = validated_output(raw, evidence)
-                    if (
-                        isinstance(evidence, MoveCoachingEvidence)
-                        and self.service.builder.move(
-                            evidence.game_id, evidence.ply, evidence.profile_hash
-                        )
-                        != evidence
-                    ):
+                    if not self.current(evidence):
                         raise OperationError(
                             "EVIDENCE_INCOMPLETE",
                             "Game evidence changed during generation; retry coaching.",
@@ -319,6 +453,11 @@ class CoachingProcessor:
                     error = "INVALID_MODEL_OUTPUT"
                 except OperationError as exc:
                     error = exc.code
+                    if isinstance(evidence, MotifEvidence) and error in {
+                        "UNSUPPORTED_CLAIM",
+                        "FACT_CONTRADICTION",
+                    }:
+                        break
                     if error not in {
                         "INVALID_MODEL_OUTPUT",
                         "UNSUPPORTED_CLAIM",
@@ -337,7 +476,7 @@ class CoachingProcessor:
             logger.exception("coaching_unexpected_failure", extra={"run_id": row.id})
             error = "COACHING_FAILED"
         latency = round((perf_counter() - started) * 1000)
-        self.service.store.finish(row.id, output, error, latency, self.model.metrics)
+        self.service.store.finish(row.id, output, error, latency, metrics)
         logger.info(
             "coaching_finished",
             extra={
