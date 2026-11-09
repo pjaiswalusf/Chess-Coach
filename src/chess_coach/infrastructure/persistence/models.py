@@ -422,6 +422,17 @@ class MoveFeature(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
 
 
+class MotifEventSnapshot(Base):
+    """Verified observations, persisted independently of optional model jobs."""
+
+    __tablename__ = "motif_event_snapshots"
+    evidence_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    game_id: Mapped[int] = mapped_column(ForeignKey("games.id", ondelete="CASCADE"))
+    ply: Mapped[int]
+    evidence_json: Mapped[dict[str, object]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
+
+
 class CoachingOutput(Base):
     """Independent durable jobs and validated results; never updates engine tables."""
 

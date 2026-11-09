@@ -2,11 +2,12 @@ from alembic import command
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import CheckConstraint, Engine, inspect
+from sqlalchemy import CheckConstraint, Engine, insert, inspect, select
 
 from chess_coach.config import Settings
 from chess_coach.infrastructure.persistence.base import Base
 from chess_coach.infrastructure.persistence.engine import create_database_engine
+from chess_coach.infrastructure.persistence.models import CoachingOutput
 
 EXPECTED_TABLES = {
     "archive_sync_state",
@@ -22,6 +23,7 @@ EXPECTED_TABLES = {
     "move_analyses",
     "move_features",
     "coaching_outputs",
+    "motif_event_snapshots",
     "alembic_version",
 }
 
@@ -78,6 +80,33 @@ def test_migration_downgrade_and_reupgrade(
     command.upgrade(migration_config, "head")
     assert set(inspect(engine).get_table_names()) == EXPECTED_TABLES
     command.check(migration_config)
+
+
+def test_phase15_downgrade_keeps_older_coaching_jobs(
+    engine: Engine, migration_config: Config
+) -> None:
+    table = CoachingOutput.__table__
+    with engine.begin() as connection:
+        for kind in ("move", "historical", "motif"):
+            connection.execute(
+                insert(table).values(
+                    cache_key=kind,
+                    output_type=kind,
+                    evidence_hash="fixture",
+                    evidence_json={},
+                    model_name="fixture",
+                    model_digest="fixture",
+                    prompt_version="fixture",
+                    schema_version="fixture",
+                    generation_json={},
+                )
+            )
+    command.downgrade(migration_config, "c14a001")
+    with engine.connect() as connection:
+        assert set(connection.scalars(select(table.c.output_type))) == {
+            "move",
+            "historical",
+        }
 
 
 def test_phase8_upgrade_preserves_phase7_game(migration_config: Config) -> None:

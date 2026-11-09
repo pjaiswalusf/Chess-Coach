@@ -71,6 +71,7 @@ class MoveCoachingEvidence(EvidenceModel):
         best = board.copy(stack=True)
         for uci in self.best_line_uci:
             self._push(best, uci)
+        self._check_pv_outcome(best, self.before)
         self._push(board, self.played_move_uci)
         outcome = board.outcome(claim_draw=False)
         if outcome:
@@ -87,6 +88,7 @@ class MoveCoachingEvidence(EvidenceModel):
             raise ValueError("Cannot play from mate zero")
         for uci in self.played_refutation_uci:
             self._push(board, uci)
+        self._check_pv_outcome(board, self.after)
         expected_loss = None
         if self.before.cp_white is not None and self.after.cp_white is not None:
             expected_loss = calculate_loss_cp(
@@ -95,6 +97,15 @@ class MoveCoachingEvidence(EvidenceModel):
         if self.loss_cp != expected_loss:
             raise ValueError("Loss must use the mover perspective; mate is never CP")
         return self
+
+    @staticmethod
+    def _check_pv_outcome(board: chess.Board, score: EngineScore) -> None:
+        outcome = board.outcome(claim_draw=False)
+        if outcome and (
+            outcome.winner != score.mate_winner
+            or (outcome.winner is None and score.cp_white != 0)
+        ):
+            raise ValueError("Terminal variation contradicts the engine score")
 
     @staticmethod
     def _push(board: chess.Board, uci: str) -> None:
