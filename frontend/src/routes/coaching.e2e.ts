@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+	await page.route('**/health', (route) => route.fulfill({ json: { status: 'ok' } }));
+});
+
 const base = {
 	job_id: 1,
 	status: 'not_generated',
@@ -91,7 +95,7 @@ for (const outcome of ['done', 'failed', 'insufficient_evidence', 'unavailable']
 			});
 		});
 		await page.route('**/api/v1/coaching-jobs/1', (route) => route.fulfill({ json: result }));
-		await page.goto('/');
+		await page.goto('/games/analysis');
 		await page.getByText('Games and evidence').click();
 		await page.getByRole('button', { name: 'View moves for game 1' }).click();
 		await page.getByRole('button', { name: 'Explain ply 1' }).click();

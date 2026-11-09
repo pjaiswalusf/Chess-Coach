@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+	await page.route('**/health', (route) => route.fulfill({ json: { status: 'ok' } }));
+});
+
 const worker = {
 	available: true,
 	engine_version: 'Stockfish fixture',
@@ -33,10 +37,12 @@ const run = {
 test('start, persist across reload, cancel and retry', async ({ page }) => {
 	let current: typeof run | null = null;
 	let starts = 0;
+	const firstStart = Promise.withResolvers<void>();
 	await page.route('**/api/v1/analysis-worker', (route) => route.fulfill({ json: worker }));
 	await page.route('**/api/v1/analysis-runs', async (route) => {
 		if (route.request().method() === 'POST') {
 			starts += 1;
+			if (starts === 1) await firstStart.promise;
 			current = { ...run, id: starts };
 			await route.fulfill({ status: 202, json: current });
 		} else await route.fulfill({ json: current ? [current] : [] });
@@ -45,10 +51,17 @@ test('start, persist across reload, cancel and retry', async ({ page }) => {
 		current = { ...run, status: 'failed', cancel_requested: true };
 		await route.fulfill({ json: current });
 	});
-	await page.goto('/');
+	await page.goto('/games/analysis');
 	await expect(page.getByText('No analysis runs yet.')).toBeVisible();
-	await page.getByRole('button', { name: 'Analyze eligible games' }).click();
+	try {
+		await page.getByRole('button', { name: 'Analyze eligible games' }).click();
+		await expect(page.getByRole('button', { name: 'Submitting…' })).toBeDisabled();
+		await page.locator('form').dispatchEvent('submit', { cancelable: true });
+	} finally {
+		firstStart.resolve();
+	}
 	await expect(page.getByRole('heading', { name: 'Run #1 · queued' })).toBeVisible();
+	expect(starts).toBe(1);
 	await expect(page.getByRole('button', { name: 'Analyze eligible games' })).toBeDisabled();
 	await page.reload();
 	await expect(page.getByRole('heading', { name: 'Run #1 · queued' })).toBeVisible();
@@ -66,7 +79,7 @@ test('worker outage and request errors are actionable', async ({ page }) => {
 	await page.route('**/api/v1/analysis-runs', (route) =>
 		route.fulfill({ json: [{ ...run, status: 'running', worker_available: false }] })
 	);
-	await page.goto('/');
+	await page.goto('/games/analysis');
 	await expect(page.getByText('Worker unavailable. Restart it', { exact: false })).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Analyze eligible games' })).toBeDisabled();
 	await page.route('**/api/v1/analysis-worker', (route) =>
@@ -107,7 +120,7 @@ test('completed evidence keeps mate separate', async ({ page }) => {
 			}
 		})
 	);
-	await page.goto('/');
+	await page.goto('/games/analysis');
 	await page.getByText('Games and evidence').click();
 	await page.getByRole('button', { name: 'View moves for game 42' }).click();
 	await expect(page.getByRole('cell', { name: 'Mate 0 (Black)' })).toBeVisible();

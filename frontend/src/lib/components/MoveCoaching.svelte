@@ -1,20 +1,21 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { coachingApi } from '#lib/api/coaching.js';
-	import type { CoachingResponse } from '#lib/api/generated.js';
+	import { coachingApi, type CoachingResponse } from '#lib/api/coaching.js';
+	import { apiErrorMessage } from '#lib/api/errors.js';
+	import Button from './ui/Button.svelte';
 
 	let { game, ply, profile }: { game: number; ply: number; profile: string } = $props();
 	let result = $state<CoachingResponse | null>(null);
 	let loading = $state(true);
 	let submitting = $state(false);
 	let error = $state('');
-	let disposed = false;
+	const lifetime = new AbortController();
 	let polls = 0;
 	let timer: ReturnType<typeof setTimeout>;
 	const active = $derived(result?.status === 'queued' || result?.status === 'running');
 
 	function accept(value: CoachingResponse) {
-		if (disposed) return;
+		if (lifetime.signal.aborted) return;
 		result = value;
 		error = '';
 		if ((value.status === 'queued' || value.status === 'running') && value.job_id) {
@@ -30,25 +31,25 @@
 			return;
 		}
 		try {
-			accept(await coachingApi.job(id));
+			accept(await coachingApi.job(id, lifetime.signal));
 		} catch (cause) {
-			if (!disposed)
-				error = cause instanceof Error ? cause.message : 'Could not read coaching status.';
+			if (!lifetime.signal.aborted)
+				error = apiErrorMessage(cause, 'Could not read coaching status.');
 		}
 	}
 
 	onMount(() => {
 		void coachingApi
-			.get(game, ply, profile)
+			.get(game, ply, profile, lifetime.signal)
 			.then(accept)
 			.catch((cause: unknown) => {
-				if (!disposed) error = cause instanceof Error ? cause.message : 'Could not load coaching.';
+				if (!lifetime.signal.aborted) error = apiErrorMessage(cause, 'Could not load coaching.');
 			})
 			.finally(() => {
-				if (!disposed) loading = false;
+				if (!lifetime.signal.aborted) loading = false;
 			});
 		return () => {
-			disposed = true;
+			lifetime.abort();
 			clearTimeout(timer);
 		};
 	});
@@ -57,13 +58,12 @@
 		if (submitting || active) return;
 		submitting = true;
 		try {
-			accept(await coachingApi.generate(game, ply, profile));
+			accept(await coachingApi.generate(game, ply, profile, lifetime.signal));
 		} catch (cause) {
-			if (!disposed)
-				error =
-					cause instanceof Error ? cause.message : 'Coaching unavailable. Check Ollama and retry.';
+			if (!lifetime.signal.aborted)
+				error = apiErrorMessage(cause, 'Coaching unavailable. Check Ollama and retry.');
 		} finally {
-			if (!disposed) submitting = false;
+			if (!lifetime.signal.aborted) submitting = false;
 		}
 	}
 </script>
@@ -98,12 +98,9 @@
 			<p role="alert">{result.message} ({result.error_code})</p>
 		{:else if !error}<p>No explanation generated yet.</p>{/if}
 		{#if result?.status !== 'done' && result?.status !== 'insufficient_evidence'}
-			<button
-				onclick={generate}
-				disabled={submitting || active}
-				class="rounded-lg bg-emerald-700 px-4 py-2 text-white disabled:opacity-40"
-				>{submitting ? 'Requesting…' : 'Explain this move'}</button
-			>
+			<Button onclick={generate} disabled={active} loading={submitting}>
+				{submitting ? 'Requesting…' : 'Explain this move'}
+			</Button>
 		{/if}
 		{#if error && active && result?.job_id}
 			<button onclick={() => poll(result!.job_id!)} class="text-emerald-800 underline"

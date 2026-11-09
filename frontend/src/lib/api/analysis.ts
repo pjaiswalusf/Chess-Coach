@@ -1,32 +1,77 @@
-import type { RunResponse, WorkerResponse, GameAnalysisResponse } from './generated';
+import { apiRequest, invalidResponse, isRecord } from './client.js';
+import type { components, paths } from './generated/schema.js';
 
-export async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
-	const response = await fetch(`/api/v1${path}`, {
-		method,
-		headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-		body: body === undefined ? undefined : JSON.stringify(body)
-	});
-	if (!response.ok) {
-		let message = `Request failed (${response.status}). Retry after checking the API.`;
-		try {
-			const error: { message?: string } = await response.json();
-			message = error.message ?? message;
-		} catch {
-			// A disconnected proxy may return HTML rather than an API error.
-		}
-		throw new Error(message);
-	}
-	return response.json() as Promise<T>;
+export type RunResponse = components['schemas']['RunResponse'];
+export type WorkerResponse = components['schemas']['WorkerResponse'];
+export type MoveResponse = components['schemas']['MoveResponse'];
+type GameAnalysis = components['schemas']['GameAnalysisResponse'];
+type StartRun =
+	paths['/api/v1/analysis-runs']['post']['requestBody']['content']['application/json'];
+
+function isRun(run: unknown): run is RunResponse {
+	return (
+		isRecord(run) &&
+		Number.isInteger(run.id) &&
+		typeof run.status === 'string' &&
+		isRecord(run.engine_config_json) &&
+		Array.isArray(run.games) &&
+		run.games.every(
+			(game) => isRecord(game) && Number.isInteger(game.game_id) && typeof game.status === 'string'
+		)
+	);
+}
+
+function requireRun(run: unknown): RunResponse {
+	if (!isRun(run)) throw invalidResponse();
+	return run;
 }
 
 export const analysisApi = {
-	status: () => request<WorkerResponse>('/analysis-worker'),
-	runs: () => request<RunResponse[]>('/analysis-runs'),
-	start: (player: number) =>
-		request<RunResponse>('/analysis-runs', 'POST', { tracked_player_id: player }),
-	cancel: (id: number) => request<RunResponse>(`/analysis-runs/${id}/cancel`, 'POST'),
-	moves: (game: number, profile: string) =>
-		request<GameAnalysisResponse>(
-			`/games/${game}/analysis?profile_hash=${encodeURIComponent(profile)}`
-		).then((result) => result.moves)
+	async status(signal?: AbortSignal) {
+		const worker = await apiRequest<WorkerResponse>('/api/v1/analysis-worker', { signal });
+		if (
+			!isRecord(worker) ||
+			!Array.isArray(worker.players) ||
+			!worker.players.every(
+				(player) =>
+					isRecord(player) && Number.isInteger(player.id) && typeof player.username === 'string'
+			)
+		) {
+			throw invalidResponse();
+		}
+		return worker;
+	},
+	async runs(signal?: AbortSignal) {
+		const runs = await apiRequest<unknown>('/api/v1/analysis-runs', { signal });
+		if (!Array.isArray(runs) || !runs.every(isRun)) throw invalidResponse();
+		return runs;
+	},
+	start: (player: number, signal?: AbortSignal) =>
+		apiRequest<unknown>('/api/v1/analysis-runs', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ scope: 'pending', tracked_player_id: player } satisfies StartRun),
+			signal
+		}).then(requireRun),
+	cancel: (id: number, signal?: AbortSignal) =>
+		apiRequest<unknown>(`/api/v1/analysis-runs/${id}/cancel`, { method: 'POST', signal }).then(
+			requireRun
+		),
+	async moves(game: number, profile: string, signal?: AbortSignal) {
+		const analysis = await apiRequest<GameAnalysis>(
+			`/api/v1/games/${game}/analysis?profile_hash=${encodeURIComponent(profile)}`,
+			{ signal }
+		);
+		if (
+			!isRecord(analysis) ||
+			!Array.isArray(analysis.moves) ||
+			!analysis.moves.every(
+				(move) =>
+					isRecord(move) && Number.isInteger(move.ply) && typeof move.played_move_san === 'string'
+			)
+		) {
+			throw invalidResponse();
+		}
+		return analysis.moves;
+	}
 };

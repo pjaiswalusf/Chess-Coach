@@ -59,7 +59,7 @@ test('real UI, API and worker survive hard stop and profile change', async ({ pa
 				{ timeout: 15000 }
 			)
 			.toBe(true);
-		await page.goto('/');
+		await page.goto('/games/analysis');
 		await page.getByRole('button', { name: 'Analyze eligible games' }).click();
 		await expect
 			.poll(async () => (await runs())[0]?.games_completed ?? 0, {
@@ -79,7 +79,7 @@ test('real UI, API and worker survive hard stop and profile change', async ({ pa
 			stdio: 'ignore'
 		});
 		const reopened = await context.newPage();
-		await reopened.goto('/');
+		await reopened.goto('/games/analysis');
 		await expect.poll(async () => (await runs())[0]?.status, { timeout: 30000 }).toBe('completed');
 		await expect(reopened.getByRole('heading', { name: 'Run #1 · completed' })).toBeVisible();
 		await reopened.getByRole('button', { name: 'Analyze eligible games' }).click();
