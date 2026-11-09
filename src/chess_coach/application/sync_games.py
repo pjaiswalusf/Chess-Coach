@@ -10,6 +10,7 @@ from typing import Protocol
 
 from structlog.contextvars import bound_contextvars
 
+from chess_coach.domain.game_records import ParseSummary
 from chess_coach.domain.sync import (
     Archive,
     Checkpoint,
@@ -67,7 +68,7 @@ class SyncGamesService:
         provider: GameProvider,
         store: SyncStore,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
-        prepare_games: Callable[[str], object] | None = None,
+        prepare_games: Callable[[str], ParseSummary | None] | None = None,
     ):
         self.provider, self.store, self.clock = provider, store, clock
         self.prepare_games = prepare_games
@@ -107,7 +108,6 @@ class SyncGamesService:
                 else:
                     self.store.claim(queued_run_id, self.clock())
                     report.run_id = queued_run_id
-            error_code = None
             if report.run_id is not None:
                 logger.info(
                     "sync_started", extra={"run_id": report.run_id, "component": "sync"}
@@ -140,7 +140,7 @@ class SyncGamesService:
                     if a not in selected and checkpoints[a].status == "unavailable"
                 ]
                 for archive in unavailable:
-                    error_code = "ARCHIVE_UNAVAILABLE"
+                    report.error_code = "ARCHIVE_UNAVAILABLE"
                     report.errors.append(
                         f"{archive.key}: UNAVAILABLE; review source and use --force to retry."
                     )
@@ -162,7 +162,13 @@ class SyncGamesService:
                         report.games_skipped_unsupported += sum(
                             r.unsupported for r in result.rejections
                         )
-                        if any(not r.unsupported for r in result.rejections):
+                        quarantined = sum(r.quarantined for r in result.rejections)
+                        report.games_quarantined += quarantined
+                        report.games_failed += quarantined
+                        if any(
+                            not (r.unsupported or r.quarantined)
+                            for r in result.rejections
+                        ):
                             raise SourceError(
                                 "INVALID_RECORDS",
                                 "Archive rejected atomically; inspect import_rejections and retry.",
@@ -176,17 +182,20 @@ class SyncGamesService:
                             )
                         completed += 1
                     except Exception as exc:
-                        error_code = (
+                        report = before
+                        report.error_code = (
                             exc.code
                             if isinstance(exc, SourceError)
                             else "PERSISTENCE_FAILURE"
                         )
-                        report = before
                         if result:
                             report.games_received += result.received
                             skipped = sum(r.unsupported for r in result.rejections)
                             report.games_skipped_unsupported += skipped
                             report.games_failed += result.received - skipped
+                            report.games_quarantined += sum(
+                                r.quarantined for r in result.rejections
+                            )
                         report.archives_failed += 1
                         error = (
                             str(exc)
@@ -214,6 +223,8 @@ class SyncGamesService:
                         "archive_processed",
                         extra={"run_id": report.run_id, "archive": archive.key},
                     )
+                    if report.error_code == "CHESSCOM_RATE_LIMITED":
+                        break
                 report.status = (
                     "COMPLETED"
                     if not report.errors
@@ -222,10 +233,14 @@ class SyncGamesService:
                     else "FAILED"
                 )
                 if self.prepare_games is not None:
-                    self.prepare_games(username)
+                    parsed = self.prepare_games(username)
+                    if parsed is not None:
+                        report.games_quarantined += (
+                            parsed.games_attempted - parsed.ready
+                        )
             except Exception as exc:
                 report.status = "FAILED"
-                error_code = (
+                report.error_code = (
                     exc.code if isinstance(exc, SourceError) else "SYNC_FAILURE"
                 )
                 report.errors.append(
@@ -236,7 +251,10 @@ class SyncGamesService:
                 if not isinstance(exc, SourceError):
                     logger.exception(
                         "sync_processing_error",
-                        extra={"run_id": report.run_id, "error_code": error_code},
+                        extra={
+                            "run_id": report.run_id,
+                            "error_code": report.error_code,
+                        },
                     )
             if not dry_run:
                 duration = elapsed_ms(started)
@@ -268,7 +286,7 @@ class SyncGamesService:
                     extra={
                         **context,
                         "status": report.status,
-                        "error_code": error_code,
+                        "error_code": report.error_code,
                     },
                 )
             return report

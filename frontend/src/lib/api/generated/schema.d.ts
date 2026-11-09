@@ -553,6 +553,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/health/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liveness */
+        get: operations["liveness_health_live_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Readiness */
+        get: operations["readiness_health_ready_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -676,6 +710,14 @@ export interface components {
             source_profile_hash: string;
             /** Submitted Move Uci */
             submitted_move_uci: string;
+        };
+        /** ChessComComponent */
+        ChessComComponent: {
+            /**
+             * Status
+             * @constant
+             */
+            status: "not_checked";
         };
         /** ChessEvent */
         ChessEvent: {
@@ -807,6 +849,7 @@ export interface components {
         };
         /** Components */
         Components: {
+            chesscom: components["schemas"]["ChessComComponent"];
             database: components["schemas"]["Component"];
             ollama: components["schemas"]["Component"];
             stockfish: components["schemas"]["Component"];
@@ -1076,6 +1119,15 @@ export interface components {
             /** Sync Run Id */
             sync_run_id: number | null;
         };
+        /** Liveness */
+        Liveness: {
+            /**
+             * Status
+             * @default alive
+             * @constant
+             */
+            status: "alive";
+        };
         /** MotifHealth */
         MotifHealth: {
             /** Database Ready */
@@ -1232,6 +1284,17 @@ export interface components {
             /** Reason */
             reason?: "NO_PUZZLES_DUE" | null;
         };
+        /** NotReady */
+        NotReady: {
+            /** Code */
+            code: string;
+            /**
+             * Status
+             * @default not_ready
+             * @constant
+             */
+            status: "not_ready";
+        };
         /** OutcomeMetric */
         OutcomeMetric: {
             /**
@@ -1383,6 +1446,15 @@ export interface components {
             numerator: number;
             /** Per 100 */
             per_100: number | null;
+        };
+        /** Readiness */
+        Readiness: {
+            /**
+             * Status
+             * @default ready
+             * @constant
+             */
+            status: "ready";
         };
         /** RecentTrend */
         RecentTrend: {
@@ -1734,6 +1806,11 @@ export interface components {
             games_failed: number;
             /** Games Inserted */
             games_inserted: number;
+            /**
+             * Games Quarantined
+             * @default 0
+             */
+            games_quarantined: number;
             /** Games Seen */
             games_seen: number;
             /** Games Skipped */
@@ -5145,6 +5222,172 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    liveness_health_live_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Liveness"];
+                };
+            };
+            /** @description Invalid local Host header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Untrusted browser origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflicting operation or configuration */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Local dependency unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    readiness_health_ready_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Readiness"];
+                };
+            };
+            /** @description Invalid local Host header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Untrusted browser origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflicting operation or configuration */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Core dependency unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotReady"];
                 };
             };
         };

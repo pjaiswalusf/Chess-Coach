@@ -88,6 +88,7 @@ def test_retries_bounded(failure):
         ("2", [2, 2]),
         ("invalid", [1, 2]),
         ("9999", []),
+        ("9" * 400, []),
         ("Sat, 07 Nov 2026 00:00:03 GMT", [3, 3]),
     ],
 )
@@ -225,7 +226,6 @@ def test_normalization_optional_fields_orientation_and_fallback():
 @pytest.mark.parametrize(
     "field,value",
     [
-        ("pgn", ""),
         ("pgn", None),
         ("end_time", -1),
         ("end_time", True),
@@ -296,7 +296,8 @@ def test_unusable_or_conflicting_pgn_rejected(pgn):
     raw = record()
     raw["pgn"] = pgn
     result = normalize_game(raw, "testplayer", 0, NOW)
-    assert isinstance(result, Rejection) and result.reason == "INVALID_PGN_RESULT"
+    assert isinstance(result, Rejection) and result.quarantined
+    assert result.reason == "INVALID_PGN_RESULT"
 
 
 def test_archive_month_does_not_require_end_time_in_same_utc_month():

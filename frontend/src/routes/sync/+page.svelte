@@ -177,6 +177,11 @@
 					Games seen: {p.games_seen} · New games: {p.games_inserted} · Already stored: {p.games_existing}
 					· Failed imports: {p.games_failed} · Unsupported: {p.games_skipped}
 				</p>
+				{#if p.games_quarantined}
+					<p>
+						{`${p.games_quarantined} ${p.games_quarantined === 1 ? 'game was' : 'games were'} skipped for analysis because PGN validation failed.`}
+					</p>
+				{/if}
 				{#if run.status === 'queued'}<p>Waiting for the local sync worker.</p>{/if}
 				{#if run.status === 'failed'}<p>
 						{run.error?.message ??
@@ -193,7 +198,8 @@
 	<Button
 		onclick={() => submit('analysis')}
 		disabled={busy || !player}
-		loading={submitting === 'analysis'}>Analyze Pending Games</Button
+		loading={submitting === 'analysis'}
+		>{submitting === 'analysis' ? 'Analyzing…' : 'Analyze Pending Games'}</Button
 	>
 	{#if analysisId !== null}
 		<p class="font-medium">Analysis run #{analysisId}</p>

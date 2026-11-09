@@ -1,25 +1,27 @@
 """Wire application use cases to concrete local integrations."""
 
-import shutil
 from collections.abc import Callable, Iterator
 from dataclasses import asdict
 from datetime import UTC, datetime
 from functools import partial
+from threading import Lock
+from time import monotonic
 from typing import Annotated
 
 import httpx
 from fastapi import Depends
+from sqlalchemy import Engine
 
 from chess_coach.analytics.service import AnalyticsService
 from chess_coach.api.schemas.contracts import SystemResponse
 from chess_coach.api.schemas.system import ComponentHealth, SystemMetrics
 from chess_coach.application.analysis import AnalysisService
 from chess_coach.application.coaching import CoachingService
+from chess_coach.application.errors import OperationError
 from chess_coach.application.jobs import JobService
 from chess_coach.application.queries import QueryService
 from chess_coach.application.system import (
     CheckResult,
-    DependencyStatus,
     SystemStatus,
     collect_system_status,
     overall_status,
@@ -47,34 +49,59 @@ from chess_coach.infrastructure.persistence.training_repository import (
     TrainingRepository,
 )
 from chess_coach.infrastructure.system.diagnostics import (
+    core_checks,
+    database_checks,
     diagnose,
     require_current_database,
 )
 from chess_coach.infrastructure.system.probes import probe_ollama, probe_stockfish
 
+_probe_lock = Lock()
+_probe_cache: tuple[tuple[str, str, str], float, SystemStatus] | None = None
+
 
 def get_system_status(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> SystemStatus:
-    return collect_system_status(
-        lambda: (
-            DependencyStatus(
-                "unknown",
-                "Executable found; run the analysis worker for verified engine readiness.",
-            )
-            if shutil.which(settings.stockfish_executable)
-            else DependencyStatus(
-                "unavailable", "Install Stockfish or configure its executable."
-            )
-        ),
-        partial(probe_ollama, settings),
+    global _probe_cache
+    key = (
+        settings.stockfish_executable,
+        str(settings.ollama_host),
+        settings.ollama_model,
     )
+    with _probe_lock:
+        if _probe_cache and _probe_cache[0] == key and monotonic() < _probe_cache[1]:
+            return _probe_cache[2]
+        status = collect_system_status(
+            partial(probe_stockfish, settings), partial(probe_ollama, settings)
+        )
+        _probe_cache = key, monotonic() + 5, status
+        return status
+
+
+def get_readiness_failure() -> str | None:
+    _, checks = core_checks(get_settings)
+    return next(
+        (check.code for check in checks if check.required and check.status == "fail"),
+        None,
+    )
+
+
+def _open_database(settings: Settings) -> Engine:
+    try:
+        return create_database_engine(settings.database_url)
+    except OSError as exc:
+        raise OperationError(
+            "DATABASE_UNAVAILABLE",
+            "Check access to the configured database directory.",
+            503,
+        ) from exc
 
 
 def get_analysis_service(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> Iterator[AnalysisService]:
-    engine = create_database_engine(settings.database_url)
+    engine = _open_database(settings)
     try:
         yield AnalysisService(
             AnalysisRepository(create_session_factory(engine), settings.database_path)
@@ -95,7 +122,7 @@ def get_query_service(
     settings: Annotated[Settings, Depends(get_settings)],
     verify_player: Annotated[Callable[[str], str], Depends(get_chesscom_verifier)],
 ) -> Iterator[QueryService]:
-    engine = create_database_engine(settings.database_url)
+    engine = _open_database(settings)
     sessions = create_session_factory(engine)
     try:
         yield QueryService(
@@ -154,6 +181,8 @@ def get_system_report(
         finally:
             engine.dispose()
 
+    if any(check.status == "fail" for check in database_checks(settings.database_path)):
+        return system_report(settings, status, None)
     return system_report(settings, status, statistics, worker, training)
 
 

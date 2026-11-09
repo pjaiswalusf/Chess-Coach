@@ -2,13 +2,16 @@
 
 import logging
 from collections.abc import Awaitable, Callable
+from typing import Annotated
 from uuid import uuid4
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
+from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from starlette.responses import Response
 from structlog.contextvars import bound_contextvars
 
+from chess_coach.api.dependencies import get_readiness_failure
 from chess_coach.api.errors import ERROR_RESPONSES, error, install_handlers
 from chess_coach.api.routes.analysis import router as analysis_router
 from chess_coach.api.routes.analytics import router as analytics_router
@@ -18,6 +21,7 @@ from chess_coach.api.routes.sync import router as sync_router
 from chess_coach.api.routes.system import router as system_router
 from chess_coach.api.routes.training import router as training_router
 from chess_coach.api.schemas.contracts import HealthResponse
+from chess_coach.api.schemas.system import Liveness, NotReady, Readiness
 from chess_coach.config import get_settings
 from chess_coach.observability.logging import configure_logging
 
@@ -41,6 +45,31 @@ def create_app() -> FastAPI:
     )
     async def health() -> HealthResponse:
         return HealthResponse()
+
+    @app.get("/health/live", tags=["health"])
+    async def liveness() -> Liveness:
+        return Liveness()
+
+    @app.get(
+        "/health/ready",
+        tags=["health"],
+        response_model=Readiness,
+        responses={
+            503: {"model": NotReady, "description": "Core dependency unavailable"}
+        },
+    )
+    def readiness(
+        failure: Annotated[str | None, Depends(get_readiness_failure)],
+        response: Response,
+    ) -> Readiness | JSONResponse:
+        response.headers["Cache-Control"] = "no-store"
+        if failure:
+            return JSONResponse(
+                status_code=503,
+                content=NotReady(code=failure).model_dump(),
+                headers={"Cache-Control": "no-store"},
+            )
+        return Readiness()
 
     for router in (
         system_router,
@@ -67,6 +96,9 @@ def create_app() -> FastAPI:
             for port in (5173, 4173, 8000)
         }
         probes = request.url.path.rstrip("/") in {
+            "/health/ready",
+            "/api/v1/system",
+            "/api/v1/system/status",
             "/api/v1/system/health",
             "/api/v1/system/metrics",
         }

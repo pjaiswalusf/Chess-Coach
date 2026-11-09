@@ -20,6 +20,7 @@ from chess_coach.application.errors import OperationError
 from chess_coach.application.system import CheckResult, DependencyStatus, SystemStatus
 from chess_coach.config import Settings
 from chess_coach.infrastructure.persistence.engine import create_readonly_engine
+from chess_coach.infrastructure.persistence.models import Base
 from chess_coach.infrastructure.system.probes import probe_ollama, probe_stockfish
 
 MIGRATE = "Run uv run alembic upgrade head from the project directory."
@@ -100,9 +101,11 @@ def database_checks(path: Path, *, deep: bool = False) -> list[CheckResult]:
         try:
             with engine.connect() as connection:
                 # Reading sqlite_schema also detects a corrupt or locked database.
-                connection.exec_driver_sql(
-                    "SELECT count(*) FROM sqlite_schema"
-                ).scalar_one()
+                tables = set(
+                    connection.exec_driver_sql(
+                        "SELECT name FROM sqlite_schema WHERE type = 'table'"
+                    ).scalars()
+                )
                 try:
                     config = Config(
                         str(Path(__file__).resolve().parents[4] / "alembic.ini")
@@ -111,7 +114,11 @@ def database_checks(path: Path, *, deep: bool = False) -> list[CheckResult]:
                     actual = set(
                         MigrationContext.configure(connection).get_current_heads()
                     )
-                    if not expected or actual != expected:
+                    if (
+                        not expected
+                        or actual != expected
+                        or not Base.metadata.tables.keys() <= tables
+                    ):
                         migrations = CheckResult(
                             "migrations",
                             "fail",
@@ -180,16 +187,15 @@ def database_checks(path: Path, *, deep: bool = False) -> list[CheckResult]:
     return [database, migrations, integrity] if deep else [database, migrations]
 
 
-def diagnose(
+def core_checks(
     load_settings: Callable[[], Settings],
     *,
     deep: bool = False,
-    probe_optional: Callable[[Settings], SystemStatus] | None = None,
-) -> list[CheckResult]:
+) -> tuple[Settings | None, list[CheckResult]]:
     try:
         settings = load_settings()
     except ValidationError, OSError:
-        return [
+        return None, [
             CheckResult(
                 "configuration",
                 "fail",
@@ -200,7 +206,7 @@ def diagnose(
             )
         ]
     if (sys.version_info.major, sys.version_info.minor) < (3, 14):
-        return [
+        return None, [
             CheckResult(
                 "configuration",
                 "fail",
@@ -210,7 +216,7 @@ def diagnose(
                 "PYTHON_VERSION_UNSUPPORTED",
             )
         ]
-    checks = [
+    return settings, [
         CheckResult(
             "configuration",
             "pass",
@@ -220,6 +226,17 @@ def diagnose(
         directory_check(settings),
         *database_checks(settings.database_path, deep=deep),
     ]
+
+
+def diagnose(
+    load_settings: Callable[[], Settings],
+    *,
+    deep: bool = False,
+    probe_optional: Callable[[Settings], SystemStatus] | None = None,
+) -> list[CheckResult]:
+    settings, checks = core_checks(load_settings, deep=deep)
+    if settings is None:
+        return checks
     if probe_optional is None:
         engine = probe_stockfish(settings)
         ollama, model = probe_ollama(settings)

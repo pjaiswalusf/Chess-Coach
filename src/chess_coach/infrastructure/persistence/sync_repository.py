@@ -31,6 +31,15 @@ from chess_coach.infrastructure.persistence.models import (
 )
 from chess_coach.infrastructure.persistence.operations import ensure_idle, reserve
 
+_CONNECTION_FAILURE = (
+    "Chess.com could not be reached. Your saved games are safe. Try syncing again."
+)
+_PUBLIC_SYNC_ERRORS = {
+    "CHESSCOM_TIMEOUT": _CONNECTION_FAILURE,
+    "CHESSCOM_UNAVAILABLE": _CONNECTION_FAILURE,
+    "CHESSCOM_RATE_LIMITED": "Chess.com is limiting requests temporarily. Your saved games are safe. Try again later.",
+}
+
 
 class SyncRepository:
     def __init__(self, sessions: sessionmaker[Session], database_path: Path):
@@ -78,6 +87,7 @@ class SyncRepository:
                         "status": "PARTIAL"
                         if run.status == RunStatus.PARTIAL
                         else "FAILED",
+                        "error_code": "INTERRUPTED",
                         "errors": [*previous_errors, run.error_message],
                     }
             for state in session.scalars(
@@ -167,6 +177,9 @@ class SyncRepository:
                 )
             summary = run.summary_json or {}
             failed = run.status in (RunStatus.FAILED, RunStatus.PARTIAL)
+            code = summary.get("error_code")
+            if code not in _PUBLIC_SYNC_ERRORS:
+                code = "SYNC_FAILED"
             return {
                 "run_id": run.id,
                 "status": {
@@ -195,10 +208,14 @@ class SyncRepository:
                     "games_existing": run.games_existing,
                     "games_failed": run.games_failed,
                     "games_skipped": run.games_skipped,
+                    "games_quarantined": summary.get("games_quarantined", 0),
                 },
                 "error": {
-                    "code": "SYNC_FAILED",
-                    "message": "Sync did not finish successfully. Check backend logs and start another sync to resume archive checkpoints.",
+                    "code": code,
+                    "message": _PUBLIC_SYNC_ERRORS.get(
+                        code,
+                        "Sync did not finish successfully. Check backend logs and start another sync to resume archive checkpoints.",
+                    ),
                     "details": {},
                 }
                 if failed

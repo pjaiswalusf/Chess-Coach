@@ -130,7 +130,7 @@ class AnalysisRepository:
         if not self.worker_status()["available"]:
             raise AnalysisError(
                 "WORKER_UNAVAILABLE",
-                "Start uv run chess-coach analysis-worker, then retry.",
+                "Check that Stockfish is installed and configured, then start uv run chess-coach analysis-worker and retry.",
                 503,
             )
         with self.sessions() as s:

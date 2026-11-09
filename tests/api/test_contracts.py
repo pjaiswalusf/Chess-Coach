@@ -334,20 +334,28 @@ def test_cross_operation_double_submission_persists_one_run(seeded):
         ) == 1
 
 
-def test_sync_double_submission(api):
-    client, sessions, _, _, _, _, app = api
-    client.put("/api/v1/player", json={"username": "testplayer"})
+@pytest.mark.parametrize("kind", ["sync", "analysis"])
+def test_same_operation_double_submission(seeded, kind):
+    _, sessions, _, _, settings, _, app = seeded
     barrier = Barrier(2)
 
     def submit(_):
         with TestClient(app, base_url="http://127.0.0.1") as concurrent:
-            barrier.wait()
-            return concurrent.post("/api/v1/sync-runs", json={}).status_code
+            barrier.wait(timeout=5)
+            return concurrent.post(f"/api/v1/{kind}-runs", json={})
 
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        assert sorted(pool.map(submit, range(2))) == [202, 409]
+    with (
+        worker_guard(settings.database_path),
+        ThreadPoolExecutor(max_workers=2) as pool,
+    ):
+        results = sorted(
+            pool.map(submit, range(2)), key=lambda response: response.status_code
+        )
+    assert [response.status_code for response in results] == [202, 409]
+    assert results[1].json()["code"] == f"{kind.upper()}_ALREADY_RUNNING"
     with sessions() as s:
-        assert s.scalar(select(func.count()).select_from(ImportRun)) == 1
+        table = ImportRun if kind == "sync" else AnalysisRun
+        assert s.scalar(select(func.count()).select_from(table)) == 1
 
 
 def test_analysis_pending_request_completes_and_no_work_avoids_engine(seeded):
@@ -369,6 +377,21 @@ def test_analysis_pending_request_completes_and_no_work_avoids_engine(seeded):
     assert (
         client.post("/api/v1/analysis-runs", json={"threads": 999}).status_code == 422
     )
+
+
+def test_analysis_rejects_unsupported_version_and_malformed_json(api):
+    client, *_ = api
+    for response in (
+        client.post("/api/v1/analysis-runs", json={"analysis_version": "unknown"}),
+        client.post(
+            "/api/v1/analysis-runs",
+            content="{",
+            headers={"Content-Type": "application/json"},
+        ),
+    ):
+        assert response.status_code == 422
+        assert response.json()["code"] == "VALIDATION_ERROR"
+        assert "Traceback" not in response.text
 
 
 @pytest.mark.parametrize("failed", ["database", "stockfish", "ollama"])
@@ -539,7 +562,7 @@ def test_sync_prepares_games_before_publishing_completion(seeded):
 
     def prepare(username):
         assert client.get(f"/api/v1/sync-runs/{run}").json()["status"] == "running"
-        parser.run(username)
+        return parser.run(username)
 
     SyncGamesService(
         Provider(),

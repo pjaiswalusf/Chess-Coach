@@ -11,6 +11,8 @@ No new migration or dependency is required for Phase 13.
 | Method | Path | Success | Application implementation |
 | --- | --- | --- | --- |
 | GET | `/health` | 200 | Dependency-free liveness |
+| GET | `/health/live` | 200 | Dependency-free liveness |
+| GET | `/health/ready` | 200 | Local data directory and SQLite schema checks |
 | GET | `/api/v1/system` | 200 | `system_report`, `QueryRepository.statistics`, bounded probes |
 | GET | `/api/v1/player` | 200 | `QueryService.player` |
 | PUT | `/api/v1/player` | 200 | `QueryService.set_player` |
@@ -204,27 +206,26 @@ slow: no Phase 13 latency guarantee or cache is claimed.
 
 ## System, liveness and local safeguards
 
-`/health` returns only `{"status":"ok"}` independently of all dependencies.
-`/system` returns status healthy/degraded/unavailable, database/stockfish/ollama
-components, nullable statistics, and checked_at. Ollama model comes from Settings.
-Its service probe has a 1-second HTTP timeout. Stockfish executable detection is
-lightweight: a found executable alone reports unknown, not verified readiness. An available
-registered worker supplies verified availability and engine version in `/system`;
-`/analysis-worker` also exposes its heartbeat.
-No system poll launches Stockfish. Missing executable reports unavailable.
-Database status uses a local read with a 250ms SQLite lock timeout; unavailable
-statistics are null, never fabricated zeroes. Counts use current-profile persisted
-completion/source/move-count checks, not a costly full-history engine-cache replay.
-Per-game analysis reads perform deep validation. Read-only compatibility checks
-are still CPU work; these timeouts are not a hard wall-clock deadline for arbitrary
-database sizes. No p95 performance budget is claimed as measured here.
+`/health/live` returns `{"status":"alive"}` without probing dependencies.
+`/health` retains `{"status":"ok"}`. `/health/ready` returns `{"status":"ready"}`
+when the data directory and SQLite checks pass. An unavailable core dependency
+returns HTTP 503 with `status: "not_ready"` and a diagnostic `code`. The schema
+check verifies the Alembic revision and required tables.
+
+`/api/v1/system` reports database, Stockfish, Ollama and Chess.com status,
+nullable statistics and `checked_at`. A Stockfish UCI handshake and Ollama model
+inventory request each have a two-second limit. The summary reuses these probe
+results for five seconds. `/api/v1/system/health` performs fresh component
+checks. `/api/v1/analysis-worker` reports worker availability and heartbeat.
+Chess.com remains `not_checked` on the system summary. Database checks read the
+configured file with a one-second SQLite lock timeout. Unavailable statistics
+are null. Per-game analysis reads validate stored engine evidence.
 
 Requests accept localhost/127.0.0.1/::1 Host values only. Mutating browser requests
-must have an allowed http Origin on localhost/127.0.0.1 ports 5173/4173/8000;
-opaque or remote origins and cross-site Fetch Metadata are rejected. Origin-less
-local CLI clients remain supported; this is a single-user local boundary, not
-account authentication. JSON validation rejects simple form/text mutation bodies.
-No permissive CORS middleware is installed. The Vite `/api` development proxy
+and diagnostic probes must have an allowed HTTP Origin on localhost/127.0.0.1
+ports 5173/4173/8000 when an Origin header is sent. Opaque or remote origins and
+cross-site Fetch Metadata are rejected. Local CLI clients can omit the Origin
+header. JSON validation rejects simple form and text mutation bodies. The Vite `/api` development proxy
 preserves backend status and JSON; frontend API code uses relative `/api/v1` URLs.
 
 ## Existing-service inventory and changes

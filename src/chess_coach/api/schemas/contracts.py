@@ -75,6 +75,7 @@ class SyncProgress(BaseModel):
     games_existing: int = Field(ge=0)
     games_failed: int = Field(ge=0)
     games_skipped: int = Field(ge=0)
+    games_quarantined: int = Field(default=0, ge=0)
 
 
 class LatestRuns(BaseModel):
@@ -188,10 +189,15 @@ class Component(BaseModel):
     version: str | None = None
 
 
+class ChessComComponent(BaseModel):
+    status: Literal["not_checked"]
+
+
 class Components(BaseModel):
     database: Component
     stockfish: Component
     ollama: Component
+    chesscom: ChessComComponent
 
 
 class Statistics(BaseModel):

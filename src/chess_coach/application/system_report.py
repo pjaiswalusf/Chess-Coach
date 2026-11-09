@@ -14,20 +14,20 @@ from chess_coach.domain.analysis import ANALYSIS_VERSION
 def system_report(
     settings: Settings,
     status: SystemStatus,
-    statistics: Callable[[], dict[str, int]],
+    statistics: Callable[[], dict[str, int]] | None,
     worker: Callable[[], dict[str, object]] | None = None,
     training: Callable[[], tuple[int, int, bool]] | None = None,
 ) -> dict[str, object]:
     try:
-        counts = statistics()
-        database = "available"
+        counts = statistics() if statistics else None
+        database = "available" if counts is not None else "unavailable"
         engine = worker() if worker is not None else {}
     except SQLAlchemyError, OSError:
         logging.getLogger(__name__).exception("system_database_unavailable")
         counts = None
         database = "unavailable"
         engine = {}
-    stockfish = "available" if engine.get("available") else status.stockfish.state
+    stockfish = status.stockfish.state
     training_status: dict[str, object] | None = None
     if training is not None:
         try:
@@ -65,6 +65,7 @@ def system_report(
         else "degraded",
         "components": {
             "database": {"status": database},
+            "chesscom": {"status": "not_checked"},
             "stockfish": {"status": stockfish, "version": engine.get("engine_version")},
             "ollama": {
                 "status": status.ollama.state,

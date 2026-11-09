@@ -4,8 +4,11 @@ import tailwindcss from '@tailwindcss/vite';
 import adapter from '@sveltejs/adapter-auto';
 import { sveltekit } from '@sveltejs/kit/vite';
 
-const backend = { target: 'http://127.0.0.1:8000', changeOrigin: false };
-const proxy = { '/api/': backend, '^/health(?:$|\\?)': backend };
+const backend = {
+	target: `http://127.0.0.1:${process.env.CHESS_COACH_E2E === '1' ? 8001 : 8000}`,
+	changeOrigin: false
+};
+const proxy = { '/api/': backend, '^/health(?:/(?:live|ready))?(?:$|\\?)': backend };
 const loopback = { host: '127.0.0.1', strictPort: true, cors: false, proxy };
 
 export default defineConfig({

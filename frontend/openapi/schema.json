@@ -347,6 +347,20 @@
         "title": "AttemptResult",
         "type": "object"
       },
+      "ChessComComponent": {
+        "properties": {
+          "status": {
+            "const": "not_checked",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "ChessComComponent",
+        "type": "object"
+      },
       "ChessEvent": {
         "additionalProperties": false,
         "properties": {
@@ -763,6 +777,9 @@
       },
       "Components": {
         "properties": {
+          "chesscom": {
+            "$ref": "#/components/schemas/ChessComComponent"
+          },
           "database": {
             "$ref": "#/components/schemas/Component"
           },
@@ -776,7 +793,8 @@
         "required": [
           "database",
           "stockfish",
-          "ollama"
+          "ollama",
+          "chesscom"
         ],
         "title": "Components",
         "type": "object"
@@ -1587,6 +1605,18 @@
         "title": "LatestRuns",
         "type": "object"
       },
+      "Liveness": {
+        "properties": {
+          "status": {
+            "const": "alive",
+            "default": "alive",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "Liveness",
+        "type": "object"
+      },
       "MotifHealth": {
         "additionalProperties": false,
         "properties": {
@@ -2023,6 +2053,25 @@
           }
         },
         "title": "NextPuzzle",
+        "type": "object"
+      },
+      "NotReady": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "status": {
+            "const": "not_ready",
+            "default": "not_ready",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "NotReady",
         "type": "object"
       },
       "OutcomeMetric": {
@@ -2487,6 +2536,18 @@
           "per_100"
         ],
         "title": "Rate",
+        "type": "object"
+      },
+      "Readiness": {
+        "properties": {
+          "status": {
+            "const": "ready",
+            "default": "ready",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "Readiness",
         "type": "object"
       },
       "RecentTrend": {
@@ -3578,6 +3639,12 @@
           "games_inserted": {
             "minimum": 0.0,
             "title": "Games Inserted",
+            "type": "integer"
+          },
+          "games_quarantined": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Games Quarantined",
             "type": "integer"
           },
           "games_seen": {
@@ -8534,6 +8601,188 @@
           }
         },
         "summary": "Check HTTP liveness without probing dependencies",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/health/live": {
+      "get": {
+        "operationId": "liveness_health_live_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Liveness"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Liveness",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "readiness_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotReady"
+                }
+              }
+            },
+            "description": "Core dependency unavailable"
+          }
+        },
+        "summary": "Readiness",
         "tags": [
           "health"
         ]

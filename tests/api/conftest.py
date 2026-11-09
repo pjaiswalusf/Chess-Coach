@@ -9,13 +9,13 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
+from fixtures.reliability import FakeEngine
 
 from chess_coach.api.app import create_app
 from chess_coach.api.dependencies import get_system_status
 from chess_coach.application.analysis import AnalysisProcessor, configured_profile
 from chess_coach.application.system import DependencyStatus, SystemStatus
 from chess_coach.config import Settings, get_settings
-from chess_coach.domain.engine_types import EngineResult
 from chess_coach.domain.game_records import PARSER_VERSION
 from chess_coach.infrastructure.persistence.analysis_repository import (
     AnalysisRepository,
@@ -26,32 +26,6 @@ from chess_coach.infrastructure.persistence.session import create_session_factor
 from chess_coach.infrastructure.pgn.parser import parse_game
 
 PGN = '[White "TestPlayer"]\n[Black "Opponent"]\n[Result "1-0"]\n\n1. e4 e5 2. Nf3 Nc6 1-0'
-
-
-class FakeEngine:
-    engine_name = "fixture-engine"
-    calls = 0
-
-    def start(self):
-        pass
-
-    def close(self):
-        pass
-
-    def analyze(self, board, **kwargs):
-        self.calls += 1
-        best = next(iter(board.legal_moves)).uci()
-        return EngineResult(
-            board.fen(),
-            self.engine_name,
-            20 * len(board.move_stack),
-            None,
-            None,
-            best,
-            (best,),
-            4,
-            100,
-        )
 
 
 @pytest.fixture

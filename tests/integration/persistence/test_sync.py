@@ -26,8 +26,11 @@ class FixtureAPI:
     def __init__(self):
         self.requests = []
         self.fail = None
+        self.october_faults = []
+        self.include_november = False
         self.interrupt = False
         self.invalid = False
+        self.bad_pgn = None
         self.extra = False
         self.not_modified = False
         self.raw = json.loads(
@@ -42,17 +45,25 @@ class FixtureAPI:
         if path.endswith("/testplayer"):
             return httpx.Response(200, json={"username": "TestPlayer"})
         if path.endswith("/archives"):
+            months = ["09", "10", "11"] if self.include_november else ["09", "10"]
             return httpx.Response(
                 200,
                 json={
                     "archives": [
-                        BASE_URL + "/player/testplayer/games/2026/09",
-                        BASE_URL + "/player/testplayer/games/2026/10",
+                        BASE_URL + f"/player/testplayer/games/2026/{month}"
+                        for month in months
                     ]
                 },
             )
         month = int(path[-2:])
         if month == 10:
+            if self.october_faults:
+                fault = self.october_faults.pop(0)
+                if fault == "timeout":
+                    raise httpx.ReadTimeout(
+                        "private connection detail", request=request
+                    )
+                return httpx.Response(429, headers={"Retry-After": "2"})
             if self.interrupt:
                 raise KeyboardInterrupt()
             if self.fail:
@@ -69,6 +80,8 @@ class FixtureAPI:
             games.append(raw)
         if self.invalid and month == 10:
             games[0]["white"]["result"] = "playing"
+        if self.bad_pgn is not None and month == 10:
+            games[0]["pgn"] = self.bad_pgn
         return httpx.Response(200, json={"games": games}, headers={"ETag": '"v1"'})
 
 
@@ -129,6 +142,93 @@ def test_partial_failure_retry_and_diagnostics(setup_sync, sessions):
     retry = service.sync("testplayer")
     assert retry.games_inserted == 4 and retry.archives_skipped == 1
     assert count(sessions, Game) == 7
+
+
+@pytest.mark.parametrize(
+    ("fault", "code"),
+    [("timeout", "CHESSCOM_TIMEOUT"), ("rate", "CHESSCOM_RATE_LIMITED")],
+)
+def test_source_failure_is_durable_and_retry_preserves_history(
+    setup_sync, sessions, fault, code
+):
+    source, store, service = setup_sync
+    source.october_faults = [fault] * 3
+    first = service.sync("testplayer", month=Archive(2026, 9))
+    assert first.games_inserted == 3
+
+    def saved_games():
+        with sessions() as session:
+            return session.execute(
+                select(Game.id, Game.external_id, Game.raw_pgn).order_by(Game.id)
+            ).all()
+
+    before = saved_games()
+    failed = service.sync("testplayer", month=Archive(2026, 10))
+    assert failed.status == "FAILED" and failed.games_inserted == 0
+    assert saved_games() == before
+    progress = store.progress(failed.run_id)
+    assert progress["status"] == "failed" and progress["error"]["code"] == code
+    assert "saved games" in progress["error"]["message"]
+    assert "private connection detail" not in str(progress)
+    assert len([r for r in source.requests if r.url.path.endswith("/10")]) == 3
+
+    retry = service.sync("testplayer", month=Archive(2026, 10))
+    assert retry.status == "COMPLETED" and retry.games_inserted == 4
+    assert saved_games()[:3] == before and len(saved_games()) == 7
+    assert service.sync("testplayer", force=True).games_inserted == 0
+
+
+def test_rate_limit_clears_on_last_attempt_without_duplicate_games(
+    setup_sync, sessions
+):
+    source, store, service = setup_sync
+    source.october_faults = ["rate", "rate"]
+    report = service.sync("testplayer")
+    assert report.status == "COMPLETED" and report.games_inserted == 7
+    assert store.progress(report.run_id)["error"] is None
+    assert len([r for r in source.requests if r.url.path.endswith("/10")]) == 3
+    assert count(sessions, Game) == 7
+
+
+def test_exhausted_rate_limit_stops_scan_and_preserves_committed_month(
+    setup_sync, sessions
+):
+    source, store, service = setup_sync
+    source.include_november = True
+    source.october_faults = ["rate"] * 3
+    report = service.sync("testplayer")
+    assert report.status == "PARTIAL" and report.games_inserted == 3
+    assert count(sessions, Game) == 3
+    assert store.progress(report.run_id)["error"]["code"] == "CHESSCOM_RATE_LIMITED"
+    assert not any(r.url.path.endswith("/11") for r in source.requests)
+    retry = service.sync("testplayer")
+    assert retry.status == "COMPLETED" and retry.games_inserted == 8
+    assert count(sessions, Game) == 11
+
+
+@pytest.mark.parametrize(
+    ("raw", "reason"), [("", "EMPTY_PGN"), ('[Result "1-0]', "INVALID_PGN_RESULT")]
+)
+def test_bad_pgn_quarantines_only_its_own_record(setup_sync, sessions, raw, reason):
+    source, store, service = setup_sync
+    source.bad_pgn = raw
+    source.extra = True
+    report = service.sync("testplayer", month=Archive(2026, 10))
+    assert report.status == "COMPLETED" and report.games_inserted == 4
+    assert report.games_failed == report.games_quarantined == 1
+    assert store.progress(report.run_id)["progress"]["games_quarantined"] == 1
+    with sessions() as session:
+        rejection = session.scalars(select(ImportRejection)).one()
+        assert (
+            rejection.import_run_id,
+            rejection.record_index,
+            rejection.raw_pgn,
+            rejection.reason,
+        ) == (report.run_id, 0, raw, reason)
+        run = session.get(ImportRun, rejection.import_run_id)
+        assert run.started_at == run.finished_at == NOW
+    retry = service.sync("testplayer", month=Archive(2026, 10), force=True)
+    assert retry.games_inserted == 0 and count(sessions, Game) == 4
 
 
 def test_invalid_record_rejects_whole_month_preserves_raw_pgn(setup_sync, sessions):
@@ -403,9 +503,12 @@ def test_sync_preflight_failure_does_not_log_or_return_username(
 
     _, store, _ = setup_sync
     configure_logging()
-    with ChessComClient(
-        transport=httpx.MockTransport(lambda _: httpx.Response(403))
-    ) as provider, pytest.raises(SourceError) as error:
+    with (
+        ChessComClient(
+            transport=httpx.MockTransport(lambda _: httpx.Response(403))
+        ) as provider,
+        pytest.raises(SourceError) as error,
+    ):
         SyncGamesService(provider, store).sync("private-test-player")
     assert "private-test-player" not in str(error.value)
     event = json.loads(capsys.readouterr().err)

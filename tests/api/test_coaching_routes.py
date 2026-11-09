@@ -80,6 +80,15 @@ def test_vertical_slice_cache_duplicate_and_offline(coaching):
     )
     assert client.get(PATH).json()["cached"]
     assert client.post(PATH).json()["cached"]
+    uncached = client.post("/api/v1/games/2/moves/1/explanation")
+    assert (
+        uncached.status_code == 503 and uncached.json()["code"] == "OLLAMA_UNAVAILABLE"
+    )
+    assert client.get("/api/v1/games/2/analysis").status_code == 200
+    summary = client.get("/api/v1/analytics/summary")
+    assert (
+        summary.status_code == 200 and summary.json()["health"]["analyzed_games"] == 25
+    )
     assert model.calls == 1
 
 

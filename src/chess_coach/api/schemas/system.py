@@ -8,6 +8,19 @@ from chess_coach.api.schemas.contracts import Statistics, TrainingHealth
 DependencyState = Literal["available", "unavailable", "unknown"]
 
 
+class Liveness(BaseModel):
+    status: Literal["alive"] = "alive"
+
+
+class Readiness(BaseModel):
+    status: Literal["ready"] = "ready"
+
+
+class NotReady(BaseModel):
+    status: Literal["not_ready"] = "not_ready"
+    code: str
+
+
 class DependencyStatus(BaseModel):
     state: DependencyState
     detail: str | None = None

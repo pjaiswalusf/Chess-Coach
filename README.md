@@ -20,12 +20,16 @@ The CLI starts FastAPI on `127.0.0.1:8000`. For development with automatic reloa
 uv run uvicorn chess_coach.api.app:app --host 127.0.0.1 --port 8000 --no-access-log --reload
 ```
 
-- `GET /health` checks API liveness independently of local dependencies.
+- `GET /health/live` checks whether FastAPI responds. The existing `/health`
+  endpoint serves the original liveness contract.
+- `GET /health/ready` checks the local data directory and SQLite schema.
+  Core failures return HTTP 503 with a diagnostic code.
 - `GET /api/v1/system/health` reports component checks, recovery steps, and
   stored-game counts. Core failures return a structured HTTP 503.
 - `GET /api/v1/system/metrics` reports the latest finished analysis run and
   coaching measurements over the last seven days.
-- `GET /api/v1/system` and `GET /api/v1/system/status` serve existing status clients.
+- `GET /api/v1/system` summarizes local availability and library counts.
+  The summary reports Chess.com as `not_checked` without calling it.
 - `/docs` shows the interactive API documentation.
 
 Install Stockfish and set `CHESS_COACH_STOCKFISH_EXECUTABLE` if needed.
@@ -68,7 +72,8 @@ reload or leave while work runs; Sync rediscovers the persisted runs. Open
 **Games** to review a position and **Coach** to inspect recurring weaknesses and
 their source moves. **System** shows which local capabilities are available.
 
-Both Vite development and local preview forward `/api/*` and `/health` to
+Both Vite development and local preview forward `/api/*`, `/health`, and the
+liveness and readiness endpoints to
 FastAPI. See [frontend setup and checks](frontend/README.md) and
 [backend checks](AGENTS.md#completion-checks).
 

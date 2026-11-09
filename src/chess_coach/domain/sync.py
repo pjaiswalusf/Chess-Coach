@@ -51,6 +51,7 @@ class Rejection:
     reason: str
     raw_pgn: str | None
     unsupported: bool = False
+    quarantined: bool = False
 
 
 @dataclass(frozen=True)
@@ -86,8 +87,10 @@ class SyncReport:
     games_already_present: int = 0
     games_skipped_unsupported: int = 0
     games_failed: int = 0
+    games_quarantined: int = 0
     planned_archives: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    error_code: str | None = None
 
 
 def should_fetch(
