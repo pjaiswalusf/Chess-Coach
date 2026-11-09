@@ -11,7 +11,8 @@ export function invalidResponse(status?: number): ApiError {
 export async function apiRequest<T>(
 	path: string,
 	init: RequestInit = {},
-	timeoutMs = 8000
+	timeoutMs = 8000,
+	acceptedErrorStatus?: number
 ): Promise<T> {
 	const pathname = path.split(/[?#]/, 1)[0];
 	if (
@@ -57,7 +58,7 @@ export async function apiRequest<T>(
 			throw new ApiError('invalid_response', 'The backend returned invalid JSON.', response.status);
 		}
 
-		if (!response.ok) {
+		if (!response.ok && response.status !== acceptedErrorStatus) {
 			const error = isRecord(payload) ? payload : {};
 			const code = typeof error.code === 'string' ? error.code : undefined;
 			const safeStatus = response.status < 500 || response.status === 503;

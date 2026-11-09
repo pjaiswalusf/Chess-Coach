@@ -93,7 +93,10 @@ test('recovers in the browser after stopping and restarting real FastAPI', async
 			if (name === 'System') {
 				await expect(page.getByText('Degraded', { exact: true })).toBeVisible();
 				await expect(page.getByText(/Start Ollama/)).toBeVisible();
-				await expect(page.getByText(/Check your Stockfish installation/)).toBeVisible();
+				await expect(
+					page.getByText('Install Stockfish or check the configured executable.')
+				).toBeVisible();
+				await expect(page.getByText('No finished analysis runs.')).toBeVisible();
 				await expect(page.getByText('Games stored').locator('..').locator('dd')).toHaveText('0');
 			}
 		}

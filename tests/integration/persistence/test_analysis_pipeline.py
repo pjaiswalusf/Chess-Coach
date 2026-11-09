@@ -1,10 +1,16 @@
 """Public workflow and failure injection against real migrated SQLite."""
 
+import signal
+import subprocess
+import sys
 from dataclasses import asdict, replace
+from pathlib import Path
+from select import select as wait_for_output
 
 import chess
 import pytest
 from fastapi.testclient import TestClient
+from fixtures.reliability import FakeEngine
 from sqlalchemy import delete, event, func, select
 from test_models import game
 
@@ -18,7 +24,6 @@ from chess_coach.application.analysis import (
 from chess_coach.config import Settings
 from chess_coach.domain.analysis import AnalysisRunStatus as Status
 from chess_coach.domain.analysis import history_hash, transition
-from chess_coach.domain.engine_types import EngineResult
 from chess_coach.domain.game_records import PARSER_VERSION, ParseStatus
 from chess_coach.infrastructure.analysis_lock import WorkerAlreadyRunning, worker_guard
 from chess_coach.infrastructure.persistence.analysis_repository import (
@@ -35,32 +40,6 @@ from chess_coach.infrastructure.pgn.parser import parse_game
 PGN = '[White "TestPlayer"]\n[Black "Opponent"]\n[Result "1-0"]\n\n1. e4 e5 2. Nf3 Nc6 1-0'
 
 
-class FakeEngine:
-    engine_name = "fixture-engine"
-    calls = 0
-
-    def start(self):
-        pass
-
-    def close(self):
-        pass
-
-    def analyze(self, board, **kwargs):
-        self.calls += 1
-        best = next(iter(board.legal_moves)).uci()
-        return EngineResult(
-            board.fen(),
-            self.engine_name,
-            20 * len(board.move_stack),
-            None,
-            None,
-            best,
-            (best,),
-            4,
-            100,
-        )
-
-
 @pytest.fixture
 def pipeline(sessions, tmp_path):
     settings = Settings(database_path=tmp_path / "test.db", _env_file=None)
@@ -72,13 +51,17 @@ def pipeline(sessions, tmp_path):
 
 
 def seed(sessions, player_id, count=1, pgn=PGN):
+    return seed_games(sessions, player_id, [pgn] * count)
+
+
+def seed_games(sessions, player_id, pgns):
     ids = []
-    parsed = parse_game(pgn, "testplayer")
-    metadata = asdict(parsed)
-    del metadata["moves"]
-    metadata["total_plies"] = parsed.total_plies
     with sessions.begin() as s:
-        for i in range(count):
+        for i, pgn in enumerate(pgns):
+            parsed = parse_game(pgn, "testplayer")
+            metadata = asdict(parsed)
+            del metadata["moves"]
+            metadata["total_plies"] = parsed.total_plies
             g = game(
                 player_id,
                 platform="pgn",
@@ -163,6 +146,89 @@ def test_crash_preserves_commit_and_recovers_cached_positions(
     assert engine.calls == 5
     with sessions() as s:
         assert s.scalar(select(func.count()).select_from(MoveAnalysis)) == 12
+
+
+@pytest.mark.parametrize("stop_signal", [signal.SIGKILL, signal.SIGTERM])
+def test_worker_signal_recovers_ten_games(
+    pipeline, sessions, player_id, stop_signal, tmp_path
+):
+    store, _, settings, profile = pipeline
+    alternate = PGN.replace("e4 e5", "d4 d5")
+    ids = seed_games(sessions, player_id, [PGN] * 3 + [alternate] * 7)
+    run_id = store.create(player_id, profile)
+    fixture = Path(__file__).resolve().parents[2] / "fixtures/phase20_worker.py"
+    command = [sys.executable, str(fixture), str(settings.database_path)]
+
+    def move_ids():
+        with sessions() as session:
+            return set(
+                session.execute(select(MoveAnalysis.game_id, MoveAnalysis.ply)).all()
+            )
+
+    with (tmp_path / "worker.log").open("w+") as log:
+        child = subprocess.Popen(
+            [*command, "pause"], stdout=subprocess.PIPE, stderr=log, text=True
+        )
+        try:
+            assert child.stdout is not None
+            readable, _, _ = wait_for_output([child.stdout], [], [], 10)
+            log.seek(0)
+            assert readable and child.stdout.readline().strip() == "checkpoint", (
+                log.read()
+            )
+            stopped = store.get(run_id)
+            assert stopped.status == Status.RUNNING and stopped.games_completed == 3
+            assert stopped.positions_analyzed == 6
+            assert [member.status for member in store.members(run_id)] == [
+                "done"
+            ] * 3 + ["running"] + ["pending"] * 6
+            committed = move_ids()
+            assert committed == {
+                (game_id, ply) for game_id in ids[:3] for ply in range(1, 5)
+            }
+            child.send_signal(stop_signal)
+            output, _ = child.communicate(timeout=10)
+            if stop_signal == signal.SIGKILL:
+                assert (
+                    child.returncode == -signal.SIGKILL
+                    and "engine closed" not in output
+                )
+            else:
+                assert child.returncode == 0 and "engine closed" in output
+        finally:
+            if child.poll() is None:
+                child.kill()
+                child.wait(timeout=10)
+
+    restarted = subprocess.run(
+        [*command, "resume"], check=False, capture_output=True, text=True, timeout=15
+    )
+    assert restarted.returncode == 0, restarted.stderr
+    finished = store.get(run_id)
+    assert finished.status == Status.DONE and finished.games_completed == 10
+    assert finished.positions_analyzed == 9 and finished.cache_hits == 43
+    assert [member.attempt_count for member in store.members(run_id)] == [
+        1,
+        1,
+        1,
+        2,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+    ]
+    assert move_ids() == {(game_id, ply) for game_id in ids for ply in range(1, 5)}
+    assert not store.worker_status()["available"]
+    with sessions() as session:
+        assert session.scalar(select(func.count()).select_from(MoveAnalysis)) == 40
+        assert session.connection().exec_driver_sql(
+            "PRAGMA integrity_check"
+        ).scalars().all() == ["ok"]
+        assert (
+            session.connection().exec_driver_sql("PRAGMA foreign_key_check").all() == []
+        )
 
 
 def test_partial_position_crash_then_resume(pipeline, sessions, player_id):
@@ -418,10 +484,13 @@ def test_engine_failure_retries_once_then_fails_run(pipeline, sessions, player_i
     from chess_coach.infrastructure.engine.exceptions import EngineAnalysisError
 
     store, engine, _, profile = pipeline
-    seed(sessions, player_id)
+    game_ids = seed_games(sessions, player_id, [PGN, PGN.replace("e4 e5", "d4 d5")])
     attempts = []
+    analyze = engine.analyze
 
     def broken(board, **kwargs):
+        if engine.calls < 7:
+            return analyze(board, **kwargs)
         attempts.append(1)
         raise EngineAnalysisError("hung")
 
@@ -431,6 +500,31 @@ def test_engine_failure_retries_once_then_fails_run(pipeline, sessions, player_i
     assert len(attempts) == 2
     assert store.get(run).status == Status.FAILED
     assert store.get(run).error_code == "ENGINE_UNAVAILABLE"
+    assert [m.status for m in store.members(run)] == ["done", "failed"]
+    assert len(store.moves(game_ids[0], profile.hash)) == 4
+    with pytest.raises(AnalysisError) as unavailable:
+        store.moves(game_ids[1], profile.hash)
+    assert unavailable.value.code == "ANALYSIS_NOT_FOUND"
+    with sessions() as session:
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(MoveAnalysis)
+                .where(MoveAnalysis.game_id == game_ids[1])
+            )
+            == 0
+        )
+    engine.analyze = analyze
+    retry = store.create(player_id, profile)
+    process(pipeline, retry)
+    resumed = store.get(retry)
+    assert resumed.status == Status.DONE
+    assert (resumed.games_total, resumed.games_completed, resumed.games_skipped) == (
+        2,
+        1,
+        1,
+    )
+    assert engine.calls == 9
 
 
 def test_graceful_shutdown_leaves_recoverable_run(pipeline, sessions, player_id):
@@ -578,3 +672,35 @@ def test_worker_disk_preflight_closes_without_claiming(
         worker_module.run_worker(settings, once=True)
     assert closed == [True]
     assert store.get(run).status == Status.PENDING
+
+
+def test_failed_engine_cache_miss_is_not_a_successful_evaluation(
+    pipeline, sessions, player_id, capsys, monkeypatch
+):
+    import json
+
+    from chess_coach.infrastructure.engine.exceptions import EngineAnalysisError
+    from chess_coach.observability.logging import configure_logging
+
+    store, engine, _, profile = pipeline
+    seed(sessions, player_id)
+
+    def unavailable(*args, **kwargs):
+        raise EngineAnalysisError("SECRET_BOARD_HISTORY")
+
+    monkeypatch.setattr(engine, "analyze", unavailable)
+    run_id = store.create(player_id, profile)
+    configure_logging("DEBUG")
+    process(pipeline, run_id)
+    output = capsys.readouterr().err
+    assert "SECRET_BOARD_HISTORY" not in output
+    events = [json.loads(line) for line in output.splitlines()]
+    assert events[0]["event"] == "analysis_started"
+    assert events[-1]["event"] == "analysis_failed"
+    assert all(event["run_id"] == str(run_id) for event in events)
+    result = store.get(run_id)
+    assert result.cache_misses == events[-1]["cache_misses"] == 1
+    assert result.positions_analyzed == events[-1]["positions_analyzed"] == 0
+    assert result.active_duration_ms == events[-1]["duration_ms"]
+    assert result.engine_seconds > 0
+    assert events[-1]["error_code"] == "ENGINE_UNAVAILABLE"

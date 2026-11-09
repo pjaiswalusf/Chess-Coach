@@ -1,11 +1,9 @@
 """Durable single local coaching consumer, using the existing kernel worker guard."""
 
-import logging
 import signal
 from functools import partial
 from threading import Event
 
-from chess_coach.analysis_worker import JsonFormatter
 from chess_coach.application.coaching import CoachingProcessor, CoachingService
 from chess_coach.config import Settings
 from chess_coach.infrastructure.analysis_lock import WorkerAlreadyRunning, worker_guard
@@ -20,6 +18,7 @@ from chess_coach.infrastructure.persistence.coaching_repository import (
 from chess_coach.infrastructure.persistence.engine import create_database_engine
 from chess_coach.infrastructure.persistence.query_repository import QueryRepository
 from chess_coach.infrastructure.persistence.session import create_session_factory
+from chess_coach.observability.logging import configure_logging
 
 
 def make_coaching_processor(
@@ -41,11 +40,7 @@ def run_coaching_worker(settings: Settings, *, once: bool = False) -> None:
         AnalysisRepository(create_session_factory(db), settings.database_path), settings
     )
     store = processor.service.store
-    handler = logging.StreamHandler()
-    handler.setFormatter(JsonFormatter())
-    logger = logging.getLogger("chess_coach")
-    logger.addHandler(handler)
-    logger.setLevel(settings.log_level)
+    configure_logging(settings.log_level)
     try:
         # Separate consumer, same SQLite queue/OS-lock pattern. Holding this guard also
         # excludes Stockfish work, so the two memory-heavy workloads cannot overlap.
@@ -64,6 +59,5 @@ def run_coaching_worker(settings: Settings, *, once: bool = False) -> None:
         ) from None
     finally:
         db.dispose()
-        logger.removeHandler(handler)
         for sig, old in previous.items():
             signal.signal(sig, old)

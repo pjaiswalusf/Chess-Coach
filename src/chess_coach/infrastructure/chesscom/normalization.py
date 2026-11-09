@@ -30,7 +30,7 @@ class Player(BaseModel):
 class SourceGame(BaseModel):
     model_config = ConfigDict(strict=True)
     rules: str
-    pgn: str = Field(min_length=1)
+    pgn: str
     uuid: str | None = None
     url: str
     end_time: int = Field(gt=0)
@@ -71,12 +71,7 @@ def normalize_game(
             winner = "draw"
         else:
             raise ValueError("INVALID_COMPLETION_RESULTS")
-        declared = re.search(
-            r'^\[Result\s+"(1-0|0-1|1/2-1/2)"\]\s*$', source.pgn, re.MULTILINE
-        )
         expected = {"white": "1-0", "black": "0-1", "draw": "1/2-1/2"}[winner]
-        if declared is None or declared[1] != expected:
-            raise ValueError("INVALID_PGN_RESULT")
         # Refuse an explicitly conflicting variant even if the envelope says chess.
         variant = re.search(r'^\[Variant\s+"([^"]+)"\]', source.pgn, re.MULTILINE)
         if variant and variant[1].lower() not in {"standard", "chess"}:
@@ -90,6 +85,13 @@ def normalize_game(
             identity = f"uuid:{UUID(source.uuid)}"
         else:
             identity = f"url:{url}"
+        if not source.pgn.strip():
+            return Rejection(index, "EMPTY_PGN", pgn, quarantined=True)
+        declared = re.search(
+            r'^\[Result\s+"(1-0|0-1|1/2-1/2)"\]\s*$', source.pgn, re.MULTILINE
+        )
+        if declared is None or declared[1] != expected:
+            return Rejection(index, "INVALID_PGN_RESULT", pgn, quarantined=True)
         # Prefer URL for the secondary identity so UUID presence/absence is stable.
         fingerprint = hashlib.sha256(
             f"chesscom-source-v1:{url or identity}".encode()
@@ -130,7 +132,6 @@ def normalize_game(
             "PLAYER_MISMATCH",
             "INVALID_END_TIME",
             "INVALID_COMPLETION_RESULTS",
-            "INVALID_PGN_RESULT",
             "INVALID_GAME_URL",
         }
         return Rejection(index, code if code in known else "INVALID_SOURCE_RECORD", pgn)

@@ -28,8 +28,12 @@ def worker_guard(database: Path) -> Iterator[None]:
 
 
 def worker_is_locked(database: Path) -> bool:
+    path = database.resolve().with_suffix(".analysis.lock")
     try:
-        with worker_guard(database):
-            return False
-    except WorkerAlreadyRunning:
+        with path.open("rb") as handle:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except FileNotFoundError:
+        return False
+    except BlockingIOError:
         return True
+    return False

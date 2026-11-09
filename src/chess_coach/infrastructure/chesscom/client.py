@@ -66,10 +66,13 @@ class ChessComClient:
             delay = 2**attempt + self._jitter()
             try:
                 response = self._http.get(BASE_URL + path, headers=headers)
-            except httpx.TimeoutException, httpx.NetworkError:
+            except (httpx.TimeoutException, httpx.NetworkError) as exc:
                 if attempt == self._attempts - 1:
                     raise ChessComError(
-                        "TRANSPORT_FAILURE", "Retry synchronization later."
+                        "CHESSCOM_TIMEOUT"
+                        if isinstance(exc, httpx.TimeoutException)
+                        else "CHESSCOM_UNAVAILABLE",
+                        "Chess.com could not be reached. Retry synchronization later.",
                     ) from None
             else:
                 status = response.status_code
@@ -79,16 +82,17 @@ class ChessComClient:
                     code = "UNAVAILABLE" if status in (404, 410) else "HTTP_ERROR"
                     raise ChessComError(
                         code,
-                        f"HTTP {status} at {path}.",
+                        f"Chess.com returned HTTP {status}. Check the source and retry.",
                         unavailable=status in (404, 410),
                     )
                 if attempt == self._attempts - 1:
                     raise ChessComError(
-                        "RETRY_EXHAUSTED", f"HTTP {status}; retry later."
+                        "CHESSCOM_RATE_LIMITED" if status == 429 else "RETRY_EXHAUSTED",
+                        f"HTTP {status}; retry later.",
                     )
                 if status == 429 and (retry := response.headers.get("Retry-After")):
                     try:
-                        delay = float(int(retry))
+                        delay = int(retry)
                     except ValueError:
                         try:
                             delay = (
@@ -98,7 +102,7 @@ class ChessComClient:
                             pass
                     if delay > 30:
                         raise ChessComError(
-                            "RATE_LIMITED",
+                            "CHESSCOM_RATE_LIMITED",
                             "Retry-After exceeds 30 seconds; retry later.",
                         )
                     delay = max(0, delay)

@@ -1,6 +1,7 @@
 """SQLite synchronization transactions and local-process exclusion."""
 
 import fcntl
+import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import asdict
@@ -29,6 +30,15 @@ from chess_coach.infrastructure.persistence.models import (
     TrackedPlayer,
 )
 from chess_coach.infrastructure.persistence.operations import ensure_idle, reserve
+
+_CONNECTION_FAILURE = (
+    "Chess.com could not be reached. Your saved games are safe. Try syncing again."
+)
+_PUBLIC_SYNC_ERRORS = {
+    "CHESSCOM_TIMEOUT": _CONNECTION_FAILURE,
+    "CHESSCOM_UNAVAILABLE": _CONNECTION_FAILURE,
+    "CHESSCOM_RATE_LIMITED": "Chess.com is limiting requests temporarily. Your saved games are safe. Try again later.",
+}
 
 
 class SyncRepository:
@@ -77,6 +87,7 @@ class SyncRepository:
                         "status": "PARTIAL"
                         if run.status == RunStatus.PARTIAL
                         else "FAILED",
+                        "error_code": "INTERRUPTED",
                         "errors": [*previous_errors, run.error_message],
                     }
             for state in session.scalars(
@@ -166,6 +177,9 @@ class SyncRepository:
                 )
             summary = run.summary_json or {}
             failed = run.status in (RunStatus.FAILED, RunStatus.PARTIAL)
+            code = summary.get("error_code")
+            if code not in _PUBLIC_SYNC_ERRORS:
+                code = "SYNC_FAILED"
             return {
                 "run_id": run.id,
                 "status": {
@@ -194,10 +208,14 @@ class SyncRepository:
                     "games_existing": run.games_existing,
                     "games_failed": run.games_failed,
                     "games_skipped": run.games_skipped,
+                    "games_quarantined": summary.get("games_quarantined", 0),
                 },
                 "error": {
-                    "code": "SYNC_FAILED",
-                    "message": "Sync did not finish successfully. Check backend logs and start another sync to resume archive checkpoints.",
+                    "code": code,
+                    "message": _PUBLIC_SYNC_ERRORS.get(
+                        code,
+                        "Sync did not finish successfully. Check backend logs and start another sync to resume archive checkpoints.",
+                    ),
                     "details": {},
                 }
                 if failed
@@ -247,6 +265,9 @@ class SyncRepository:
         report: SyncReport,
         now: datetime,
     ) -> None:
+        logger = logging.getLogger(__name__)
+        debug = logger.isEnabledFor(logging.DEBUG)
+        events: list[tuple[str, int]] = []
         with self.sessions.begin() as session:
             run = session.get(ImportRun, run_id)
             assert run is not None
@@ -267,7 +288,8 @@ class SyncRepository:
                         .on_conflict_do_nothing()
                         .returning(Game.id)
                     )
-                    if session.scalar(statement) is None:
+                    inserted_id = session.scalar(statement)
+                    if inserted_id is None:
                         report.games_already_present += 1
                         existing = session.scalar(
                             select(Game).where(
@@ -278,6 +300,8 @@ class SyncRepository:
                                 ),
                             )
                         )
+                        if debug and existing is not None:
+                            events.append(("game_existing", existing.id))
                         # Backfill only matching immutable source records. Never
                         # attach evidence for a changed PGN to an older record.
                         if (
@@ -287,6 +311,8 @@ class SyncRepository:
                         ):
                             existing.source_evidence = game.source_evidence
                     else:
+                        if debug:
+                            events.append(("game_inserted", inserted_id))
                         report.games_inserted += 1
                 state.etag, state.last_modified = result.etag, result.last_modified
                 state.last_successful_game_count = result.received
@@ -306,6 +332,11 @@ class SyncRepository:
             state.last_error = None
             report.archives_completed += 1
             self._save_report(run, report)
+
+        for event, game_id in events:
+            logger.debug(
+                event, extra={"run_id": run_id, "game_id": game_id, "component": "sync"}
+            )
 
     def fail_archive(
         self,
@@ -338,7 +369,7 @@ class SyncRepository:
                     )
             self._save_report(run, report)
 
-    def finish(self, report: SyncReport, now: datetime) -> None:
+    def finish(self, report: SyncReport, now: datetime, duration_ms: int) -> None:
         with self.sessions.begin() as session:
             run = session.get(ImportRun, report.run_id)
             assert run is not None
@@ -347,6 +378,7 @@ class SyncRepository:
                 "PARTIAL": RunStatus.PARTIAL,
                 "FAILED": RunStatus.FAILED,
             }[report.status]
+            run.duration_ms = duration_ms
             run.finished_at = now
             run.error_message = "; ".join(report.errors) or None
             self._save_report(run, report)

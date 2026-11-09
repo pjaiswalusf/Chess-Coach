@@ -15,9 +15,11 @@ from chess_coach.infrastructure.persistence.parse_repository import ParseReposit
 from chess_coach.infrastructure.persistence.session import create_session_factory
 from chess_coach.infrastructure.persistence.sync_repository import SyncRepository
 from chess_coach.infrastructure.pgn.parser import parse_game
+from chess_coach.observability.logging import configure_logging
 
 
 def run_sync_worker(settings: Settings, *, once: bool = False) -> None:
+    configure_logging(settings.log_level)
     stop = Event()
     previous = {
         sig: signal.signal(sig, lambda *_: stop.set())

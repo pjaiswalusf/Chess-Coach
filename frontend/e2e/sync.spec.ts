@@ -14,7 +14,8 @@ const running: SyncRun = {
 		games_inserted: 7,
 		games_existing: 4,
 		games_failed: 1,
-		games_skipped: 0
+		games_skipped: 0,
+		games_quarantined: 0
 	},
 	error: null,
 	recoverable: true

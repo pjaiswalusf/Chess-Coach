@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test';
 import { spawn, execFileSync, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { resolve } from 'node:path';
+import { basename, resolve } from 'node:path';
 import { once } from 'node:events';
 
 test('real UI, API and worker survive hard stop and profile change', async ({
@@ -18,6 +18,7 @@ test('real UI, API and worker survive hard stop and profile change', async ({
 	const python = resolve(root, '.venv/bin/python');
 	const cli = resolve(root, '.venv/bin/chess-coach');
 	const directory = mkdtempSync(resolve(tmpdir(), 'phase17-browser-'));
+	const fixture = basename(directory);
 	const database = resolve(directory, 'test.db');
 	execFileSync(python, ['tests/fixtures/prepare_browser_analysis.py', database], {
 		cwd: root,
@@ -32,7 +33,17 @@ test('real UI, API and worker survive hard stop and profile change', async ({
 	};
 	const api = spawn(
 		python,
-		['-m', 'uvicorn', 'chess_coach.api.app:app', '--host', '127.0.0.1', '--port', '8000'],
+		[
+			'-m',
+			'uvicorn',
+			'chess_coach.api.app:app',
+			'--host',
+			'127.0.0.1',
+			'--port',
+			'8000',
+			'--header',
+			`X-Chess-Coach-Fixture:${fixture}`
+		],
 		{ cwd: root, env, stdio: 'ignore' }
 	);
 	let worker: ChildProcess | null = null;
@@ -45,7 +56,18 @@ test('real UI, API and worker survive hard stop and profile change', async ({
 	}
 	async function runs() {
 		const result = await context.request.get('http://127.0.0.1:8000/api/v1/analysis-runs');
+		expect(result.headers()['x-chess-coach-fixture']).toBe(fixture);
 		return result.json();
+	}
+	async function workerAvailable() {
+		try {
+			const response = await context.request.get('/api/v1/analysis-worker');
+			return (
+				response.headers()['x-chess-coach-fixture'] === fixture && (await response.json()).available
+			);
+		} catch {
+			return false;
+		}
 	}
 	try {
 		worker = spawn(cli, ['analysis-worker', '--with-coaching'], {
@@ -53,22 +75,7 @@ test('real UI, API and worker survive hard stop and profile change', async ({
 			env,
 			stdio: 'ignore'
 		});
-		await expect
-			.poll(
-				async () => {
-					try {
-						return (
-							await (
-								await context.request.get('http://127.0.0.1:8000/api/v1/analysis-worker')
-							).json()
-						).available;
-					} catch {
-						return false;
-					}
-				},
-				{ timeout: 15000 }
-			)
-			.toBe(true);
+		await expect.poll(workerAvailable, { timeout: 15000 }).toBe(true);
 		await page.goto('/sync');
 		await page.getByRole('button', { name: 'Analyze Pending Games' }).click({ timeout: 10000 });
 		await expect
@@ -116,13 +123,7 @@ test('real UI, API and worker survive hard stop and profile change', async ({
 			env: { ...env, CHESS_COACH_STOCKFISH_NODES: '20000' },
 			stdio: 'ignore'
 		});
-		await expect
-			.poll(
-				async () =>
-					(await (await context.request.get('http://127.0.0.1:8000/api/v1/analysis-worker')).json())
-						.available
-			)
-			.toBe(true);
+		await expect.poll(workerAvailable).toBe(true);
 		await reopened.getByRole('button', { name: 'Analyze Pending Games' }).click({ timeout: 10000 });
 		await expect.poll(async () => (await runs())[0]?.id).toBe(3);
 		await expect.poll(async () => (await runs())[0]?.status, { timeout: 30000 }).toBe('completed');

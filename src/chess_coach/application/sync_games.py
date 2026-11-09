@@ -5,8 +5,12 @@ from collections.abc import Callable
 from contextlib import AbstractContextManager
 from copy import deepcopy
 from datetime import UTC, datetime
+from time import perf_counter
 from typing import Protocol
 
+from structlog.contextvars import bound_contextvars
+
+from chess_coach.domain.game_records import ParseSummary
 from chess_coach.domain.sync import (
     Archive,
     Checkpoint,
@@ -16,6 +20,7 @@ from chess_coach.domain.sync import (
     normalize_username,
     should_fetch,
 )
+from chess_coach.observability.logging import elapsed_ms
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +59,7 @@ class SyncStore(Protocol):
         unavailable: bool = False,
         result: MonthResult | None = None,
     ) -> None: ...
-    def finish(self, report: SyncReport, now: datetime) -> None: ...
+    def finish(self, report: SyncReport, now: datetime, duration_ms: int) -> None: ...
 
 
 class SyncGamesService:
@@ -63,7 +68,7 @@ class SyncGamesService:
         provider: GameProvider,
         store: SyncStore,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
-        prepare_games: Callable[[str], object] | None = None,
+        prepare_games: Callable[[str], ParseSummary | None] | None = None,
     ):
         self.provider, self.store, self.clock = provider, store, clock
         self.prepare_games = prepare_games
@@ -77,13 +82,25 @@ class SyncGamesService:
         month: Archive | None = None,
         queued_run_id: int | None = None,
     ) -> SyncReport:
+        started = perf_counter()
         username = normalize_username(username)
         with self.store.guard():
             if not dry_run:
                 self.store.recover(self.clock())
             # No player/run creation when the public identity cannot be verified.
             if queued_run_id is None:
-                self.provider.get_player(username)
+                try:
+                    self.provider.get_player(username)
+                except SourceError as exc:
+                    logger.warning(
+                        "sync_preflight_failed",
+                        extra={
+                            "component": "sync",
+                            "error_code": exc.code,
+                            "duration_ms": elapsed_ms(started),
+                        },
+                    )
+                    raise
             report = SyncReport()
             if not dry_run:
                 if queued_run_id is None:
@@ -91,6 +108,10 @@ class SyncGamesService:
                 else:
                     self.store.claim(queued_run_id, self.clock())
                     report.run_id = queued_run_id
+            if report.run_id is not None:
+                logger.info(
+                    "sync_started", extra={"run_id": report.run_id, "component": "sync"}
+                )
             try:
                 if queued_run_id is not None:
                     self.provider.get_player(username)
@@ -119,6 +140,7 @@ class SyncGamesService:
                     if a not in selected and checkpoints[a].status == "unavailable"
                 ]
                 for archive in unavailable:
+                    report.error_code = "ARCHIVE_UNAVAILABLE"
                     report.errors.append(
                         f"{archive.key}: UNAVAILABLE; review source and use --force to retry."
                     )
@@ -140,23 +162,40 @@ class SyncGamesService:
                         report.games_skipped_unsupported += sum(
                             r.unsupported for r in result.rejections
                         )
-                        if any(not r.unsupported for r in result.rejections):
+                        quarantined = sum(r.quarantined for r in result.rejections)
+                        report.games_quarantined += quarantined
+                        report.games_failed += quarantined
+                        if any(
+                            not (r.unsupported or r.quarantined)
+                            for r in result.rejections
+                        ):
                             raise SourceError(
                                 "INVALID_RECORDS",
                                 "Archive rejected atomically; inspect import_rejections and retry.",
                             )
                         # Mutations to report are restored if the transaction fails.
-                        self.store.commit_archive(
-                            report.run_id, archive, result, report, self.clock()
-                        )
+                        with bound_contextvars(
+                            run_id=str(report.run_id), component="sync"
+                        ):
+                            self.store.commit_archive(
+                                report.run_id, archive, result, report, self.clock()
+                            )
                         completed += 1
                     except Exception as exc:
                         report = before
+                        report.error_code = (
+                            exc.code
+                            if isinstance(exc, SourceError)
+                            else "PERSISTENCE_FAILURE"
+                        )
                         if result:
                             report.games_received += result.received
                             skipped = sum(r.unsupported for r in result.rejections)
                             report.games_skipped_unsupported += skipped
                             report.games_failed += result.received - skipped
+                            report.games_quarantined += sum(
+                                r.quarantined for r in result.rejections
+                            )
                         report.archives_failed += 1
                         error = (
                             str(exc)
@@ -184,6 +223,8 @@ class SyncGamesService:
                         "archive_processed",
                         extra={"run_id": report.run_id, "archive": archive.key},
                     )
+                    if report.error_code == "CHESSCOM_RATE_LIMITED":
+                        break
                 report.status = (
                     "COMPLETED"
                     if not report.errors
@@ -192,16 +233,60 @@ class SyncGamesService:
                     else "FAILED"
                 )
                 if self.prepare_games is not None:
-                    self.prepare_games(username)
+                    parsed = self.prepare_games(username)
+                    if parsed is not None:
+                        report.games_quarantined += (
+                            parsed.games_attempted - parsed.ready
+                        )
             except Exception as exc:
                 report.status = "FAILED"
+                report.error_code = (
+                    exc.code if isinstance(exc, SourceError) else "SYNC_FAILURE"
+                )
                 report.errors.append(
                     str(exc)
                     if isinstance(exc, SourceError)
                     else "SYNC_FAILURE: inspect backend logs and retry."
                 )
                 if not isinstance(exc, SourceError):
-                    logger.exception("sync_failed", extra={"run_id": report.run_id})
+                    logger.exception(
+                        "sync_processing_error",
+                        extra={
+                            "run_id": report.run_id,
+                            "error_code": report.error_code,
+                        },
+                    )
             if not dry_run:
-                self.store.finish(report, self.clock())
+                duration = elapsed_ms(started)
+                context = {
+                    "run_id": report.run_id,
+                    "component": "sync",
+                    "duration_ms": duration,
+                    "games_inserted": report.games_inserted,
+                    "games_existing": report.games_already_present,
+                }
+                try:
+                    self.store.finish(report, self.clock(), duration)
+                except Exception:
+                    logger.exception(
+                        "sync_failed",
+                        extra={
+                            **context,
+                            "status": "FAILED",
+                            "error_code": "PERSISTENCE_FAILURE",
+                        },
+                    )
+                    raise
+                event = (
+                    "sync_finished" if report.status == "COMPLETED" else "sync_failed"
+                )
+                logger.log(
+                    logging.INFO if report.status == "COMPLETED" else logging.WARNING,
+                    event,
+                    extra={
+                        **context,
+                        "status": report.status,
+                        "error_code": report.error_code,
+                    },
+                )
             return report

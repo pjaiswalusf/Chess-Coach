@@ -41,6 +41,31 @@ class Settings(BaseSettings):
     stockfish_search_seconds: float = Field(default=3.0, gt=0, allow_inf_nan=False)
     stockfish_timeout_seconds: float = Field(default=10.0, gt=0, allow_inf_nan=False)
 
+    @field_validator(
+        "database_path", "stockfish_executable", "ollama_model", mode="before"
+    )
+    @classmethod
+    def require_nonempty_setting(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            raise ValueError("A nonempty setting is required")
+        return value
+
+    @field_validator("log_level")
+    @classmethod
+    def validate_log_level(cls, value: str) -> str:
+        level = value.upper()
+        if level not in {
+            "DEBUG",
+            "INFO",
+            "WARN",
+            "WARNING",
+            "ERROR",
+            "FATAL",
+            "CRITICAL",
+        }:
+            raise ValueError("Use a standard log level")
+        return level
+
     @field_validator("stockfish_nodes", "stockfish_max_nodes", mode="before")
     @classmethod
     def parse_node_environment(cls, value: object) -> object:
@@ -76,7 +101,11 @@ class Settings(BaseSettings):
     def local_llm(self) -> Self:
         if self.ollama_host.host not in {"localhost", "127.0.0.1", "[::1]", "::1"}:
             raise ValueError("Ollama must use a loopback host")
-        if self.ollama_host.scheme != "http" or self.ollama_host.username or self.ollama_host.password:
+        if (
+            self.ollama_host.scheme != "http"
+            or self.ollama_host.username
+            or self.ollama_host.password
+        ):
             raise ValueError("Use a local HTTP Ollama endpoint without credentials")
         if "cloud" in self.ollama_model.lower() or "/" in self.ollama_model:
             raise ValueError("Only an installed local model tag is supported")

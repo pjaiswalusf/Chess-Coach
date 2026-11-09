@@ -74,6 +74,7 @@ def test_invalid_fixtures(name, reason):
     [
         (lambda s: s.replace("1-0", "*"), "UNKNOWN_RESULT"),
         (lambda s: s.replace('[Result "1-0"]', ""), "UNKNOWN_RESULT"),
+        (lambda s: s.replace('[Result "1-0"]', '[Result "1-0]'), "UNKNOWN_RESULT"),
         (lambda s: s.rsplit("1-0", 1)[0], "UNKNOWN_RESULT"),
         (lambda s: s.rsplit("1-0", 1)[0] + "0-1", "RESULT_MISMATCH"),
         (lambda s: s.replace("e4", "garbage e4"), "INVALID_MOVES"),
@@ -144,6 +145,18 @@ def test_custom_start():
     assert [m.mover_color for m in game.moves] == ["black", "white"]
     assert game.moves[0].elapsed_seconds is None
     assert game.final_fen == "8/5k2/8/8/8/8/5K2/R7 b - - 19 21"
+
+
+def test_legal_underpromotion_from_fen():
+    raw = (
+        '[White "Pratik"]\n[Black "Opponent"]\n[Result "1/2-1/2"]\n'
+        '[SetUp "1"]\n[FEN "7k/P7/8/8/8/8/8/7K w - - 0 1"]\n\n'
+        "1. a8=N 1/2-1/2"
+    )
+    game = parse_game(raw, "Pratik")
+    assert game.history_before_start_unknown and game.player_result == "draw"
+    assert game.moves[0].uci == "a7a8n"
+    assert chess.Board(game.final_fen).is_insufficient_material()
 
 
 @pytest.mark.parametrize(

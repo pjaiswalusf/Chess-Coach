@@ -1,5 +1,6 @@
 """Short SQLite transactions for persistent runs, compatible cache, and finalization."""
 
+import logging
 from datetime import timedelta
 from pathlib import Path
 
@@ -129,7 +130,7 @@ class AnalysisRepository:
         if not self.worker_status()["available"]:
             raise AnalysisError(
                 "WORKER_UNAVAILABLE",
-                "Start uv run chess-coach analysis-worker, then retry.",
+                "Check that Stockfish is installed and configured, then start uv run chess-coach analysis-worker and retry.",
                 503,
             )
         with self.sessions() as s:
@@ -305,7 +306,7 @@ class AnalysisRepository:
         transition(run.status, target)
         run.status = target
         if target == Status.RUNNING:
-            run.started_at = utc_now()
+            run.started_at = run.started_at or utc_now()
         else:
             run.finished_at = utc_now()
 
@@ -376,12 +377,28 @@ class AnalysisRepository:
                     "Restore the original engine/settings or create a new run."
                 )
                 self._transition(run, Status.FAILED)
-                return None
-            run.last_heartbeat_at = utc_now()
-            return run.id
+                failed_id = run.id
+            else:
+                run.last_heartbeat_at = utc_now()
+                return run.id
+        self._log_profile_mismatch(failed_id)
+        return None
+
+    @staticmethod
+    def _log_profile_mismatch(run_id: int) -> None:
+        logging.getLogger(__name__).warning(
+            "analysis_failed",
+            extra={
+                "run_id": run_id,
+                "component": "analysis",
+                "status": "failed",
+                "error_code": "ANALYSIS_PROFILE_MISMATCH",
+            },
+        )
 
     def recover(self, profile: AnalysisProfile) -> None:
         """Caller MUST hold the OS worker guard; heartbeat alone is never ownership."""
+        failed: list[int] = []
         with self.sessions.begin() as s:
             for run in s.scalars(
                 select(AnalysisRun).where(AnalysisRun.status == Status.RUNNING)
@@ -389,6 +406,7 @@ class AnalysisRepository:
                 if run.profile_hash != profile.hash:
                     run.error_code = "ANALYSIS_PROFILE_MISMATCH"
                     self._transition(run, Status.FAILED)
+                    failed.append(run.id)
                     continue
                 for member in s.scalars(
                     select(AnalysisRunGame).where(
@@ -408,6 +426,8 @@ class AnalysisRepository:
                 # Explicit recovery exception to the normal terminal transition policy.
                 run.status = Status.PENDING
                 run.error_code = "RUN_INTERRUPTED"
+        for run_id in failed:
+            self._log_profile_mismatch(run_id)
 
     def begin_game(self, run_id: int, game_id: int) -> tuple[Game, str]:
         with self.sessions.begin() as s:
@@ -476,7 +496,12 @@ class AnalysisRepository:
         result: EngineResult,
         seconds: float,
     ) -> int:
-        validate_result(board, result, profile.engine)
+        try:
+            validate_result(board, result, profile.engine)
+        except ValueError:
+            if seconds:
+                self.record_engine_time(run_id, seconds)
+            raise
         with self.sessions.begin() as s:
             row = PositionCache(
                 fen=board.fen(),
@@ -502,21 +527,37 @@ class AnalysisRepository:
             terminal = board.is_game_over(claim_draw=False)
             run.terminal_positions += int(terminal)
             run.positions_analyzed += int(not terminal)
-            run.cache_misses += 1
             run.engine_seconds += seconds
             run.last_heartbeat_at = utc_now()
             s.flush()
             return row.id
 
-    def hit(self, run_id: int) -> None:
+    def record_lookup(self, run_id: int, *, hit: bool) -> None:
+        counter = AnalysisRun.cache_hits if hit else AnalysisRun.cache_misses
         with self.sessions.begin() as s:
             s.execute(
                 update(AnalysisRun)
                 .where(AnalysisRun.id == run_id)
                 .values(
-                    cache_hits=AnalysisRun.cache_hits + 1, last_heartbeat_at=utc_now()
+                    {counter: counter + 1, AnalysisRun.last_heartbeat_at: utc_now()}
                 )
             )
+
+    def record_engine_time(self, run_id: int, seconds: float) -> None:
+        with self.sessions.begin() as s:
+            s.execute(
+                update(AnalysisRun)
+                .where(AnalysisRun.id == run_id)
+                .values(
+                    engine_seconds=AnalysisRun.engine_seconds + seconds,
+                )
+            )
+
+    def record_interruption(self, run_id: int, duration_ms: int) -> None:
+        with self.sessions.begin() as s:
+            run = s.get(AnalysisRun, run_id)
+            assert run
+            run.active_duration_ms = (run.active_duration_ms or 0) + duration_ms
 
     def finalize(
         self,
@@ -657,7 +698,9 @@ class AnalysisRepository:
             run.games_failed += 1
             run.error_count += 1
 
-    def finish(self, run_id: int, code: str | None = None) -> None:
+    def finish(
+        self, run_id: int, code: str | None = None, *, duration_ms: int | None = None
+    ) -> None:
         with self.sessions.begin() as s:
             run = s.get(AnalysisRun, run_id)
             assert run
@@ -693,6 +736,8 @@ class AnalysisRepository:
                     )
                     .values(status=GameAnalysisStatus.PENDING)
                 )
+            if duration_ms is not None:
+                run.active_duration_ms = (run.active_duration_ms or 0) + duration_ms
             self._transition(run, target)
 
     def moves(self, game_id: int, profile_hash: str) -> list[MoveAnalysis]:

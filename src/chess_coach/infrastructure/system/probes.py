@@ -5,6 +5,9 @@ import httpx
 
 from chess_coach.application.system import DependencyStatus
 from chess_coach.config import Settings
+from chess_coach.infrastructure.llm.health import local_model_digest
+
+STOCKFISH_PROBE_TIMEOUT_SECONDS = 2.0
 
 
 def probe_stockfish(settings: Settings) -> DependencyStatus:
@@ -13,6 +16,7 @@ def probe_stockfish(settings: Settings) -> DependencyStatus:
         return DependencyStatus(
             "unavailable",
             "Stockfish was not found. Install it or configure its executable.",
+            "STOCKFISH_NOT_FOUND",
         )
     try:
         result = subprocess.run(
@@ -20,13 +24,18 @@ def probe_stockfish(settings: Settings) -> DependencyStatus:
             input="uci\nisready\nquit\n",
             capture_output=True,
             text=True,
-            timeout=2.0,
+            timeout=STOCKFISH_PROBE_TIMEOUT_SECONDS,
             check=False,
         )
-    except OSError, subprocess.TimeoutExpired, UnicodeError:
+    except subprocess.TimeoutExpired:
+        return DependencyStatus(
+            "unavailable", "The Stockfish UCI check timed out.", "STOCKFISH_UCI_TIMEOUT"
+        )
+    except OSError, UnicodeError:
         return DependencyStatus(
             "unavailable",
             "Stockfish could not respond. Check its installation and retry.",
+            "STOCKFISH_UCI_FAILED",
         )
 
     lines = result.stdout.splitlines()
@@ -41,54 +50,43 @@ def probe_stockfish(settings: Settings) -> DependencyStatus:
         return DependencyStatus(
             "unavailable",
             "The configured executable did not complete the Stockfish UCI check.",
+            "STOCKFISH_UCI_FAILED",
         )
     return DependencyStatus("available", "Stockfish responds to UCI commands.")
 
 
-def probe_ollama(settings: Settings) -> tuple[DependencyStatus, DependencyStatus]:
-    url = f"{str(settings.ollama_host).rstrip('/')}/api/tags"
+def probe_ollama(
+    settings: Settings, transport: httpx.AsyncBaseTransport | None = None
+) -> tuple[DependencyStatus, DependencyStatus]:
     unknown_model = DependencyStatus("unknown", "Model readiness could not be checked.")
-    try:
-        response = httpx.get(url, timeout=1.0)
-        response.raise_for_status()
-    except httpx.TimeoutException:
-        return (
-            DependencyStatus(
-                "unavailable", "Ollama timed out. Check the service and retry."
-            ),
-            unknown_model,
-        )
-    except httpx.HTTPError:
-        return (
-            DependencyStatus(
-                "unavailable", "Ollama is unavailable. Start it and check its address."
-            ),
-            unknown_model,
-        )
-
     service = DependencyStatus("available", "Ollama is reachable.")
     try:
-        payload = response.json()
-        models = payload["models"]
-        if not isinstance(models, list) or any(
-            not isinstance(model, dict) or not isinstance(model.get("name"), str)
-            for model in models
-        ):
-            raise ValueError("Invalid model list")
+        digest = local_model_digest(settings, transport)
+    except TimeoutError, httpx.TimeoutException:
+        return DependencyStatus(
+            "unavailable",
+            "Ollama timed out. Check the service and retry.",
+            "OLLAMA_TIMEOUT",
+        ), unknown_model
+    except httpx.HTTPError:
+        return DependencyStatus(
+            "unavailable",
+            "Ollama is unavailable. Start it and check its address.",
+            "OLLAMA_UNREACHABLE",
+        ), unknown_model
     except ValueError, KeyError, TypeError:
         return service, DependencyStatus(
             "unknown",
-            "Ollama returned an invalid model list. Check the service and retry.",
+            "Ollama returned an invalid local model inventory.",
+            "OLLAMA_INVENTORY_INVALID",
+            "Check the local Ollama model inventory and retry.",
         )
-
-    model_name = settings.ollama_model
-    if ":" not in model_name:
-        model_name += ":latest"
-    if any(model["name"] == model_name for model in models):
+    if digest:
         return service, DependencyStatus(
             "available", "The configured model is installed."
         )
     return service, DependencyStatus(
         "unavailable",
-        "The configured model is not installed. Pull it with Ollama and retry.",
+        "The configured model is not installed.",
+        "MODEL_NOT_INSTALLED",
     )

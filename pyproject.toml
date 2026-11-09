@@ -17,6 +17,7 @@ dependencies = [
     "pydantic-settings>=2.16.1",
     "uvicorn>=0.54.0",
     "sqlalchemy>=2.1.6",
+    "structlog>=26.1.0",
 ]
 
 [project.scripts]
