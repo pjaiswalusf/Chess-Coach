@@ -61,7 +61,8 @@
 		retry={refresh}
 	/>
 {:else if system.state.status === 'success'}
-	{@const { components, statistics, status, analysis_version, checked_at } = system.state.data}
+	{@const { components, statistics, status, analysis_version, checked_at, training } =
+		system.state.data}
 	<Card>
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<h2 class="text-lg font-semibold">Local services</h2>
@@ -117,6 +118,17 @@
 				Last checked: {new Date(checked_at).toLocaleString()}
 			</p>{/if}
 	</Card>
+
+	{#if training}
+		<Card>
+			<h2 class="text-lg font-semibold">Training status</h2>
+			<p>Practice {training.practice_status === 'ready' ? 'ready' : 'unavailable'}.</p>
+			{#if training.puzzles_total != null}
+				<p class="text-sm">{training.puzzles_total} stored puzzles · {training.puzzles_due} due</p>
+			{/if}
+			<p class="text-sm">{training.detail}</p>
+		</Card>
+	{/if}
 
 	{#if statistics}
 		<Card>

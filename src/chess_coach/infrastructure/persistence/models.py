@@ -439,7 +439,10 @@ class CoachingOutput(Base):
     __tablename__ = "coaching_outputs"
     __table_args__ = (
         UniqueConstraint("cache_key"),
-        CheckConstraint("status IN ('queued', 'running', 'done', 'insufficient_evidence', 'failed')", name="coaching_status"),
+        CheckConstraint(
+            "status IN ('queued', 'running', 'done', 'insufficient_evidence', 'failed')",
+            name="coaching_status",
+        ),
         CheckConstraint("attempt_count >= 0", name="coaching_attempts"),
     )
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -460,3 +463,76 @@ class CoachingOutput(Base):
     metrics_json: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
+
+
+class Puzzle(Base):
+    __tablename__ = "puzzles"
+    __table_args__ = (
+        UniqueConstraint("tracked_player_id", "source_game_id", "source_ply"),
+        CheckConstraint("source_ply >= 1", name="source_ply_positive"),
+        CheckConstraint(
+            "attempt_count >= correct_streak AND correct_streak >= 0",
+            name="valid_counts",
+        ),
+        CheckConstraint(
+            "(attempt_count = 0 AND last_attempt_at IS NULL) OR "
+            "(attempt_count > 0 AND last_attempt_at IS NOT NULL AND next_review_at > last_attempt_at)",
+            name="valid_review_state",
+        ),
+        CheckConstraint("status IN ('active', 'retired')", name="valid_status"),
+        CheckConstraint(
+            "difficulty IN ('easy', 'medium', 'hard')", name="valid_difficulty"
+        ),
+        CheckConstraint("original_move_uci != solution_uci", name="distinct_solution"),
+        Index("ix_puzzles_due", "tracked_player_id", "status", "next_review_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tracked_player_id: Mapped[int] = mapped_column(ForeignKey("tracked_players.id"))
+    source_game_id: Mapped[int] = mapped_column(ForeignKey("games.id"))
+    source_ply: Mapped[int]
+    source_analysis_version: Mapped[str] = mapped_column(String(32))
+    source_profile_hash: Mapped[str] = mapped_column(String(64))
+    fen: Mapped[str] = mapped_column(Text)
+    side_to_move: Mapped[PlayerColor] = mapped_column(
+        string_enum(PlayerColor, "side_to_move")
+    )
+    original_move_uci: Mapped[str] = mapped_column(String(5))
+    solution_uci: Mapped[str] = mapped_column(String(5))
+    solution_pv_json: Mapped[list[str]] = mapped_column(JSON)
+    theme: Mapped[str] = mapped_column(String(32))
+    difficulty: Mapped[str] = mapped_column(String(8))
+    engine_version: Mapped[str] = mapped_column(String(100))
+    engine_config_hash: Mapped[str] = mapped_column(String(64))
+    verification_json: Mapped[dict[str, object]] = mapped_column(JSON)
+    generator_version: Mapped[int]
+    status: Mapped[str] = mapped_column(
+        String(8), default="active", server_default="active"
+    )
+    attempt_count: Mapped[int] = mapped_column(default=0, server_default="0")
+    correct_streak: Mapped[int] = mapped_column(default=0, server_default="0")
+    next_review_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    last_attempt_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
+
+
+class PuzzleAttempt(Base):
+    __tablename__ = "puzzle_attempts"
+    __table_args__ = (
+        UniqueConstraint("puzzle_id", "submission_id"),
+        CheckConstraint(
+            "next_review_at_after > attempted_at", name="valid_review_time"
+        ),
+        Index("ix_puzzle_attempts_history", "puzzle_id", "attempted_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    puzzle_id: Mapped[int] = mapped_column(ForeignKey("puzzles.id"))
+    submission_id: Mapped[str] = mapped_column(String(36))
+    submitted_move_uci: Mapped[str] = mapped_column(String(5))
+    is_correct: Mapped[bool] = mapped_column(
+        Boolean(create_constraint=True, name="correct_boolean")
+    )
+    attempted_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    next_review_at_after: Mapped[datetime] = mapped_column(UTCDateTime())
+    scheduler_version: Mapped[int]

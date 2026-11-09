@@ -69,6 +69,29 @@ class QueryRepository:
                 else None,
             }
 
+    @classmethod
+    def _historical_player(cls, session: Session) -> TrackedPlayer | None:
+        configured = cls._player(session)
+        if configured is not None:
+            return configured
+        players = list(
+            session.scalars(
+                select(TrackedPlayer)
+                .where(TrackedPlayer.platform == Platform.PGN)
+                .limit(2)
+            )
+        )
+        if len(players) > 1:
+            raise OperationError(
+                "MULTIPLE_PLAYERS", "Use a single tracked player for local practice."
+            )
+        return players[0] if players else None
+
+    def historical_player_id(self) -> int | None:
+        with self.sessions() as session:
+            player = self._historical_player(session)
+            return player.id if player is not None else None
+
     def player_id(self) -> int:
         with self.sessions() as s:
             p = self._player(s)
@@ -272,7 +295,7 @@ class QueryRepository:
         profile = self.profile()
         with self.sessions() as s:
             g = s.get(Game, game_id)
-            p = self._player(s)
+            p = self._historical_player(s)
             if g is None or p is None or g.tracked_player_id != p.id:
                 raise OperationError(
                     "GAME_NOT_FOUND", "The requested game was not found.", 404

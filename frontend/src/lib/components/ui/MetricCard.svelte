@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Card from './Card.svelte';
-	let { label, value }: { label: string; value: number } = $props();
+	let { label, value }: { label: string; value: number | string } = $props();
 </script>
 
 <Card>

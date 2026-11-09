@@ -55,6 +55,10 @@ class Settings(BaseSettings):
             raise ValueError("stockfish_nodes must not exceed stockfish_max_nodes")
         return self
 
+    training_stockfish_threads: int = Field(default=1, gt=0)
+    training_candidate_limit: int = Field(default=30, ge=1, le=100)
+    training_verification_nodes: int = Field(default=500_000, ge=4)
+
     # ------------------------------------------------------------------
     # Ollama
     # ------------------------------------------------------------------

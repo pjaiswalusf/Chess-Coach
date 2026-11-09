@@ -12,3 +12,7 @@ class InvalidPositionError(ChessEngineError):
 
 class EngineAnalysisError(ChessEngineError):
     """Analysis or process cleanup failed; no partial result is usable."""
+
+
+class UnstablePuzzleEvidenceError(ChessEngineError):
+    """A completed search lacks comparable ranked evidence for this position."""

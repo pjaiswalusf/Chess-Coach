@@ -12,6 +12,7 @@ from chess_coach.api.routes.coaching import router as coaching_router
 from chess_coach.api.routes.queries import router as queries_router
 from chess_coach.api.routes.sync import router as sync_router
 from chess_coach.api.routes.system import router as system_router
+from chess_coach.api.routes.training import router as training_router
 from chess_coach.api.schemas.contracts import HealthResponse
 
 
@@ -35,6 +36,7 @@ def create_app() -> FastAPI:
         sync_router,
         analytics_router,
         coaching_router,
+        training_router,
     ):
         app.include_router(router)
 

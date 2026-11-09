@@ -15,8 +15,12 @@ from chess_coach.infrastructure.engine.exceptions import (
     EngineAnalysisError,
     EngineUnavailableError,
     InvalidPositionError,
+    UnstablePuzzleEvidenceError,
 )
-from chess_coach.infrastructure.engine.protocol import EvidenceProtocol
+from chess_coach.infrastructure.engine.protocol import (
+    EvidenceProtocol,
+    UnstableMultiPVError,
+)
 
 _ERRORS = (chess.engine.EngineError, TimeoutError, OSError)
 
@@ -32,7 +36,9 @@ class StockfishAdapter:
     def start(self) -> None:
         with self._lock:
             if self._closing:
-                raise EngineUnavailableError("Confirm prior process exit with close() before restarting")
+                raise EngineUnavailableError(
+                    "Confirm prior process exit with close() before restarting"
+                )
             if self._engine is not None:
                 return
             path = shutil.which(self.settings.stockfish_executable)
@@ -43,22 +49,28 @@ class StockfishAdapter:
                 )
             try:
                 self._engine = chess.engine.SimpleEngine.popen(
-                    EvidenceProtocol, path, timeout=self.settings.stockfish_timeout_seconds
+                    EvidenceProtocol,
+                    path,
+                    timeout=self.settings.stockfish_timeout_seconds,
                 )
                 for name in ("Threads", "Hash"):
                     if name not in self._engine.options:
                         raise chess.engine.EngineError(f"Missing UCI option: {name}")
-                self._engine.configure({
-                    "Threads": self.settings.stockfish_threads,
-                    "Hash": self.settings.stockfish_hash_mb,
-                })
+                self._engine.configure(
+                    {
+                        "Threads": self.settings.stockfish_threads,
+                        "Hash": self.settings.stockfish_hash_mb,
+                    }
+                )
                 self._engine.ping()
                 self.engine_name = self._engine.id.get("name", "")
                 if not self.engine_name.strip():
                     raise chess.engine.EngineError("Missing UCI engine identity")
             except _ERRORS as exc:
                 self._discard()
-                raise EngineUnavailableError("Stockfish startup failed; check binary and configuration") from exc
+                raise EngineUnavailableError(
+                    "Stockfish startup failed; check binary and configuration"
+                ) from exc
 
     def _discard(self) -> None:
         self._closing = True
@@ -66,11 +78,15 @@ class StockfishAdapter:
         if engine is not None:
             engine.close()
             try:
-                engine.returncode.result(timeout=self.settings.stockfish_timeout_seconds)
+                engine.returncode.result(
+                    timeout=self.settings.stockfish_timeout_seconds
+                )
             except TimeoutError as exc:
                 # Retain ownership so a new process cannot replace an unconfirmed exit.
                 self._engine = engine
-                raise EngineAnalysisError("Stockfish process exit could not be confirmed") from exc
+                raise EngineAnalysisError(
+                    "Stockfish process exit could not be confirmed"
+                ) from exc
 
         self._closing = False
 
@@ -85,20 +101,56 @@ class StockfishAdapter:
                 self._discard()
                 return False
 
-    def analyze(self, board: chess.Board, *, nodes: int | None = None,
-                game: object | None = None) -> EngineResult:
+    def analyze(
+        self,
+        board: chess.Board,
+        *,
+        nodes: int | None = None,
+        game: object | None = None,
+    ) -> EngineResult:
+        return self._search(board, nodes=nodes, game=game)[0]
+
+    def analyze_puzzle_candidate(
+        self, board: chess.Board, *, nodes: int, multipv: int
+    ) -> list[EngineResult]:
+        if not 2 <= multipv <= board.legal_moves.count() or board.is_game_over(
+            claim_draw=True
+        ):
+            raise InvalidPositionError(
+                "Puzzle verification requires multiple legal choices"
+            )
+        return self._search(board, nodes=nodes, multipv=multipv)
+
+    def _search(
+        self,
+        board: chess.Board,
+        *,
+        nodes: int | None,
+        game: object | None = None,
+        multipv: int | None = None,
+    ) -> list[EngineResult]:
         with self._lock:
             budget = self.settings.stockfish_nodes if nodes is None else nodes
-            if type(budget) is not int or not 0 < budget <= self.settings.stockfish_max_nodes:
-                raise ValueError("Node budget must be a positive integer within configured maximum")
+            if (
+                type(budget) is not int
+                or not 0 < budget <= self.settings.stockfish_max_nodes
+            ):
+                raise ValueError(
+                    "Node budget must be a positive integer within configured maximum"
+                )
             if type(board) is not chess.Board or board.chess960 or not board.is_valid():
-                raise InvalidPositionError("Only valid standard chess positions are supported")
+                raise InvalidPositionError(
+                    "Only valid standard chess positions are supported"
+                )
             position = board.copy(stack=True)
             replay = position.root()
             if not replay.is_valid():
                 raise InvalidPositionError("Invalid starting position")
             for move in position.move_stack:
-                if replay.is_game_over(claim_draw=False) or move not in replay.legal_moves:
+                if (
+                    replay.is_game_over(claim_draw=False)
+                    or move not in replay.legal_moves
+                ):
                     raise InvalidPositionError("Invalid move history")
                 replay.push(move)
             if replay.fen() != position.fen():
@@ -107,41 +159,80 @@ class StockfishAdapter:
                 raise EngineUnavailableError("Start Stockfish before analysis")
             outcome = position.outcome(claim_draw=False)
             if outcome is not None:
-                return EngineResult(position.fen(), self.engine_name,
-                                    0 if outcome.winner is None else None,
-                                    0 if outcome.winner is not None else None,
-                                    outcome.winner, None, (), None, None)
+                return [
+                    EngineResult(
+                        position.fen(),
+                        self.engine_name,
+                        0 if outcome.winner is None else None,
+                        0 if outcome.winner is not None else None,
+                        outcome.winner,
+                        None,
+                        (),
+                        None,
+                        None,
+                    )
+                ]
             try:
-                info = self._engine.analyse(
-                    position,
-                    chess.engine.Limit(nodes=budget, time=self.settings.stockfish_search_seconds),
-                    game=game if game is not None else object(),
+                limit = chess.engine.Limit(
+                    nodes=budget, time=self.settings.stockfish_search_seconds
                 )
-                score = info.get("score")
-                pv = info.get("pv")
-                if not isinstance(score, chess.engine.PovScore) or not pv:
-                    raise EngineAnalysisError("Engine returned no score or principal variation")
-                if info.get("lowerbound") or info.get("upperbound"):
-                    raise EngineAnalysisError("Engine returned only a score bound")
-                cp, mate = normalize_score(score)
-                if (cp is None) == (mate is None):
-                    raise EngineAnalysisError("Engine returned an invalid score")
-                replay = position.copy(stack=True)
-                for move in pv:
-                    if not isinstance(move, chess.Move) or move not in replay.legal_moves:
-                        raise EngineAnalysisError("Engine returned an illegal principal variation")
-                    replay.push(move)
-                for key in ("depth", "nodes"):
-                    value = info.get(key)
-                    if value is not None and (type(value) is not int or value < 0):
-                        raise EngineAnalysisError("Engine returned invalid search metadata")
-                moves = tuple(move.uci() for move in pv)
-                winner = (score.white() > chess.engine.Cp(0)) if mate is not None else None
-                return EngineResult(position.fen(), self.engine_name, cp, mate, winner,
-                                    moves[0], moves, info.get("depth"), info.get("nodes"))
+                token = game if game is not None else object()
+                if multipv is None:
+                    lines = [self._engine.analyse(position, limit, game=token)]
+                else:
+                    lines = self._engine.analyse(
+                        position, limit, game=token, multipv=multipv
+                    )
+                try:
+                    return [self._result(position, info) for info in lines]
+                except EngineAnalysisError as exc:
+                    if multipv is not None:
+                        raise UnstablePuzzleEvidenceError(str(exc)) from exc
+                    raise
+            except UnstableMultiPVError as exc:
+                raise UnstablePuzzleEvidenceError(str(exc)) from exc
             except (*_ERRORS, EngineAnalysisError) as exc:
                 self._discard()
-                raise EngineAnalysisError("Stockfish analysis failed; restart explicitly before retrying") from exc
+                raise EngineAnalysisError(
+                    "Stockfish analysis failed; restart explicitly before retrying"
+                ) from exc
+
+    def _result(
+        self, position: chess.Board, info: chess.engine.InfoDict
+    ) -> EngineResult:
+        score = info.get("score")
+        pv = info.get("pv")
+        if not isinstance(score, chess.engine.PovScore) or not pv:
+            raise EngineAnalysisError("Engine returned no score or principal variation")
+        if info.get("lowerbound") or info.get("upperbound"):
+            raise EngineAnalysisError("Engine returned only a score bound")
+        cp, mate = normalize_score(score)
+        if (cp is None) == (mate is None):
+            raise EngineAnalysisError("Engine returned an invalid score")
+        replay = position.copy(stack=True)
+        for move in pv:
+            if not isinstance(move, chess.Move) or move not in replay.legal_moves:
+                raise EngineAnalysisError(
+                    "Engine returned an illegal principal variation"
+                )
+            replay.push(move)
+        for key in ("depth", "nodes"):
+            value = info.get(key)
+            if value is not None and (type(value) is not int or value < 0):
+                raise EngineAnalysisError("Engine returned invalid search metadata")
+        moves = tuple(move.uci() for move in pv)
+        winner = (score.white() > chess.engine.Cp(0)) if mate is not None else None
+        return EngineResult(
+            position.fen(),
+            self.engine_name,
+            cp,
+            mate,
+            winner,
+            moves[0],
+            moves,
+            info.get("depth"),
+            info.get("nodes"),
+        )
 
     def close(self) -> None:
         with self._lock:
@@ -154,24 +245,34 @@ class StockfishAdapter:
             self._closing = True
             try:
                 engine.quit()
-                engine.returncode.result(timeout=self.settings.stockfish_timeout_seconds)
+                engine.returncode.result(
+                    timeout=self.settings.stockfish_timeout_seconds
+                )
             except _ERRORS as exc:
                 raise EngineAnalysisError("Stockfish shutdown failed") from exc
             finally:
                 engine.close()
                 try:
-                    engine.returncode.result(timeout=self.settings.stockfish_timeout_seconds)
+                    engine.returncode.result(
+                        timeout=self.settings.stockfish_timeout_seconds
+                    )
                 except TimeoutError as exc:
                     self._engine = engine
-                    raise EngineAnalysisError("Stockfish process exit could not be confirmed") from exc
+                    raise EngineAnalysisError(
+                        "Stockfish process exit could not be confirmed"
+                    ) from exc
                 self._closing = False
 
     def __enter__(self) -> Self:
         self.start()
         return self
 
-    def __exit__(self, exc_type: type[BaseException] | None,
-                 exc: BaseException | None, traceback: TracebackType | None) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         if exc is not None:
             with self._lock:
                 try:

@@ -2,11 +2,15 @@
 
 import argparse
 import json
+import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import asdict
 
 import uvicorn
 from sqlalchemy.exc import SQLAlchemyError
 
+from chess_coach.application.errors import OperationError
 from chess_coach.application.parse_imported_games import ParseImportedGames
 from chess_coach.application.sync_games import SyncGamesService
 from chess_coach.config import Settings
@@ -22,6 +26,23 @@ from chess_coach.infrastructure.persistence.parse_repository import ParseReposit
 from chess_coach.infrastructure.persistence.session import create_session_factory
 from chess_coach.infrastructure.persistence.sync_repository import SyncRepository
 from chess_coach.infrastructure.pgn.parser import parse_game
+
+
+@contextmanager
+def _structured_events(name: str, level: str) -> Iterator[None]:
+    from chess_coach.analysis_worker import JsonFormatter
+
+    logger = logging.getLogger(name)
+    previous_level = logger.level
+    handler = logging.StreamHandler()
+    handler.setFormatter(JsonFormatter())
+    logger.setLevel(level)
+    logger.addHandler(handler)
+    try:
+        yield
+    finally:
+        logger.removeHandler(handler)
+        logger.setLevel(previous_level)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -58,10 +79,14 @@ def main(argv: list[str] | None = None) -> None:
         "--once", action="store_true", help="Process one pending run and exit"
     )
     worker.add_argument(
-        "--with-coaching", action="store_true",
+        "--with-coaching",
+        action="store_true",
         help="Process queued coaching while no analysis is pending, using the same worker lock",
     )
-    coaching_worker = commands.add_parser("coaching-worker", help="Process persisted local coaching requests; stop the analysis worker first")
+    coaching_worker = commands.add_parser(
+        "coaching-worker",
+        help="Process persisted local coaching requests; stop the analysis worker first",
+    )
     coaching_worker.add_argument("--once", action="store_true")
     sync_worker = commands.add_parser(
         "sync-worker", help="Process persisted sync requests"
@@ -88,11 +113,24 @@ def main(argv: list[str] | None = None) -> None:
     )
     analytics.add_argument("--start", help="Inclusive ISO timestamp with timezone")
     analytics.add_argument("--end", help="Exclusive ISO timestamp with timezone")
+    training = commands.add_parser(
+        "training", help="Generate puzzles from completed local analysis"
+    )
+    generate = training.add_subparsers(
+        dest="training_command", required=True
+    ).add_parser("generate")
+    generate.add_argument("--player-id", type=int, required=True)
+    generate.add_argument(
+        "--profile", required=True, help="Completed analysis profile hash"
+    )
+    generate.add_argument("--after-move-id", type=int, default=0)
+    generate.add_argument("--limit", type=int)
     args = parser.parse_args(argv)
-    if args.command in (None, "serve"):
-        uvicorn.run("chess_coach.api.app:app", host="127.0.0.1", port=8000)
-        return
     settings = Settings()
+    if args.command in (None, "serve"):
+        with _structured_events("chess_coach.application.training", settings.log_level):
+            uvicorn.run("chess_coach.api.app:app", host="127.0.0.1", port=8000)
+        return
     if args.command == "coaching-worker":
         from chess_coach.coaching_worker import run_coaching_worker
 
@@ -114,6 +152,43 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(diagnose(settings))
     engine = create_database_engine(settings.database_url)
     try:
+        if args.command == "training":
+            from chess_coach.application.generate_puzzles import (
+                generate_puzzles,
+                guard_idle,
+            )
+            from chess_coach.infrastructure.analysis_lock import worker_guard
+            from chess_coach.infrastructure.engine.stockfish_adapter import (
+                StockfishAdapter,
+            )
+            from chess_coach.infrastructure.persistence.training_repository import (
+                TrainingRepository,
+            )
+
+            with (
+                _structured_events(
+                    "chess_coach.application.generate_puzzles", settings.log_level
+                ),
+                worker_guard(settings.database_path),
+            ):
+                training_store = TrainingRepository(create_session_factory(engine))
+                guard_idle(training_store)
+                verification_settings = settings.model_copy(
+                    update={"stockfish_threads": settings.training_stockfish_threads}
+                )
+                training_report = generate_puzzles(
+                    training_store,
+                    StockfishAdapter(verification_settings),
+                    verification_settings,
+                    args.player_id,
+                    args.profile,
+                    args.after_move_id,
+                    args.limit,
+                )
+            print(json.dumps(asdict(training_report), indent=2))
+            if training_report.errors:
+                raise SystemExit(1)
+            return
         if args.command == "analytics-health":
             from chess_coach.analytics.contracts import AnalyticsRequest, ReportStatus
             from chess_coach.analytics.service import AnalyticsService
@@ -184,7 +259,7 @@ def main(argv: list[str] | None = None) -> None:
         print(json.dumps(asdict(report), indent=2))
         if report.status in {"FAILED", "PARTIAL"}:
             raise SystemExit(1)
-    except (SourceError, SyncAlreadyRunning, ValueError) as exc:
+    except (SourceError, SyncAlreadyRunning, OperationError, ValueError) as exc:
         print(json.dumps({"status": "FAILED", "error": str(exc)}))
         raise SystemExit(1) from None
     except SQLAlchemyError:

@@ -204,9 +204,18 @@ class Statistics(BaseModel):
     active_coaching_jobs: int
 
 
+class TrainingHealth(BaseModel):
+    practice_status: Literal["ready", "unavailable"]
+    generation_status: Literal["verify_with_cli", "busy", "unavailable"]
+    detail: str
+    puzzles_total: int | None = None
+    puzzles_due: int | None = None
+
+
 class SystemResponse(BaseModel):
     status: Literal["healthy", "degraded", "unavailable"]
     components: Components
     statistics: Statistics | None
+    training: TrainingHealth | None = None
     checked_at: datetime
     analysis_version: str

@@ -5,7 +5,10 @@ import chess
 import chess.engine
 import pytest
 
-from chess_coach.infrastructure.engine.protocol import EvidenceProtocol
+from chess_coach.infrastructure.engine.protocol import (
+    EvidenceProtocol,
+    UnstableMultiPVError,
+)
 
 
 def test_score_and_pv_are_from_same_unbounded_update():
@@ -71,5 +74,49 @@ def test_interrupted_stream_does_not_return_partial_success():
         protocol.analysis = AsyncMock(return_value=stream)
         with pytest.raises(chess.engine.EngineTerminatedError):
             await protocol.analyse(chess.Board(), chess.engine.Limit(nodes=100))
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("final_move", ["e2e4", "d2d4"])
+def test_multipv_keeps_only_complete_unbounded_iterations(final_move):
+    async def run():
+        stream = chess.engine.AnalysisResult()
+        for depth, rank, move, bound in [
+            (9, 1, "e2e4", False),
+            (9, 2, "d2d4", False),
+            (10, 1, "d2d4", False),
+            (10, 2, "e2e4", True),
+            (11, 1, "d2d4", False),
+        ]:
+            stream.post(
+                {
+                    "score": chess.engine.PovScore(
+                        chess.engine.Cp(60 - rank), chess.WHITE
+                    ),
+                    "pv": [chess.Move.from_uci(move)],
+                    "depth": depth,
+                    "multipv": rank,
+                    "upperbound": bound,
+                }
+            )
+        stream.set_finished(
+            chess.engine.BestMove(chess.Move.from_uci(final_move), None)
+        )
+        protocol = EvidenceProtocol()
+        protocol.analysis = AsyncMock(return_value=stream)
+        if final_move != "e2e4":
+            with pytest.raises(UnstableMultiPVError):
+                await protocol.analyse(
+                    chess.Board(), chess.engine.Limit(nodes=100), multipv=2
+                )
+            return
+        lines = await protocol.analyse(
+            chess.Board(), chess.engine.Limit(nodes=100), multipv=2
+        )
+        assert [(row["depth"], row["pv"][0].uci()) for row in lines] == [
+            (9, "e2e4"),
+            (9, "d2d4"),
+        ]
 
     asyncio.run(run())
