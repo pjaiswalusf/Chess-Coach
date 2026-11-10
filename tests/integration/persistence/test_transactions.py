@@ -48,3 +48,35 @@ def test_plain_session_without_commit_does_not_persist(
         session.flush()
     with sessions() as session:
         assert session.scalar(select(func.count()).select_from(TrackedPlayer)) == 0
+
+
+def test_sqlite_write_contention_fails_safely_then_retries(engine, sessions, player_id):
+    import pytest
+    from sqlalchemy import func, select
+    from sqlalchemy.exc import OperationalError
+
+    from chess_coach.infrastructure.persistence.engine import create_database_engine
+    from chess_coach.infrastructure.persistence.models import ImportRun
+    from chess_coach.infrastructure.persistence.session import create_session_factory
+
+    contender = create_database_engine(engine.url, timeout_seconds=0.05)
+    competing_sessions = create_session_factory(contender)
+    # Initialize WAL configuration before taking the competing write reservation.
+    with contender.connect() as connection:
+        connection.exec_driver_sql("SELECT 1")
+    try:
+        with engine.begin() as owner:
+            owner.exec_driver_sql("UPDATE tracked_players SET id=id")
+            with (
+                pytest.raises(OperationalError, match="locked"),
+                competing_sessions.begin() as s,
+            ):
+                s.add(ImportRun(tracked_player_id=player_id))
+        with sessions() as s:
+            assert s.scalar(select(func.count()).select_from(ImportRun)) == 0
+        with competing_sessions.begin() as s:
+            s.add(ImportRun(tracked_player_id=player_id))
+        with sessions() as s:
+            assert s.scalar(select(func.count()).select_from(ImportRun)) == 1
+    finally:
+        contender.dispose()

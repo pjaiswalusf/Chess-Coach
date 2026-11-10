@@ -236,3 +236,26 @@ began. The game comparison is observational.
 See the [training specification](docs/training-spec.md) for eligibility,
 statistics, configuration and recovery, and the [verification record](docs/PHASE18_VALIDATION.md)
 for the historical sample and browser checks.
+
+### Import completed PGN files
+
+Use `import-pgn` for up to 100 UTF-8 files, each containing one completed standard
+chess game. Supply the actual played-at timestamp with a timezone; it applies to
+all files in that invocation. Use separate invocations for different game dates.
+
+```sh
+uv run chess-coach import-pgn --username YOUR_NAME \
+  --played-at 2026-10-01T12:00:00Z /path/to/completed-game.pgn
+```
+
+The command uses the configured single player, or configures that username if the
+library is empty. It preserves source line endings, validates completion and
+legal play, and stores rejected game text with a diagnostic. Exit 1 means a
+precondition failed or at least one game was rejected; inspect the JSON counts.
+Unreadable, non-UTF-8 and oversized files abort before database writes. Files
+containing multiple games must be split first. The file input is CLI-only;
+imported games can then be analyzed and reviewed through the existing UI.
+
+The completion declaration and supplied timestamp are trusted user input.
+Only import finished games. [Identity rules](docs/PERSISTENCE.md#pgn-file-identity-v1)
+explain repeat imports and the deliberate absence of cross-source deduplication.

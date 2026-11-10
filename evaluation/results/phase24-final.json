@@ -1,0 +1,1209 @@
+{
+  "dataset_hash": "c3b94dffc4a150483a3dd66d7e977f40305a55f1c453b41f06b00df5366c68fa",
+  "model": "qwen3.5:4b-q4_K_M",
+  "model_digest": "d8b0f5e9760cd1682034f292d7ef72ec46f432149be0df7574bf2d6e92e38c04",
+  "prompt_version": "coaching-v1.2",
+  "schema_version": "coaching-output-v1",
+  "generation": {
+    "temperature": 0,
+    "num_ctx": 4096,
+    "num_predict": 800,
+    "keep_alive": "0",
+    "think": false,
+    "timeout": 90.0
+  },
+  "count": 50,
+  "schema_valid": 50,
+  "accepted": 35,
+  "human_reviewed": 0,
+  "factuality": "unmeasured; automated checks do not prove semantic correctness",
+  "results": [
+    {
+      "case_id": "case_001",
+      "human_review": null,
+      "raw_output": "{\"status\":\"insufficient_evidence\",\"summary\":\"The supplied evidence does not establish a mistake to explain.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied evidence does not establish a mistake to explain.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 4395,
+      "metrics": {
+        "total_duration": 4383571541,
+        "load_duration": 1559985000,
+        "prompt_eval_count": 918,
+        "eval_count": 23
+      }
+    },
+    {
+      "case_id": "case_002",
+      "human_review": null,
+      "raw_output": "{\"status\":\"insufficient_evidence\",\"summary\":\"The supplied evidence does not establish a mistake to explain.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied evidence does not establish a mistake to explain.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 4312,
+      "metrics": {
+        "total_duration": 4293123125,
+        "load_duration": 1355896833,
+        "prompt_eval_count": 910,
+        "eval_count": 23
+      }
+    },
+    {
+      "case_id": "case_003",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": false,
+      "expected_status_match": null,
+      "latency_ms": 6649,
+      "metrics": {
+        "total_duration": 6637134625,
+        "load_duration": 1358258125,
+        "prompt_eval_count": 918,
+        "eval_count": 79
+      },
+      "error": "FACT_CONTRADICTION"
+    },
+    {
+      "case_id": "case_004",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": false,
+      "expected_status_match": null,
+      "latency_ms": 6856,
+      "metrics": {
+        "total_duration": 6843883791,
+        "load_duration": 1365778916,
+        "prompt_eval_count": 915,
+        "eval_count": 79
+      },
+      "error": "FACT_CONTRADICTION"
+    },
+    {
+      "case_id": "case_005",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 7045,
+      "metrics": {
+        "total_duration": 7033998833,
+        "load_duration": 1364112583,
+        "prompt_eval_count": 929,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_006",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 6892,
+      "metrics": {
+        "total_duration": 6878781708,
+        "load_duration": 1369731458,
+        "prompt_eval_count": 890,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_007",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": false,
+      "expected_status_match": null,
+      "latency_ms": 7927,
+      "metrics": {
+        "total_duration": 7910274750,
+        "load_duration": 1640541666,
+        "prompt_eval_count": 912,
+        "eval_count": 79
+      },
+      "error": "FACT_CONTRADICTION"
+    },
+    {
+      "case_id": "case_008",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": false,
+      "expected_status_match": null,
+      "latency_ms": 7676,
+      "metrics": {
+        "total_duration": 7653873000,
+        "load_duration": 1907734375,
+        "prompt_eval_count": 910,
+        "eval_count": 79
+      },
+      "error": "FACT_CONTRADICTION"
+    },
+    {
+      "case_id": "case_009",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": false,
+      "expected_status_match": null,
+      "latency_ms": 5753,
+      "metrics": {
+        "total_duration": 5729352833,
+        "load_duration": 3364208,
+        "prompt_eval_count": 923,
+        "eval_count": 79
+      },
+      "error": "FACT_CONTRADICTION"
+    },
+    {
+      "case_id": "case_010",
+      "human_review": null,
+      "raw_output": "{\"status\":\"insufficient_evidence\",\"summary\":\"The supplied evidence does not establish a mistake to explain.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied evidence does not establish a mistake to explain.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 3256,
+      "metrics": {
+        "total_duration": 3245911209,
+        "load_duration": 810356625,
+        "prompt_eval_count": 907,
+        "eval_count": 23
+      }
+    },
+    {
+      "case_id": "case_011",
+      "human_review": null,
+      "raw_output": "{\"status\":\"insufficient_evidence\",\"summary\":\"The supplied evidence does not establish a mistake to explain.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied evidence does not establish a mistake to explain.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 3251,
+      "metrics": {
+        "total_duration": 3238640291,
+        "load_duration": 810689083,
+        "prompt_eval_count": 936,
+        "eval_count": 23
+      }
+    },
+    {
+      "case_id": "case_012",
+      "human_review": null,
+      "raw_output": "{\"status\":\"insufficient_evidence\",\"summary\":\"The supplied evidence does not establish a mistake to explain.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied evidence does not establish a mistake to explain.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 3125,
+      "metrics": {
+        "total_duration": 3113203542,
+        "load_duration": 812020042,
+        "prompt_eval_count": 916,
+        "eval_count": 23
+      }
+    },
+    {
+      "case_id": "case_013",
+      "human_review": null,
+      "raw_output": "{\"status\":\"insufficient_evidence\",\"summary\":\"The supplied evidence does not establish a mistake to explain.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied evidence does not establish a mistake to explain.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 3243,
+      "metrics": {
+        "total_duration": 3232422125,
+        "load_duration": 814055042,
+        "prompt_eval_count": 932,
+        "eval_count": 23
+      }
+    },
+    {
+      "case_id": "case_014",
+      "human_review": null,
+      "raw_output": "{\"status\":\"insufficient_evidence\",\"summary\":\"The supplied evidence does not establish a mistake to explain.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied evidence does not establish a mistake to explain.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 3186,
+      "metrics": {
+        "total_duration": 3173399083,
+        "load_duration": 810573125,
+        "prompt_eval_count": 934,
+        "eval_count": 23
+      }
+    },
+    {
+      "case_id": "case_015",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": false,
+      "expected_status_match": null,
+      "latency_ms": 5447,
+      "metrics": {
+        "total_duration": 5434569459,
+        "load_duration": 810761834,
+        "prompt_eval_count": 905,
+        "eval_count": 79
+      },
+      "error": "FACT_CONTRADICTION"
+    },
+    {
+      "case_id": "case_016",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5326,
+      "metrics": {
+        "total_duration": 5313267042,
+        "load_duration": 810406125,
+        "prompt_eval_count": 906,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_017",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": false,
+      "expected_status_match": null,
+      "latency_ms": 5342,
+      "metrics": {
+        "total_duration": 5330158584,
+        "load_duration": 813299292,
+        "prompt_eval_count": 923,
+        "eval_count": 79
+      },
+      "error": "FACT_CONTRADICTION"
+    },
+    {
+      "case_id": "case_018",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5267,
+      "metrics": {
+        "total_duration": 5254757541,
+        "load_duration": 811600125,
+        "prompt_eval_count": 920,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_019",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5203,
+      "metrics": {
+        "total_duration": 5191259375,
+        "load_duration": 810815875,
+        "prompt_eval_count": 932,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_020",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": false,
+      "expected_status_match": null,
+      "latency_ms": 5461,
+      "metrics": {
+        "total_duration": 5448227791,
+        "load_duration": 1069663916,
+        "prompt_eval_count": 932,
+        "eval_count": 79
+      },
+      "error": "FACT_CONTRADICTION"
+    },
+    {
+      "case_id": "case_021",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": false,
+      "expected_status_match": null,
+      "latency_ms": 5191,
+      "metrics": {
+        "total_duration": 5179164959,
+        "load_duration": 809875917,
+        "prompt_eval_count": 905,
+        "eval_count": 79
+      },
+      "error": "FACT_CONTRADICTION"
+    },
+    {
+      "case_id": "case_022",
+      "human_review": null,
+      "raw_output": "{\"status\":\"insufficient_evidence\",\"summary\":\"The supplied evidence does not establish a mistake to explain.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied evidence does not establish a mistake to explain.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 3029,
+      "metrics": {
+        "total_duration": 3018442042,
+        "load_duration": 809121667,
+        "prompt_eval_count": 898,
+        "eval_count": 23
+      }
+    },
+    {
+      "case_id": "case_023",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": false,
+      "expected_status_match": null,
+      "latency_ms": 5170,
+      "metrics": {
+        "total_duration": 5147179166,
+        "load_duration": 802825833,
+        "prompt_eval_count": 924,
+        "eval_count": 79
+      },
+      "error": "FACT_CONTRADICTION"
+    },
+    {
+      "case_id": "case_024",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5465,
+      "metrics": {
+        "total_duration": 5453061750,
+        "load_duration": 814742708,
+        "prompt_eval_count": 916,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_025",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5154,
+      "metrics": {
+        "total_duration": 5141835291,
+        "load_duration": 812869833,
+        "prompt_eval_count": 945,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_026",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5087,
+      "metrics": {
+        "total_duration": 5076655334,
+        "load_duration": 810618959,
+        "prompt_eval_count": 926,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_027",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": false,
+      "expected_status_match": null,
+      "latency_ms": 5037,
+      "metrics": {
+        "total_duration": 5025437833,
+        "load_duration": 814553625,
+        "prompt_eval_count": 913,
+        "eval_count": 79
+      },
+      "error": "FACT_CONTRADICTION"
+    },
+    {
+      "case_id": "case_028",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5247,
+      "metrics": {
+        "total_duration": 5235056875,
+        "load_duration": 817748583,
+        "prompt_eval_count": 941,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_029",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5194,
+      "metrics": {
+        "total_duration": 5182759416,
+        "load_duration": 809164750,
+        "prompt_eval_count": 939,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_030",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": false,
+      "expected_status_match": null,
+      "latency_ms": 5076,
+      "metrics": {
+        "total_duration": 5065267583,
+        "load_duration": 809798208,
+        "prompt_eval_count": 938,
+        "eval_count": 79
+      },
+      "error": "FACT_CONTRADICTION"
+    },
+    {
+      "case_id": "case_031",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5209,
+      "metrics": {
+        "total_duration": 5201857458,
+        "load_duration": 821415250,
+        "prompt_eval_count": 942,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_032",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5538,
+      "metrics": {
+        "total_duration": 5527175750,
+        "load_duration": 811827625,
+        "prompt_eval_count": 988,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_033",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5027,
+      "metrics": {
+        "total_duration": 5014747041,
+        "load_duration": 812086125,
+        "prompt_eval_count": 943,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_034",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5134,
+      "metrics": {
+        "total_duration": 5123746875,
+        "load_duration": 817155209,
+        "prompt_eval_count": 924,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_035",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5168,
+      "metrics": {
+        "total_duration": 5154808042,
+        "load_duration": 814495334,
+        "prompt_eval_count": 913,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_036",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5443,
+      "metrics": {
+        "total_duration": 5431232250,
+        "load_duration": 1062157667,
+        "prompt_eval_count": 958,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_037",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5179,
+      "metrics": {
+        "total_duration": 5150342959,
+        "load_duration": 830831000,
+        "prompt_eval_count": 949,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_038",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5082,
+      "metrics": {
+        "total_duration": 5072452042,
+        "load_duration": 805168208,
+        "prompt_eval_count": 927,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_039",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": false,
+      "expected_status_match": null,
+      "latency_ms": 5244,
+      "metrics": {
+        "total_duration": 5231284208,
+        "load_duration": 832623083,
+        "prompt_eval_count": 958,
+        "eval_count": 79
+      },
+      "error": "FACT_CONTRADICTION"
+    },
+    {
+      "case_id": "case_040",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5217,
+      "metrics": {
+        "total_duration": 5210854000,
+        "load_duration": 821661041,
+        "prompt_eval_count": 933,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_041",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": false,
+      "expected_status_match": null,
+      "latency_ms": 5054,
+      "metrics": {
+        "total_duration": 5041324125,
+        "load_duration": 807799209,
+        "prompt_eval_count": 883,
+        "eval_count": 79
+      },
+      "error": "FACT_CONTRADICTION"
+    },
+    {
+      "case_id": "case_042",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5199,
+      "metrics": {
+        "total_duration": 5188187042,
+        "load_duration": 810853584,
+        "prompt_eval_count": 925,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_043",
+      "human_review": null,
+      "raw_output": "{\"status\":\"insufficient_evidence\",\"summary\":\"The supplied evidence does not establish a mistake to explain.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied evidence does not establish a mistake to explain.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 2971,
+      "metrics": {
+        "total_duration": 2959343833,
+        "load_duration": 808649875,
+        "prompt_eval_count": 886,
+        "eval_count": 23
+      }
+    },
+    {
+      "case_id": "case_044",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 5055,
+      "metrics": {
+        "total_duration": 5043053833,
+        "load_duration": 812578250,
+        "prompt_eval_count": 891,
+        "eval_count": 79
+      }
+    },
+    {
+      "case_id": "case_045",
+      "human_review": null,
+      "raw_output": "{\"status\":\"insufficient_evidence\",\"summary\":\"The supplied evidence does not establish a mistake to explain.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied evidence does not establish a mistake to explain.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 2932,
+      "metrics": {
+        "total_duration": 2921012250,
+        "load_duration": 807634542,
+        "prompt_eval_count": 866,
+        "eval_count": 23
+      }
+    },
+    {
+      "case_id": "case_046",
+      "human_review": null,
+      "raw_output": "{\"status\":\"insufficient_evidence\",\"summary\":\"The supplied evidence does not establish a mistake to explain.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied evidence does not establish a mistake to explain.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 3070,
+      "metrics": {
+        "total_duration": 3058877458,
+        "load_duration": 806020791,
+        "prompt_eval_count": 906,
+        "eval_count": 23
+      }
+    },
+    {
+      "case_id": "case_047",
+      "human_review": null,
+      "raw_output": "{\"status\":\"insufficient_evidence\",\"summary\":\"The supplied evidence does not establish a mistake to explain.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied evidence does not establish a mistake to explain.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 3117,
+      "metrics": {
+        "total_duration": 3105199791,
+        "load_duration": 817983041,
+        "prompt_eval_count": 907,
+        "eval_count": 23
+      }
+    },
+    {
+      "case_id": "case_048",
+      "human_review": null,
+      "raw_output": "{\"status\":\"explained\",\"summary\":\"The engine prefers the alternative continuation.\",\"what_went_wrong\":\"The played move leads to a position the engine evaluates less favorably than the alternative.\",\"why_best_move_works\":\"The supplied engine line retains a more favorable evaluation.\",\"lesson\":\"Compare candidate continuations before committing to a move.\",\"practice_tip\":\"Review the supplied lines and compare the resulting positions.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "explained",
+        "summary": "The engine prefers the alternative continuation.",
+        "what_went_wrong": "The played move leads to a position the engine evaluates less favorably than the alternative.",
+        "why_best_move_works": "The supplied engine line retains a more favorable evaluation.",
+        "lesson": "Compare candidate continuations before committing to a move.",
+        "practice_tip": "Review the supplied lines and compare the resulting positions."
+      },
+      "accepted": false,
+      "expected_status_match": null,
+      "latency_ms": 5541,
+      "metrics": {
+        "total_duration": 5527927875,
+        "load_duration": 1062091459,
+        "prompt_eval_count": 861,
+        "eval_count": 79
+      },
+      "error": "FACT_CONTRADICTION"
+    },
+    {
+      "case_id": "case_049",
+      "human_review": null,
+      "raw_output": "{\"status\":\"insufficient_evidence\",\"summary\":\"The supplied evidence does not establish a mistake to explain.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied evidence does not establish a mistake to explain.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 3049,
+      "metrics": {
+        "total_duration": 3036921084,
+        "load_duration": 813322250,
+        "prompt_eval_count": 902,
+        "eval_count": 23
+      }
+    },
+    {
+      "case_id": "case_050",
+      "human_review": null,
+      "raw_output": "{\"status\":\"insufficient_evidence\",\"summary\":\"The supplied evidence does not establish a mistake to explain.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The supplied evidence does not establish a mistake to explain.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 3104,
+      "metrics": {
+        "total_duration": 3093065750,
+        "load_duration": 808163125,
+        "prompt_eval_count": 872,
+        "eval_count": 23
+      }
+    }
+  ],
+  "post_audit_validation": {
+    "accepted": 35,
+    "rejected_case_ids": [
+      "case_003",
+      "case_004",
+      "case_007",
+      "case_008",
+      "case_009",
+      "case_015",
+      "case_017",
+      "case_020",
+      "case_021",
+      "case_023",
+      "case_027",
+      "case_030",
+      "case_039",
+      "case_041",
+      "case_048"
+    ],
+    "production_note": "Same-best-move requests abstain before model invocation; direct evaluation calls the model for every case."
+  },
+  "accepted_before_same_move_guard": 50
+}

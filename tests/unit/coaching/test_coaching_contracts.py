@@ -136,6 +136,10 @@ def test_output_and_detectable_claims(evidence):
         "You lose 43% of games.",
         "Play Nf3.",
         "This wins three pawns.",
+        "You made eleven mistakes.",
+        "You lost twenty games.",
+        "Your rating will rise a thousand points.",
+        "You miss a tactic a dozen times.",
         "<script>alert()</script>",
     ):
         with pytest.raises(OperationError, match="prohibited"):
@@ -201,3 +205,60 @@ def test_offline_health():
 def test_local_configuration(settings):
     with pytest.raises(ValidationError):
         Settings(_env_file=None, **settings)
+
+
+def test_explanation_cannot_claim_an_alternative_to_the_same_best_move(evidence):
+    same = MoveCoachingEvidence.model_validate(
+        evidence.model_dump()
+        | {
+            "best_move_uci": "e2e4",
+            "best_line_uci": ("e2e4", "e7e5"),
+        }
+    )
+    raw = json.dumps(
+        {
+            "status": "explained",
+            "summary": "The engine prefers the alternative continuation.",
+            "what_went_wrong": "The played continuation receives a less favorable engine evaluation.",
+            "why_best_move_works": "The alternative retains a better evaluation.",
+            "lesson": "Compare candidate continuations.",
+            "practice_tip": "Review the supplied lines.",
+        }
+    )
+    with pytest.raises(OperationError, match="same move"):
+        validated_output(raw, same)
+    assert (
+        validated_output(
+            json.dumps(
+                {
+                    "status": "insufficient_evidence",
+                    "summary": "No supported mistake to explain.",
+                }
+            ),
+            same,
+        ).status
+        == "insufficient_evidence"
+    )
+
+
+def test_same_best_move_abstains_without_model_or_cache(evidence):
+    from unittest.mock import Mock
+
+    from chess_coach.application.coaching import CoachingService
+
+    same = MoveCoachingEvidence.model_validate(
+        evidence.model_dump()
+        | {
+            "best_move_uci": "e2e4",
+            "best_line_uci": ("e2e4", "e7e5"),
+        }
+    )
+    store, health = Mock(), Mock()
+    service = CoachingService(store, Settings(_env_file=None), health)
+    for generate in (False, True):
+        response = service.request(same, generate)
+        assert response.status == "insufficient_evidence"
+        assert response.evidence == same
+        assert response.coach.status == "insufficient_evidence"
+    assert not store.mock_calls
+    health.assert_not_called()

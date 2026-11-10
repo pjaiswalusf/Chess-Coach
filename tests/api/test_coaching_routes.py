@@ -213,17 +213,25 @@ def test_history_low_sample_and_get_read_only(coaching):
     assert model.calls == 0
 
 
-def test_known_contradiction_rejected_and_corrupt_cache_regenerates(coaching):
+@pytest.mark.parametrize(
+    "claim,error",
+    [
+        ("Your king is checkmated.", "FACT_CONTRADICTION"),
+        ("You made eleven mistakes.", "UNSUPPORTED_CLAIM"),
+        ("You lost twenty games.", "UNSUPPORTED_CLAIM"),
+    ],
+)
+def test_known_contradiction_rejected_and_corrupt_cache_regenerates(
+    coaching, claim, error
+):
     from chess_coach.infrastructure.persistence.models import CoachingOutput
 
     client, repo, service, model = coaching
     job = client.post(PATH).json()["job_id"]
-    model.raw = VALID.replace(
-        "The engine prefers the alternative.", "Your king is checkmated."
-    )
+    model.raw = VALID.replace("The engine prefers the alternative.", claim)
     CoachingProcessor(service, model).process(repo.claim())
     assert repo.get(job).status == "failed"
-    assert repo.get(job).error_code == "FACT_CONTRADICTION"
+    assert repo.get(job).error_code == error
     client.post(PATH)
     model.raw = VALID
     CoachingProcessor(service, model).process(repo.claim())

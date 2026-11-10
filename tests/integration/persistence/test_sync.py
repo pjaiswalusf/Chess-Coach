@@ -516,3 +516,44 @@ def test_sync_preflight_failure_does_not_log_or_return_username(
     assert event["error_code"] == "HTTP_ERROR"
     assert "private-test-player" not in json.dumps(event)
     assert count(sessions, ImportRun) == 0
+
+
+def test_ten_game_archive_then_one_new_game(sessions, tmp_path):
+    template = FixtureAPI().raw
+    population = 10
+
+    def source(request):
+        path = request.url.path
+        if path.endswith("/testplayer"):
+            return httpx.Response(200, json={"username": "TestPlayer"})
+        if path.endswith("/archives"):
+            return httpx.Response(
+                200, json={"archives": [BASE_URL + "/player/testplayer/games/2026/10"]}
+            )
+        games = []
+        for index in range(population):
+            raw = deepcopy(template)
+            raw["uuid"] = f"00000000-0000-0000-0000-{index + 1:012d}"
+            raw["url"] = f"https://www.chess.com/game/live/{index + 1}"
+            games.append(raw)
+        return httpx.Response(200, json={"games": games})
+
+    with ChessComClient(
+        transport=httpx.MockTransport(source), clock=lambda: NOW
+    ) as api:
+        store = SyncRepository(sessions, tmp_path / "test.db")
+        service = SyncGamesService(api, store, lambda: NOW)
+        assert service.sync("testplayer").games_inserted == 10
+        with sessions() as s:
+            original = [
+                (g.id, g.raw_pgn) for g in s.scalars(select(Game).order_by(Game.id))
+            ]
+        population = 11
+        report = service.sync("testplayer")
+        assert report.games_inserted == 1 and report.games_already_present == 10
+        with sessions() as s:
+            assert s.scalar(select(func.count()).select_from(Game)) == 11
+            assert [
+                (g.id, g.raw_pgn)
+                for g in s.scalars(select(Game).order_by(Game.id)).all()[:10]
+            ] == original

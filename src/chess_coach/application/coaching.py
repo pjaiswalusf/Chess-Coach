@@ -258,6 +258,18 @@ class CoachingService:
     def request(
         self, evidence: MoveCoachingEvidence | HistoricalEvidence, generate: bool
     ) -> CoachingResponse:
+        if (
+            isinstance(evidence, MoveCoachingEvidence)
+            and evidence.played_move_uci == evidence.best_move_uci
+        ):
+            return CoachingResponse(
+                status="insufficient_evidence",
+                evidence=evidence,
+                coach=MoveExplanation(
+                    status="insufficient_evidence",
+                    summary="The played move matches the engine preference; there is no alternative move to explain.",
+                ),
+            )
         row = self.request_row(evidence, generate)
         return (
             self.response(
