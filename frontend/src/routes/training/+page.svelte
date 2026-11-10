@@ -64,7 +64,7 @@
 <svelte:head><title>Training · Chess Coach</title></svelte:head>
 
 <h1 class="text-3xl font-semibold tracking-tight">Training</h1>
-<p class="text-slate-700">
+<p class="text-muted">
 	Practice finding the best first move in positions from your completed games.
 </p>
 
@@ -76,7 +76,7 @@
 	{:else if queue.state.status === 'success' && queue.state.data.puzzle}
 		{@const puzzle = queue.state.data.puzzle}
 		<h2 class="text-lg font-semibold capitalize">{puzzle.side_to_move} to move</h2>
-		<p class="text-sm text-slate-700 capitalize">
+		<p class="text-sm text-muted capitalize">
 			{words(puzzle.theme)} · {puzzle.difficulty} · {puzzle.attempt_count ? 'Review' : 'New puzzle'}
 		</p>
 		{#key puzzle.id}
@@ -92,7 +92,7 @@
 		{/key}
 		{#if result}
 			<PuzzleFeedback {result} />
-			<Button onclick={next}>Next puzzle</Button>
+			<Button primary onclick={next}>Next puzzle</Button>
 		{:else}
 			{#if problem}
 				<ErrorMessage title="Move submission failed." message={problem} />
@@ -100,7 +100,7 @@
 			{#if stale}
 				<Button onclick={next}>Load current puzzle</Button>
 			{:else}
-				<Button disabled={!move} loading={busy} onclick={() => void submit(puzzle.id)}>
+				<Button primary disabled={!move} loading={busy} onclick={() => void submit(puzzle.id)}>
 					{busy ? 'Submitting…' : pending ? 'Retry submission' : 'Submit move'}
 				</Button>
 			{/if}
@@ -110,7 +110,7 @@
 		<p>No puzzles are due right now.</p>
 		<div class="flex flex-wrap items-center gap-3">
 			<Button onclick={next}>Refresh queue</Button>
-			<a class="text-sm font-semibold text-emerald-800 underline" href={resolve('/system')}
+			<a class="text-sm font-semibold text-accent underline" href={resolve('/system')}
 				>View training status</a
 			>
 		</div>

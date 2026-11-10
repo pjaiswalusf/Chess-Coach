@@ -19,7 +19,7 @@
 <svelte:head><title>Game {data.id} · Chess Coach</title></svelte:head>
 <div class="flex flex-wrap items-center justify-between gap-2">
 	<h1 class="text-3xl font-semibold tracking-tight">Game review</h1>
-	<a href={resolve('/games')} class="font-semibold text-emerald-800 underline">Back to Games</a>
+	<a href={resolve('/games')} class="font-semibold text-accent underline">Back to Games</a>
 </div>
 {#key `${data.id}:${profile ?? ''}:${requestedPly}`}
 	<GameReview id={data.id} {requestedPly} {profile} />

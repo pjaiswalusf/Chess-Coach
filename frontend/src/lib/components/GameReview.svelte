@@ -109,13 +109,13 @@
 		</dl>
 		<details>
 			<summary class="cursor-pointer font-semibold">Completed game PGN</summary>
-			<p class="mt-2 text-sm text-slate-700">
+			<p class="mt-2 text-sm text-muted">
 				Completion source: {recorded.completion_provenance === 'pgn_declaration'
 					? 'declared PGN result'
 					: 'Chess.com completed archive'}.
 			</p>
 			<pre
-				class="mt-2 max-h-64 overflow-auto rounded-lg bg-slate-100 p-3 text-sm wrap-anywhere whitespace-pre-wrap">{recorded.raw_pgn}</pre>
+				class="mt-2 max-h-64 overflow-auto rounded-lg bg-raised p-3 text-sm wrap-anywhere whitespace-pre-wrap">{recorded.raw_pgn}</pre>
 		</details>
 	</Card>
 
@@ -141,7 +141,7 @@
 			</p>
 			<div class="flex flex-wrap items-center gap-3">
 				<Button onclick={analysis.refresh}>Refresh analysis</Button>
-				<a href={resolve('/sync')} class="font-medium text-emerald-800 underline"
+				<a href={resolve('/sync')} class="font-medium text-accent underline"
 					>Open Sync and analysis</a
 				>
 			</div>
@@ -149,7 +149,7 @@
 	{:else if report.initial_fen !== null}
 		<Card>
 			<h2 class="text-lg font-semibold">Stored analysis</h2>
-			<p class="text-sm text-slate-600">
+			<p class="text-sm text-muted">
 				{report.engine_version} · {report.analysis_version} · Single pass estimates
 			</p>
 			{#if !selection && requestedPly > 0 && !selected}<p role="status">
@@ -194,7 +194,7 @@
 								>{before ? 'Show position after move' : 'Show position before move'}</Button
 							>{/if}
 					</div>
-					<p class="text-sm text-slate-600">
+					<p class="text-sm text-muted">
 						Amber marks the played move after it was made. Blue marks the engine suggestion before
 						the move.
 					</p>
@@ -203,7 +203,7 @@
 					<h3 class="font-semibold">Moves</h3>
 					{#if moves.length}
 						<ol
-							class="grid max-h-72 grid-cols-2 gap-1 overflow-auto rounded-lg border border-slate-200 p-2"
+							class="grid max-h-72 grid-cols-2 gap-1 overflow-auto rounded-lg border border-line p-2"
 						>
 							{#each moves as move (move.ply)}
 								<li class={move.mover === 'black' ? 'col-start-2' : 'col-start-1'}>
@@ -211,7 +211,7 @@
 										type="button"
 										aria-pressed={selected?.ply === move.ply}
 										onclick={() => show(move.ply)}
-										class="w-full rounded px-2 py-1 text-left text-sm hover:bg-slate-100 aria-pressed:bg-emerald-100 aria-pressed:font-semibold"
+										class="w-full rounded px-2 py-1 text-left text-sm hover:bg-raised aria-pressed:bg-positive-surface aria-pressed:font-semibold"
 									>
 										{notation(move)}{move.severity === 'critical' ? ' · Critical' : ''}
 									</button>
@@ -230,7 +230,7 @@
 								</li>
 							{/each}
 						</ul>
-					{:else}<p class="text-sm text-slate-700">
+					{:else}<p class="text-sm text-muted">
 							No tracked-player moves were classified as critical.
 						</p>{/if}
 				</section>

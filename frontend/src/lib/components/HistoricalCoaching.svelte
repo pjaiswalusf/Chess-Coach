@@ -55,7 +55,7 @@
 
 <Card>
 	<h2 class="text-lg font-semibold">Coach interpretation and practice</h2>
-	<p class="text-sm text-slate-700">Local model advice based on the measured evidence above.</p>
+	<p class="text-sm text-muted">Local model advice based on the measured evidence above.</p>
 	{#if job.loading}
 		<Spinner label="Loading saved historical coaching…" />
 	{:else if stale}
@@ -101,7 +101,9 @@
 		{#if job.statusError}
 			<Button onclick={job.refresh}>Refresh coaching status</Button>
 		{:else if !job.active && result?.status !== 'done' && result?.status !== 'insufficient_evidence'}
-			<Button onclick={job.submit} loading={job.submitting}>Generate historical coaching</Button>
+			<Button primary onclick={job.submit} loading={job.submitting}
+				>Generate historical coaching</Button
+			>
 		{/if}
 	{/if}
 </Card>

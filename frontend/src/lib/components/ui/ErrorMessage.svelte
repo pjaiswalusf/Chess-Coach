@@ -3,7 +3,7 @@
 	let { title, message, retry }: { title: string; message: string; retry?: () => void } = $props();
 </script>
 
-<div class="space-y-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-900">
+<div class="space-y-3 rounded-lg border border-danger-line bg-danger-surface p-4 text-danger">
 	<div role="alert">
 		<p class="font-semibold">{title}</p>
 		<p>{message}</p>

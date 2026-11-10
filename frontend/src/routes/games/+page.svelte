@@ -62,9 +62,7 @@
 
 <div class="flex flex-wrap items-baseline justify-between gap-3">
 	<h1 class="text-3xl font-semibold tracking-tight">Games</h1>
-	<a href={resolve('/games/analysis')} class="font-medium text-emerald-800 underline"
-		>Analysis runs</a
-	>
+	<a href={resolve('/games/analysis')} class="font-medium text-accent underline">Analysis runs</a>
 </div>
 
 <Card>
@@ -73,7 +71,7 @@
 			<label class="flex flex-col gap-1 text-sm font-medium">
 				{name}
 				<select
-					class="min-w-32 rounded-lg border-slate-300"
+					class="min-w-32 rounded-lg border-control-line bg-canvas text-ink focus:border-accent focus:ring-accent"
 					value={filters[key] ?? ''}
 					onchange={(event) => navigate(0, key, event.currentTarget.value)}
 				>
@@ -98,36 +96,36 @@
 			</EmptyState>
 		{:else if hasFilters}
 			<EmptyState title="No games match these filters.">
-				<a href={resolve('/games')} class="font-medium text-emerald-800 underline">Clear filters</a>
+				<a href={resolve('/games')} class="font-medium text-accent underline">Clear filters</a>
 			</EmptyState>
 		{:else}
 			<EmptyState title="No games imported yet.">
 				<p>Visit Sync to import your completed games.</p>
-				<a href={resolve('/sync')} class="font-medium text-emerald-800 underline">Go to Sync</a>
+				<a href={resolve('/sync')} class="font-medium text-accent underline">Go to Sync</a>
 			</EmptyState>
 		{/if}
 	{:else}
 		<Card>
 			<h2 class="text-lg font-semibold">Completed games</h2>
-			<p role="status" class="text-sm text-slate-700">
+			<p role="status" class="text-sm text-muted">
 				Showing {data.offset + 1}–{data.offset + data.items.length} of {data.total} games
 			</p>
 			<div class="overflow-x-auto">
 				<table class="w-full text-left text-sm">
-					<thead class="border-b border-slate-200 text-slate-700">
+					<thead class="border-b border-line text-muted">
 						<tr>
 							{#each ['Opponent', 'Date', 'Played as', 'Result', 'Rating', 'Time control', 'Opening', 'Critical errors', 'Analysis'] as name (name)}
 								<th scope="col" class="p-2 whitespace-nowrap">{name}</th>
 							{/each}
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-slate-200">
+					<tbody class="divide-y divide-line">
 						{#each data.items as game (game.id)}
 							<tr>
 								<th scope="row" class="p-2">
 									<a
 										href={resolve('/games/[id=gameId]', { id: String(game.id) })}
-										class="font-semibold text-emerald-800 underline">vs {game.opponent}</a
+										class="font-semibold text-accent underline">vs {game.opponent}</a
 									>
 								</th>
 								<td class="p-2 whitespace-nowrap">{formatDate(game.played_at)}</td>

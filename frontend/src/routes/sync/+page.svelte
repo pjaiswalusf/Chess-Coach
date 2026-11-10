@@ -126,26 +126,27 @@
 	>
 		{#if player}
 			<p>Tracked Chess.com player: <strong class="wrap-anywhere">{player.username}</strong></p>
-			<p class="text-sm text-slate-600">This library is linked to this account.</p>
+			<p class="text-sm text-muted">This library is linked to this account.</p>
 		{:else}
 			<label for="chesscom-username" class="block font-medium">Chess.com username</label>
 			<input
 				id="chesscom-username"
-				class="w-full max-w-sm rounded-lg border-slate-300"
+				class="w-full max-w-sm rounded-lg border-control-line bg-canvas text-ink focus:border-accent focus:ring-accent"
 				autocomplete="off"
 				autocapitalize="none"
 				spellcheck={false}
 				bind:value={username}
 				disabled={loading || !!submitting}
 			/>
-			<p class="text-sm text-slate-600">
+			<p class="text-sm text-muted">
 				{#if username.trim()}Sync will link the library to <strong class="break-all"
 						>{username.trim()}</strong
 					>.
 				{:else}The first sync links this library to one Chess.com account.{/if}
 			</p>
 		{/if}
-		<Button type="submit" disabled={busy} loading={submitting === 'sync'}>Sync Games</Button>
+		<Button primary type="submit" disabled={busy} loading={submitting === 'sync'}>Sync Games</Button
+		>
 	</form>
 
 	{#if syncId !== null}
@@ -196,6 +197,7 @@
 	<h2 class="text-lg font-semibold">Analyze imported games</h2>
 	{#if !player && !loading}<p>Set your Chess.com username and import completed games first.</p>{/if}
 	<Button
+		primary
 		onclick={() => submit('analysis')}
 		disabled={busy || !player}
 		loading={submitting === 'analysis'}
@@ -250,5 +252,5 @@
 			</div>
 		{/if}
 	{/if}
-	<a href={resolve('/games')} class="font-medium text-emerald-800 underline">Browse games</a>
+	<a href={resolve('/games')} class="font-medium text-accent underline">Browse games</a>
 </Card>

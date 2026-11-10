@@ -94,34 +94,34 @@
 				tone={status === 'healthy' ? 'positive' : status === 'degraded' ? 'caution' : 'negative'}
 			/>
 		</div>
-		<dl class="divide-y divide-slate-200">
+		<dl class="divide-y divide-line">
 			{#each Object.entries(components) as [name, check] (name)}
 				<div class="grid grid-cols-[1fr_auto] items-center gap-2 py-3">
 					<dt class="font-medium">{serviceLabels[name] ?? name}</dt>
 					<dd><StatusBadge label={labels[check.status]} tone={tones[check.status]} /></dd>
-					<dd class="col-span-2 text-sm text-slate-600">
+					<dd class="col-span-2 text-sm text-muted">
 						{check.message}
 						{#if name === 'stockfish' && engine_version}{engine_version}.{/if}
 						{#if name === 'ollama_model' && model}Configured model {model}.{/if}
 					</dd>
 					{#if check.action}
-						<dd class="col-span-2 text-sm text-slate-600">{check.action}</dd>
+						<dd class="col-span-2 text-sm text-muted">{check.action}</dd>
 					{/if}
 				</div>
 			{/each}
 		</dl>
 		{#if status !== 'unavailable'}
-			<p class="text-sm text-slate-600">Stored games and historical analysis are available.</p>
+			<p class="text-sm text-muted">Stored games and historical analysis are available.</p>
 			{#if components.stockfish?.status === 'warn'}
-				<p class="text-sm text-slate-600">New engine analysis is unavailable.</p>
+				<p class="text-sm text-muted">New engine analysis is unavailable.</p>
 			{:else if components.stockfish?.status === 'pass'}
-				<p class="text-sm text-slate-600">New analysis requires a running local analysis worker.</p>
+				<p class="text-sm text-muted">New analysis requires a running local analysis worker.</p>
 			{/if}
 			{#if components.ollama_model?.status !== 'pass'}
-				<p class="text-sm text-slate-600">New AI explanations are unavailable.</p>
+				<p class="text-sm text-muted">New AI explanations are unavailable.</p>
 			{/if}
 		{/if}
-		<p class="text-sm text-slate-600">
+		<p class="text-sm text-muted">
 			Last checked {new Date(checked_at).toLocaleString()}
 		</p>
 	</Card>
@@ -169,7 +169,7 @@
 			</dl>
 		</Card>
 	{:else}
-		<p class="text-slate-600">Game counts are unavailable.</p>
+		<p class="text-muted">Game counts are unavailable.</p>
 	{/if}
 {/if}
 
@@ -185,7 +185,7 @@
 		/>
 	{:else if metrics.state.status === 'success'}
 		{@const { analysis, coaching } = metrics.state.data}
-		<p class="text-sm text-slate-600">
+		<p class="text-sm text-muted">
 			{analysis ? 'Latest finished analysis run #' + analysis.run_id : 'No finished analysis runs.'}
 		</p>
 		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -200,7 +200,7 @@
 			/>
 			<MetricCard label="Games per hour" value={format(analysis?.games_per_hour, '')} />
 		</div>
-		<p class="text-sm text-slate-600">
+		<p class="text-sm text-muted">
 			Coaching over {coaching.window_days} days · {coaching.sample_count} measured jobs ·
 			{coaching.first_schema_sample_count} classified first responses
 		</p>

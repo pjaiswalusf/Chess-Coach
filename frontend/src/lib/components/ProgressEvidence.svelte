@@ -22,7 +22,7 @@
 {#if recent_trends.length}
 	<ul class="space-y-3">
 		{#each recent_trends as trend (`${trend.color}:${trend.time_class}:${trend.time_control}`)}
-			<li class="rounded-lg bg-slate-100 p-3">
+			<li class="rounded-lg bg-raised p-3">
 				<p class="font-medium capitalize">
 					{trend.color} · {trend.time_class} · Clock {trend.time_control}
 				</p>

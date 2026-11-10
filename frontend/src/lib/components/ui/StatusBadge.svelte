@@ -1,9 +1,9 @@
 <script lang="ts">
 	const tones = {
-		positive: 'bg-emerald-100 text-emerald-900',
-		caution: 'bg-amber-100 text-amber-900',
-		negative: 'bg-red-100 text-red-900',
-		neutral: 'bg-slate-100 text-slate-800'
+		positive: 'bg-positive-surface text-accent',
+		caution: 'bg-warning-surface text-warning',
+		negative: 'bg-danger-surface text-danger',
+		neutral: 'bg-raised text-ink'
 	};
 	let { label, tone = 'neutral' }: { label: string; tone?: keyof typeof tones } = $props();
 </script>

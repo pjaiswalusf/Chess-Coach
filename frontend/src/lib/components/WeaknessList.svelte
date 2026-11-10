@@ -24,7 +24,7 @@
 				{#each examples ? rows : rows.slice(0, 3) as pattern (pattern.candidate_key)}
 					<li>
 						<p class="font-medium">{weaknessLabel(pattern.candidate_key)}</p>
-						<p class="text-sm text-slate-700">
+						<p class="text-sm text-muted">
 							{pattern.significant_errors} significant and {pattern.critical_errors} critical errors in
 							{pattern.opportunities} opportunities · {pattern.distinct_games} games
 						</p>
@@ -37,7 +37,7 @@
 												`/games/[id=gameId]?ply=${ply}${profile ? '&profile=' + encodeURIComponent(profile) : ''}`,
 												{ id: String(id) }
 											)}
-											class="text-emerald-800 underline"
+											class="text-accent underline"
 										>
 											Game {id}, ply {ply}
 										</a>

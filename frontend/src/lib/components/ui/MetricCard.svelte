@@ -5,7 +5,7 @@
 
 <Card>
 	<dl>
-		<dt class="text-sm font-medium text-slate-600">{label}</dt>
+		<dt class="text-sm font-medium text-muted">{label}</dt>
 		<dd class="text-2xl font-semibold tabular-nums">{value}</dd>
 	</dl>
 </Card>

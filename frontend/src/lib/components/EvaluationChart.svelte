@@ -34,20 +34,20 @@
 <section aria-label="Evaluation progression" class="space-y-2">
 	<h3 class="text-lg font-semibold">Evaluation progression</h3>
 	{#if xy.some((point) => point !== null)}
-		<p class="text-sm text-slate-700">
+		<p class="text-sm text-muted">
 			White perspective (centipawns). Above the line favors White. Gaps mark mate or missing scores.
 		</p>
 		<svg
 			viewBox="0 0 400 100"
 			role="img"
 			aria-label="Stockfish evaluations from the initial position to the final ply"
-			class="w-full rounded-lg bg-slate-100"
+			class="w-full rounded-lg bg-raised"
 		>
-			<line x1="12" x2="388" y1="50" y2="50" class="stroke-slate-500" stroke-dasharray="4 3" />
-			<path d={line} fill="none" class="stroke-emerald-800" stroke-width="2" />
+			<line x1="12" x2="388" y1="50" y2="50" class="stroke-muted" stroke-dasharray="4 3" />
+			<path d={line} fill="none" class="stroke-accent" stroke-width="2" />
 			{#each xy as point, index (index)}
 				{#if point}
-					<circle cx={point.x} cy={point.y} r="2.5" class="fill-emerald-800">
+					<circle cx={point.x} cy={point.y} r="2.5" class="fill-accent">
 						<title
 							>{point.ply ? `After ply ${point.ply}` : 'Initial position'}: {point.cp} cp (White)</title
 						>
