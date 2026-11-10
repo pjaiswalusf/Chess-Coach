@@ -1,8 +1,11 @@
 """Read projections and single-player configuration in short transactions."""
 
+import chess
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from chess_coach.analytics.opening_book import book_plies
+from chess_coach.analytics.review import rate_move
 from chess_coach.analytics.sample_policy import CRITICAL_LOSS_CP
 from chess_coach.application.errors import OperationError
 from chess_coach.domain.analysis import ACTIVE, ANALYSIS_VERSION
@@ -368,16 +371,39 @@ class QueryRepository:
                         status = "incompatible"
                     else:
                         initial_fen = rows[0].fen_before if rows else final.fen
+                        opening_plies = book_plies(
+                            initial_fen,
+                            tuple(move.played_move_uci for move in rows),
+                            unknown_history=final.history_before_start_unknown,
+                        )
                         next_fens = (
                             [m.fen_before for m in rows[1:]] + [final.fen]
                             if rows
                             else []
                         )
-                        moves = [
-                            {c.name: getattr(m, c.name) for c in m.__table__.columns}
-                            | {"fen_after": after}
-                            for m, after in zip(rows, next_fens, strict=True)
-                        ]
+                        for move, after in zip(rows, next_fens, strict=True):
+                            before = chess.Board(move.fen_before)
+                            line = [chess.Move.from_uci(uci) for uci in move.pv_json]
+                            moves.append(
+                                {
+                                    c.name: getattr(move, c.name)
+                                    for c in move.__table__.columns
+                                }
+                                | {
+                                    "fen_after": after,
+                                    "pv_san": before.variation_san(line),
+                                    "rating": rate_move(
+                                        before,
+                                        chess.Move.from_uci(move.played_move_uci),
+                                        line,
+                                        move.loss_cp,
+                                        move.eval_after_cp_white,
+                                        move.mate_after_winner,
+                                        before_mate_winner=move.mate_before_winner,
+                                        in_book=move.ply <= opening_plies,
+                                    ),
+                                }
+                            )
             return {
                 "game_id": game_id,
                 "status": status,

@@ -145,7 +145,7 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 		await expect(reopened.getByRole('group', { name: /Chessboard/ })).toBeVisible();
 		await reopened.getByRole('button', { name: '4. Ne2 — Critical error' }).click();
 		await expect(reopened.getByText('Before 4. Ne2 · Ply 7')).toBeVisible();
-		await expect(reopened.getByText('f3h5', { exact: true }).first()).toBeVisible();
+		await expect(reopened.getByText('4. Qh5', { exact: true })).toHaveAttribute('title', 'f3h5');
 		await expect(reopened.getByRole('img', { name: /Stockfish evaluations/ })).toBeVisible();
 		await reopened.getByRole('button', { name: 'Explain this move' }).click();
 		await expect(

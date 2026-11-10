@@ -4,6 +4,7 @@ import type { components } from './generated/schema.js';
 
 type Schemas = components['schemas'];
 export type ReviewMove = Schemas['ReviewMove'];
+export type ReviewRating = Schemas['ReviewRating'];
 export type GameAnalysis = Schemas['GameAnalysisResponse'];
 export type GameDetail = Schemas['GameDetail'];
 
@@ -48,9 +49,22 @@ function validMove(move: ReviewMove, id: number, ply: number, profile: string, b
 		typeof move.fen_after === 'string' &&
 		typeof move.played_move_uci === 'string' &&
 		typeof move.played_move_san === 'string' &&
+		typeof move.pv_san === 'string' &&
 		(move.best_move_uci === null || typeof move.best_move_uci === 'string') &&
 		Array.isArray(move.pv_json) &&
 		move.pv_json.every((uci) => typeof uci === 'string') &&
+		[
+			'brilliant',
+			'great',
+			'best',
+			'book',
+			'good',
+			'inaccuracy',
+			'mistake',
+			'miss',
+			'blunder',
+			'unrated'
+		].includes(move.rating) &&
 		(move.loss_cp === null || (Number.isSafeInteger(move.loss_cp) && move.loss_cp >= 0)) &&
 		(move.severity === null ||
 			['normal', 'minor', 'significant', 'critical'].includes(move.severity)) &&

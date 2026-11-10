@@ -1519,8 +1519,16 @@ export interface components {
             profile_hash: string;
             /** Pv Json */
             pv_json: string[];
+            /** Pv San */
+            pv_san: string;
+            rating: components["schemas"]["ReviewRating"];
             severity: components["schemas"]["Severity"] | null;
         };
+        /**
+         * ReviewRating
+         * @enum {string}
+         */
+        ReviewRating: "brilliant" | "great" | "best" | "book" | "good" | "inaccuracy" | "mistake" | "miss" | "blunder" | "unrated";
         /** RunGame */
         RunGame: {
             /** Attempt Count */

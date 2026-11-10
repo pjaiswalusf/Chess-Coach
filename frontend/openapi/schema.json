@@ -2740,6 +2740,13 @@
             "title": "Pv Json",
             "type": "array"
           },
+          "pv_san": {
+            "title": "Pv San",
+            "type": "string"
+          },
+          "rating": {
+            "$ref": "#/components/schemas/ReviewRating"
+          },
           "severity": {
             "anyOf": [
               {
@@ -2770,10 +2777,28 @@
           "loss_cp",
           "pv_json",
           "fen_after",
+          "pv_san",
+          "rating",
           "severity"
         ],
         "title": "ReviewMove",
         "type": "object"
+      },
+      "ReviewRating": {
+        "enum": [
+          "brilliant",
+          "great",
+          "best",
+          "book",
+          "good",
+          "inaccuracy",
+          "mistake",
+          "miss",
+          "blunder",
+          "unrated"
+        ],
+        "title": "ReviewRating",
+        "type": "string"
       },
       "RunGame": {
         "properties": {
