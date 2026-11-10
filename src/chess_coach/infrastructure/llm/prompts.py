@@ -1,7 +1,27 @@
 """Versioned, bounded evidence-only prompt; imported prose is never included."""
 
-MOVE_EXPLANATION_PROMPT_VERSION = "coaching-v1.2"
+MOVE_EXPLANATION_PROMPT_VERSION = "move-coaching-v2"
+HISTORICAL_EXPLANATION_PROMPT_VERSION = "coaching-v1.2"
 OUTPUT_SCHEMA_VERSION = "coaching-output-v1"
+MOVE_PRACTICE_SCHEMA_VERSION = "move-practice-v1"
+GAME_PRACTICE_PROMPT_VERSION = "game-coaching-v2"
+GAME_PRACTICE_SCHEMA_VERSION = "game-practice-v2"
+GAME_SYSTEM_PROMPT = """Select practice moments for a completed chess game.
+The input contains verified observations with allowed focuses. It always
+contains at least one valid choice. Return status explained and one to three
+choices, most useful first. Copy the exact ply and one of that moment's
+allowed_focuses into each choice. Prefer a concrete tactical focus over reply
+when available. If unsure, choose the first supplied moment and one of its
+allowed focuses. Return only the JSON object. The app supplies all prose."""
+
+MOVE_SYSTEM_PROMPT = """Choose a practice focus for a completed chess move.
+Select a focus from allowed_focuses using the verified observations.
+Prefer the most specific useful focus, such as mate for a missed mating move.
+The reply focus is useful when the observations show only quiet play.
+Return only a JSON object with status explained and the selected focus.
+If the move has no suitable focus, return status insufficient_evidence with a
+null focus. Do not return prose, chess moves, or any other fields."""
+
 SYSTEM_PROMPT = """You are a concise educational chess coach for completed games.
 Use ONLY the supplied deterministic evidence. Stockfish and analytics are authoritative.
 Do not calculate or change moves, scores, mate states, results, statistics or rankings.

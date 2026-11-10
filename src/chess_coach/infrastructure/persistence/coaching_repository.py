@@ -1,8 +1,11 @@
 """Short independent transactions for coaching evidence and durable job state."""
 
+from collections.abc import Sequence
+
 from sqlalchemy import case, func, select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from chess_coach.analytics.phases import classify_phase
 from chess_coach.analytics.sample_policy import ADVANTAGE_CP
@@ -150,45 +153,7 @@ class CoachingRepository:
         self.queries.game(game_id)  # enforce ownership
         profile = profile or self.queries.profile()
         with self.sessions() as s:
-            game = s.get(Game, game_id)
-            assert game is not None
-            state = s.scalar(
-                select(GameAnalysisState).where(
-                    GameAnalysisState.game_id == game_id,
-                    GameAnalysisState.profile_hash == profile,
-                )
-            )
-            if state is None or state.status != "done":
-                raise OperationError(
-                    "ANALYSIS_NOT_READY",
-                    "Complete engine analysis before requesting coaching.",
-                )
-            run = (
-                s.get(AnalysisRun, state.analysis_run_id)
-                if state.analysis_run_id
-                else None
-            )
-            if (
-                game.parse_status != ParseStatus.READY
-                or run is None
-                or run.tracked_player_id != game.tracked_player_id
-                or profile_of(run).hash != profile
-                or not self.queries.analysis.compatible(s, game, profile_of(run))
-            ):
-                raise OperationError(
-                    "EVIDENCE_INCOMPLETE",
-                    "Complete compatible engine analysis before retrying.",
-                )
-            rows = list(
-                s.scalars(
-                    select(MoveAnalysis)
-                    .where(
-                        MoveAnalysis.game_id == game_id,
-                        MoveAnalysis.profile_hash == profile,
-                    )
-                    .order_by(MoveAnalysis.ply)
-                )
-            )
+            game, run, state, rows = self._game_rows(s, game_id, profile)
             if ply < 1 or ply > len(rows):
                 raise OperationError(
                     "MOVE_NOT_FOUND",
@@ -203,71 +168,174 @@ class CoachingRepository:
                     422,
                 )
             previous = rows[ply - 3].eval_before_cp_white if ply >= 3 else None
-            assert state.position_ids and row.best_move_uci
-            before = s.get(PositionCache, state.position_ids[ply - 1])
-            after = s.get(PositionCache, state.position_ids[ply])
-            assert before and after
-            metadata = game.parsed_metadata or {}
-            if (
-                before.initial_fen != metadata.get("initial_fen")
-                or before.moves_uci_json != [r.played_move_uci for r in rows[: ply - 1]]
-                or before.history_before_start_unknown
-                != bool(metadata.get("history_before_start_unknown"))
-            ):
-                raise ValueError(
-                    "Cached replay does not match the completed game's history"
-                )
-            # Replay history with the existing phase classifier, preserving monotone phases.
-            import chess
+            return self._project_move(s, game, run, state, rows, ply), previous
 
-            board = chess.Board(before.initial_fen)
-            phase = None
-            for uci in before.moves_uci_json:
-                phase, _, _ = classify_phase(
-                    board, phase, unknown_history=before.history_before_start_unknown
+    def game_moments(
+        self, game_id: int, profile: str | None
+    ) -> tuple[str, str, tuple[MoveCoachingEvidence, ...]]:
+        self.queries.game(game_id)  # enforce ownership
+        profile = profile or self.queries.profile()
+        with self.sessions() as s:
+            game, run, state, rows = self._game_rows(s, game_id, profile)
+            tracked = [row for row in rows if row.mover == game.player_color]
+            white = game.player_color == "white"
+
+            def adverse_mate(row: MoveAnalysis) -> bool:
+                return (
+                    row.mate_before_winner == white and row.mate_after_winner != white
+                ) or (
+                    row.mate_before_winner != (not white)
+                    and row.mate_after_winner == (not white)
                 )
-                board.push_uci(uci)
+
+            errors = [
+                row
+                for row in tracked
+                if row.played_move_uci != row.best_move_uci
+                and (adverse_mate(row) or (row.loss_cp or 0) >= 30)
+            ]
+            selected = sorted(
+                errors,
+                key=lambda row: (not adverse_mate(row), -(row.loss_cp or 0), row.ply),
+            )[:3]
+            if not selected and tracked:
+                selected = [
+                    min(
+                        tracked,
+                        key=lambda row: (
+                            row.mate_after_white != 0,
+                            row.played_move_uci != row.best_move_uci,
+                            row.loss_cp or 0,
+                            row.ply,
+                        ),
+                    )
+                ]
+            return (
+                state.profile_hash,
+                source_hash(game),
+                tuple(
+                    self._project_move(s, game, run, state, rows, row.ply)
+                    for row in selected
+                ),
+            )
+
+    def _game_rows(
+        self, s: Session, game_id: int, profile: str | None
+    ) -> tuple[Game, AnalysisRun, GameAnalysisState, list[MoveAnalysis]]:
+        game = s.get(Game, game_id)
+        assert game is not None
+        state = s.scalar(
+            select(GameAnalysisState).where(
+                GameAnalysisState.game_id == game_id,
+                GameAnalysisState.profile_hash == profile,
+            )
+        )
+        if state is None or state.status != "done":
+            raise OperationError(
+                "ANALYSIS_NOT_READY",
+                "Complete engine analysis before requesting coaching.",
+            )
+        run = (
+            s.get(AnalysisRun, state.analysis_run_id) if state.analysis_run_id else None
+        )
+        if (
+            game.parse_status != ParseStatus.READY
+            or run is None
+            or run.tracked_player_id != game.tracked_player_id
+            or profile_of(run).hash != profile
+            or not self.queries.analysis.compatible(s, game, profile_of(run))
+        ):
+            raise OperationError(
+                "EVIDENCE_INCOMPLETE",
+                "Complete compatible engine analysis before retrying.",
+            )
+        rows = list(
+            s.scalars(
+                select(MoveAnalysis)
+                .where(
+                    MoveAnalysis.game_id == game_id,
+                    MoveAnalysis.profile_hash == profile,
+                )
+                .order_by(MoveAnalysis.ply)
+            )
+        )
+        return game, run, state, rows
+
+    @staticmethod
+    def _project_move(
+        s: Session,
+        game: Game,
+        run: AnalysisRun,
+        state: GameAnalysisState,
+        rows: Sequence[MoveAnalysis],
+        ply: int,
+    ) -> MoveCoachingEvidence:
+        row = rows[ply - 1]
+        assert state.position_ids and row.best_move_uci
+        before = s.get(PositionCache, state.position_ids[ply - 1])
+        after = s.get(PositionCache, state.position_ids[ply])
+        assert before and after
+        metadata = game.parsed_metadata or {}
+        if (
+            before.initial_fen != metadata.get("initial_fen")
+            or before.moves_uci_json != [r.played_move_uci for r in rows[: ply - 1]]
+            or before.history_before_start_unknown
+            != bool(metadata.get("history_before_start_unknown"))
+        ):
+            raise ValueError(
+                "Cached replay does not match the completed game's history"
+            )
+        # Replay history with the existing phase classifier, preserving monotone phases.
+        import chess
+
+        board = chess.Board(before.initial_fen)
+        phase = None
+        for uci in before.moves_uci_json:
             phase, _, _ = classify_phase(
                 board, phase, unknown_history=before.history_before_start_unknown
             )
-            evidence = MoveCoachingEvidence(
-                game_id=game_id,
-                ply=ply,
-                player_color=row.mover,
-                player_rating=game.white_rating
-                if row.mover == "white"
-                else game.black_rating,
-                phase=phase,
-                fen_before=row.fen_before,
-                initial_fen=before.initial_fen,
-                history_uci=tuple(before.moves_uci_json),
-                history_before_start_unknown=before.history_before_start_unknown,
-                played_move_uci=row.played_move_uci,
-                best_move_uci=row.best_move_uci,
-                best_line_uci=tuple(before.pv_json[:16]),
-                played_refutation_uci=tuple(after.pv_json[:16]),
-                before=EngineScore(
-                    cp_white=before.score_cp_white,
-                    mate_white=before.mate_distance_white,
-                    mate_winner=before.mate_winner,
-                ),
-                after=EngineScore(
-                    cp_white=after.score_cp_white,
-                    mate_white=after.mate_distance_white,
-                    mate_winner=after.mate_winner,
-                ),
-                loss_cp=row.loss_cp,
-                completion_provenance="chesscom_archive"
-                if game.platform == "chess.com"
-                else "pgn_declaration",
-                source_hash=source_hash(game),
-                profile_hash=profile,
-                engine_version=run.engine_version,
-                analysis_version=run.analysis_version,
-                draw_policy=run.draw_policy_version,
-                feature_version=FEATURE_EXTRACTOR_VERSION,
-            )
-            return evidence, previous
+            board.push_uci(uci)
+        phase, _, _ = classify_phase(
+            board, phase, unknown_history=before.history_before_start_unknown
+        )
+        evidence = MoveCoachingEvidence(
+            game_id=game.id,
+            ply=ply,
+            player_color=row.mover,
+            player_rating=game.white_rating
+            if row.mover == "white"
+            else game.black_rating,
+            phase=phase,
+            fen_before=row.fen_before,
+            initial_fen=before.initial_fen,
+            history_uci=tuple(before.moves_uci_json),
+            history_before_start_unknown=before.history_before_start_unknown,
+            played_move_uci=row.played_move_uci,
+            best_move_uci=row.best_move_uci,
+            best_line_uci=tuple(before.pv_json[:16]),
+            played_refutation_uci=tuple(after.pv_json[:16]),
+            before=EngineScore(
+                cp_white=before.score_cp_white,
+                mate_white=before.mate_distance_white,
+                mate_winner=before.mate_winner,
+            ),
+            after=EngineScore(
+                cp_white=after.score_cp_white,
+                mate_white=after.mate_distance_white,
+                mate_winner=after.mate_winner,
+            ),
+            loss_cp=row.loss_cp,
+            completion_provenance="chesscom_archive"
+            if game.platform == "chess.com"
+            else "pgn_declaration",
+            source_hash=source_hash(game),
+            profile_hash=row.profile_hash,
+            engine_version=run.engine_version,
+            analysis_version=run.analysis_version,
+            draw_policy=run.draw_policy_version,
+            feature_version=FEATURE_EXTRACTOR_VERSION,
+        )
+        return evidence
 
     def get(self, job_id: int) -> CoachingOutput:
         with self.sessions() as s:

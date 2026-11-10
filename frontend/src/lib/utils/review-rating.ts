@@ -1,70 +1,54 @@
 import type { ReviewRating } from '#lib/api/review.js';
 
-export const moveRatings: Record<
-	ReviewRating,
-	{ label: string; symbol: string; tone: string; explanation: string }
-> = {
+export const moveRatings: Record<ReviewRating, { label: string; symbol: string; tone: string }> = {
 	brilliant: {
 		label: 'Brilliant',
 		symbol: '‼',
-		tone: 'text-cyan-400',
-		explanation:
-			'Stockfish’s top move gives up material in the saved line and keeps a non-losing evaluation.'
+		tone: 'text-cyan-400'
 	},
 	great: {
 		label: 'Great',
 		symbol: '!',
-		tone: 'text-blue-400',
-		explanation:
-			'Stockfish’s top move delivers checkmate or gives double check while keeping a non-losing evaluation.'
+		tone: 'text-blue-400'
 	},
 	best: {
 		label: 'Best',
 		symbol: '★',
-		tone: 'text-lime-400',
-		explanation: 'This was Stockfish’s top move.'
+		tone: 'text-lime-400'
 	},
 	book: {
 		label: 'Book',
 		symbol: '▤',
-		tone: 'text-amber-200',
-		explanation: 'This move follows a known opening line and kept the engine evaluation close.'
+		tone: 'text-amber-200'
 	},
 	good: {
 		label: 'Good',
 		symbol: '✓',
-		tone: 'text-green-400',
-		explanation: 'Stockfish’s evaluation changed little or improved for the player who moved.'
+		tone: 'text-green-400'
 	},
 	inaccuracy: {
 		label: 'Inaccuracy',
 		symbol: '?!',
-		tone: 'text-orange-400',
-		explanation: 'The evaluation dropped slightly for the player who moved.'
+		tone: 'text-orange-400'
 	},
 	mistake: {
 		label: 'Mistake',
 		symbol: '×',
-		tone: 'text-rose-300',
-		explanation: 'The evaluation dropped significantly for the player who moved.'
+		tone: 'text-rose-300'
 	},
 	miss: {
 		label: 'Miss',
 		symbol: '?',
-		tone: 'text-fuchsia-400',
-		explanation:
-			'Stockfish saw a forced mate before this move. The saved evaluation after it no longer shows that mate.'
+		tone: 'text-fuchsia-400'
 	},
 	blunder: {
 		label: 'Blunder',
 		symbol: '⁇',
-		tone: 'text-red-400',
-		explanation: 'The evaluation dropped sharply for the player who moved.'
+		tone: 'text-red-400'
 	},
 	unrated: {
 		label: 'Unrated',
 		symbol: '·',
-		tone: 'text-stone-400',
-		explanation: 'The saved engine evidence does not support a rating for this move.'
+		tone: 'text-stone-400'
 	}
 };

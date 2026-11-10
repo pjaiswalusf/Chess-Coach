@@ -115,6 +115,9 @@ test('imports and analyzes completed games, then follows measured coaching evide
 		});
 	});
 	await page.route('**/api/v1/games/17', (route) => route.fulfill({ json: game }));
+	await page.route('**/api/v1/games/17/coaching?*', (route) =>
+		route.fulfill({ json: { status: 'insufficient_evidence', game_review: [] } })
+	);
 	await page.route('**/api/v1/games/17/analysis*', (route) =>
 		route.fulfill({ json: gameAnalysis })
 	);
@@ -152,6 +155,7 @@ test('imports and analyzes completed games, then follows measured coaching evide
 	await expect(page).toHaveURL('/games/17');
 	await page.getByRole('button', { name: '38... Kg6 — Critical error' }).click();
 	await expect(page.getByText('Before 38... Kg6 · Ply 2')).toBeVisible();
+	await page.getByText('Engine best line', { exact: true }).click();
 	await expect(page.getByText('38... Kg7', { exact: true })).toHaveAttribute('title', 'h7g7');
 	await nav.getByRole('link', { name: 'Coach' }).click();
 	await expect(page.getByText('12 critical errors in 120 opportunities')).toBeVisible();

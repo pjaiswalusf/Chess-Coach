@@ -127,6 +127,17 @@ export const noMoveCoaching = {
 	status: 'not_generated',
 	job_id: null,
 	coach: null,
+	move_breakdown: {
+		assessment: 'After 38... Kg6, Stockfish’s evaluation goes from +0.20 to +2.10.',
+		played: {
+			san: '38...Kg6 39. Qg2+',
+			key_fact: '39. Qg2+ gives check, so the opponent has to answer it.'
+		},
+		alternative: {
+			san: '38...Kg7',
+			key_fact: '38... Kg7 moves the king from h7 to g7.'
+		}
+	},
 	evidence: { game_id: 17, ply: 2, profile_hash: profile }
 };
 export const noHistoricalCoaching = {

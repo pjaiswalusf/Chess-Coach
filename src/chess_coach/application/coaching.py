@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from time import perf_counter
 from typing import Literal, Protocol
 
+import chess
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 from structlog.contextvars import bound_contextvars
@@ -16,15 +17,23 @@ from chess_coach.analytics.contracts import (
     Weakness,
     coaching_report_hash,
 )
+from chess_coach.analytics.move_breakdown import build_move_breakdown
 from chess_coach.application.coaching_evidence import EvidenceBuilder
 from chess_coach.application.errors import OperationError
 from chess_coach.config import Settings
 from chess_coach.domain.analysis import fingerprint
 from chess_coach.domain.coaching_models import (
+    GameCoachingEvidence,
+    GameMoment,
+    GamePractice,
+    GameReviewMoment,
     HistoricalExplanation,
     LLMHealth,
+    MoveBreakdown,
     MoveCoachingEvidence,
     MoveExplanation,
+    MovePractice,
+    PracticeFocus,
 )
 from chess_coach.domain.feature_models import EvidenceModel
 from chess_coach.domain.motif_models import (
@@ -41,13 +50,14 @@ from chess_coach.infrastructure.llm.motif_classifier import (
     validate_prediction,
 )
 from chess_coach.infrastructure.llm.prompts import (
+    GAME_PRACTICE_PROMPT_VERSION,
+    GAME_PRACTICE_SCHEMA_VERSION,
+    HISTORICAL_EXPLANATION_PROMPT_VERSION,
     MOVE_EXPLANATION_PROMPT_VERSION,
+    MOVE_PRACTICE_SCHEMA_VERSION,
     OUTPUT_SCHEMA_VERSION,
 )
-from chess_coach.infrastructure.llm.validation import (
-    validate_chess_claims,
-    validate_text,
-)
+from chess_coach.infrastructure.llm.validation import validate_text
 from chess_coach.infrastructure.persistence.coaching_repository import (
     CoachingRepository,
 )
@@ -79,10 +89,15 @@ class HistoricalEvidence(EvidenceModel):
     patterns: tuple[Weakness, ...] = Field(max_length=5)
 
 
+CoachingEvidence = MoveCoachingEvidence | HistoricalEvidence | GameCoachingEvidence
+
+
 class CoachingResponse(EvidenceModel):
     job_id: int | None = None
     status: str
-    evidence: MoveCoachingEvidence | HistoricalEvidence
+    evidence: CoachingEvidence
+    move_breakdown: MoveBreakdown | None = None
+    game_review: tuple[GameReviewMoment, ...] = ()
     coach: MoveExplanation | HistoricalExplanation | None = None
     error_code: str | None = None
     message: str | None = None
@@ -111,7 +126,7 @@ class MotifHealth(EvidenceModel):
     message: str
 
 
-JobEvidence = MoveCoachingEvidence | HistoricalEvidence | MotifEvidence
+JobEvidence = CoachingEvidence | MotifEvidence
 
 
 def job_evidence(row: CoachingOutput) -> JobEvidence:
@@ -119,14 +134,19 @@ def job_evidence(row: CoachingOutput) -> JobEvidence:
         return MotifEvidence.model_validate(row.evidence_json)
     if row.output_type == "move":
         return MoveCoachingEvidence.model_validate(row.evidence_json)
+    if row.output_type == "game":
+        return GameCoachingEvidence.model_validate(row.evidence_json)
     return HistoricalEvidence.model_validate(row.evidence_json)
 
 
 def job_config(evidence: JobEvidence) -> tuple[str, str, str]:
     if isinstance(evidence, MotifEvidence):
         return "motif", MOTIF_PROMPT_VERSION, MOTIF_SCHEMA_VERSION
-    kind = "move" if isinstance(evidence, MoveCoachingEvidence) else "historical"
-    return kind, MOVE_EXPLANATION_PROMPT_VERSION, OUTPUT_SCHEMA_VERSION
+    if isinstance(evidence, MoveCoachingEvidence):
+        return "move", MOVE_EXPLANATION_PROMPT_VERSION, MOVE_PRACTICE_SCHEMA_VERSION
+    if isinstance(evidence, GameCoachingEvidence):
+        return "game", GAME_PRACTICE_PROMPT_VERSION, GAME_PRACTICE_SCHEMA_VERSION
+    return "historical", HISTORICAL_EXPLANATION_PROMPT_VERSION, OUTPUT_SCHEMA_VERSION
 
 
 def historical_evidence(report: AnalyticsReport) -> HistoricalEvidence:
@@ -148,27 +168,141 @@ def historical_evidence(report: AnalyticsReport) -> HistoricalEvidence:
 
 
 def validated_output(
-    raw: str, evidence: MoveCoachingEvidence | HistoricalEvidence
-) -> MoveExplanation | HistoricalExplanation:
-    output: MoveExplanation | HistoricalExplanation
-    if isinstance(evidence, MoveCoachingEvidence):
-        output = MoveExplanation.model_validate_json(raw)
-        validate_chess_claims(output, evidence)
-    else:
-        output = HistoricalExplanation.model_validate_json(raw)
-        allowed = [w.candidate_key for w in evidence.patterns]
-        refs = [p.pattern_id for p in output.priorities]
-        if (
-            len(set(refs)) != len(refs)
-            or any(r not in allowed for r in refs)
-            or refs != [r for r in allowed if r in refs]
+    raw: str, evidence: CoachingEvidence
+) -> MovePractice | HistoricalExplanation | GamePractice:
+    if isinstance(evidence, GameCoachingEvidence):
+        review = GamePractice.model_validate_json(raw)
+        allowed_by_ply = {
+            moment.ply: moment.allowed_focuses for moment in evidence.moments
+        }
+        if len({choice.ply for choice in review.choices}) != len(review.choices) or any(
+            choice.focus not in allowed_by_ply.get(choice.ply, ())
+            for choice in review.choices
         ):
             raise OperationError(
                 "UNSUPPORTED_CLAIM",
-                "Historical advice must reference supplied patterns in order.",
+                "The model chose a moment or practice focus outside this game’s evidence.",
             )
+        return review
+    if isinstance(evidence, MoveCoachingEvidence):
+        practice = MovePractice.model_validate_json(raw)
+        allowed_focuses = _focuses(build_move_breakdown(evidence))
+        if practice.focus is not None and practice.focus not in allowed_focuses:
+            raise OperationError(
+                "UNSUPPORTED_CLAIM",
+                "The model chose a practice focus outside the saved observations.",
+            )
+        if practice.focus is None:
+            specific = next(
+                (focus for focus in allowed_focuses if focus != "reply"), None
+            )
+            if specific is not None:
+                return MovePractice(status="explained", focus=specific)
+        return practice
+    output = HistoricalExplanation.model_validate_json(raw)
+    allowed = [w.candidate_key for w in evidence.patterns]
+    refs = [p.pattern_id for p in output.priorities]
+    if (
+        len(set(refs)) != len(refs)
+        or any(r not in allowed for r in refs)
+        or refs != [r for r in allowed if r in refs]
+    ):
+        raise OperationError(
+            "UNSUPPORTED_CLAIM",
+            "Historical advice must reference supplied patterns in order.",
+        )
     validate_text(output)
     return output
+
+
+_PRACTICE: dict[PracticeFocus, tuple[str, str]] = {
+    "reply": (
+        "Start with the opponent’s strongest saved reply.",
+        "Play that reply on the board. What changes, and what would you play next?",
+    ),
+    "material": (
+        "Follow the captures before judging the exchange.",
+        "Replay the highlighted capture or attack. What can each side take back?",
+    ),
+    "check": (
+        "Look at checks and the legal replies they leave.",
+        "Find the highlighted check on the board. Can the king move, can the check be blocked, or can the checking piece be captured?",
+    ),
+    "mate": (
+        "Check for mating moves on both sides before committing.",
+        "Replay the highlighted checkmate. What covers each escape square, and what prevents a block or capture?",
+    ),
+    "promotion": (
+        "Calculate the pawn’s route and the reply after promotion.",
+        "Play the promotion in the saved line. What can the new piece do, and how can the opponent respond?",
+    ),
+    "castling": (
+        "Compare the king’s safety before and after castling.",
+        "Replay the castling move. Which squares now protect the king, and where can the rook play?",
+    ),
+}
+
+
+def _focuses(
+    breakdown: MoveBreakdown, *, include_best: bool = False
+) -> list[PracticeFocus]:
+    if breakdown.alternative is None and not include_best:
+        return []
+    cues = (
+        breakdown.played.cue,
+        breakdown.alternative.cue if breakdown.alternative else "",
+    )
+    choices: list[PracticeFocus] = (
+        [] if breakdown.played.cue == "ends the game" else ["reply"]
+    )
+    if any("checkmate" in cue for cue in cues):
+        choices.append("mate")
+    if any("gives check" in cue for cue in cues):
+        choices.append("check")
+    if any(cue.startswith(("captures", "attacks")) for cue in cues):
+        choices.append("material")
+    if any(cue.startswith("promotes") for cue in cues):
+        choices.append("promotion")
+    if "castles" in cues:
+        choices.append("castling")
+    return choices
+
+
+def move_prompt_payload(evidence: MoveCoachingEvidence) -> str:
+    breakdown = build_move_breakdown(evidence)
+    return json.dumps(
+        {
+            "played_line_observation": breakdown.played.cue,
+            "alternative_observation": breakdown.alternative.cue
+            if breakdown.alternative
+            else None,
+            "allowed_focuses": _focuses(breakdown),
+        }
+    )
+
+
+def game_review_moments(
+    evidence: GameCoachingEvidence, practice: GamePractice | None = None
+) -> tuple[GameReviewMoment, ...]:
+    moments = {moment.ply: moment for moment in evidence.moments}
+    ordered = (
+        [
+            (moments[choice.ply], _PRACTICE[choice.focus][1])
+            for choice in practice.choices
+        ]
+        if practice
+        else [(moment, None) for moment in evidence.moments]
+    )
+    return tuple(
+        GameReviewMoment(
+            ply=moment.ply,
+            move=moment.move,
+            played_fact=moment.played_fact,
+            alternative_fact=moment.alternative_fact,
+            practice_tip=tip,
+        )
+        for moment, tip in ordered
+    )
 
 
 class CoachingService:
@@ -197,6 +331,56 @@ class CoachingService:
         self, game: int, ply: int, generate: bool = False, profile: str | None = None
     ) -> CoachingResponse:
         return self.request(self.builder.move(game, ply, profile), generate)
+
+    def game_evidence(self, game: int, profile: str | None) -> GameCoachingEvidence:
+        try:
+            resolved, identity, moves = self.store.game_moments(game, profile)
+            moments = []
+            for move in moves:
+                board = chess.Board(move.fen_before)
+                san = board.san(chess.Move.from_uci(move.played_move_uci))
+                dots = "." if board.turn == chess.WHITE else "..."
+                breakdown = build_move_breakdown(move)
+                moments.append(
+                    GameMoment(
+                        ply=move.ply,
+                        move=f"{board.fullmove_number}{dots} {san}",
+                        played_fact=breakdown.played.key_fact,
+                        alternative_fact=breakdown.alternative.key_fact
+                        if breakdown.alternative
+                        else None,
+                        allowed_focuses=tuple(
+                            focus
+                            for focus in _focuses(breakdown, include_best=True)
+                            if focus != "reply" or move.played_refutation_uci
+                        ),
+                    )
+                )
+            return GameCoachingEvidence(
+                game_id=game,
+                profile_hash=resolved,
+                source_hash=identity,
+                moments=tuple(moments),
+            )
+        except OperationError:
+            raise
+        except ValueError:
+            raise OperationError(
+                "EVIDENCE_INCOMPLETE",
+                "Complete compatible engine analysis before retrying.",
+            ) from None
+
+    def game(
+        self, game: int, generate: bool = False, profile: str | None = None
+    ) -> CoachingResponse:
+        evidence = self.game_evidence(game, profile)
+        if not any(moment.allowed_focuses for moment in evidence.moments):
+            return CoachingResponse(
+                status="insufficient_evidence",
+                evidence=evidence,
+                game_review=game_review_moments(evidence),
+            )
+        return self.request(evidence, generate)
 
     def history(
         self,
@@ -255,19 +439,18 @@ class CoachingService:
             cached=bool(row and row.status in {"done", "insufficient_evidence"}),
         )
 
-    def request(
-        self, evidence: MoveCoachingEvidence | HistoricalEvidence, generate: bool
-    ) -> CoachingResponse:
+    def request(self, evidence: CoachingEvidence, generate: bool) -> CoachingResponse:
         if (
             isinstance(evidence, MoveCoachingEvidence)
             and evidence.played_move_uci == evidence.best_move_uci
         ):
+            breakdown = build_move_breakdown(evidence)
             return CoachingResponse(
                 status="insufficient_evidence",
                 evidence=evidence,
+                move_breakdown=breakdown,
                 coach=MoveExplanation(
-                    status="insufficient_evidence",
-                    summary="The played move matches the engine preference; there is no alternative move to explain.",
+                    status="insufficient_evidence", summary=breakdown.assessment
                 ),
             )
         row = self.request_row(evidence, generate)
@@ -278,7 +461,16 @@ class CoachingService:
                 cached=not generate or row.status in {"done", "insufficient_evidence"},
             )
             if row
-            else CoachingResponse(status="not_generated", evidence=evidence)
+            else CoachingResponse(
+                status="not_generated",
+                evidence=evidence,
+                move_breakdown=build_move_breakdown(evidence)
+                if isinstance(evidence, MoveCoachingEvidence)
+                else None,
+                game_review=game_review_moments(evidence)
+                if isinstance(evidence, GameCoachingEvidence)
+                else (),
+            )
         )
 
     @staticmethod
@@ -348,6 +540,14 @@ class CoachingService:
             )
         evidence = job_evidence(row)
         assert not isinstance(evidence, MotifEvidence)
+        if (
+            isinstance(evidence, MoveCoachingEvidence)
+            and row.schema_version != MOVE_PRACTICE_SCHEMA_VERSION
+        ):
+            raise OperationError(
+                "COACHING_CONFIG_CHANGED",
+                "Reopen this move to see its current coaching breakdown.",
+            )
         # Verify current source before exposing a stored move result.
         if (
             isinstance(evidence, MoveCoachingEvidence)
@@ -358,33 +558,75 @@ class CoachingService:
                 "EVIDENCE_INCOMPLETE",
                 "The stored evidence changed; request coaching again.",
             )
+        if (
+            isinstance(evidence, GameCoachingEvidence)
+            and self.game_evidence(evidence.game_id, evidence.profile_hash) != evidence
+        ):
+            raise OperationError(
+                "EVIDENCE_INCOMPLETE",
+                "The stored game evidence changed. Reopen Game Review.",
+            )
         return self.response(row, evidence)
 
     @staticmethod
     def response(
         row: CoachingOutput,
-        evidence: MoveCoachingEvidence | HistoricalEvidence,
+        evidence: CoachingEvidence,
         cached: bool = False,
     ) -> CoachingResponse:
-        output = None
+        output: MoveExplanation | HistoricalExplanation | None = None
+        game_practice = None
+        breakdown = (
+            build_move_breakdown(evidence)
+            if isinstance(evidence, MoveCoachingEvidence)
+            else None
+        )
         if row.status in {"done", "insufficient_evidence"}:
             try:
-                output = validated_output(json.dumps(row.output_json), evidence)
+                validated = validated_output(json.dumps(row.output_json), evidence)
             except ValueError, OperationError:
                 raise OperationError(
                     "INVALID_MODEL_OUTPUT",
                     "Stored coaching failed validation; regenerate it.",
                 ) from None
+            if isinstance(validated, HistoricalExplanation):
+                output = validated
+            elif isinstance(validated, GamePractice):
+                game_practice = validated
+            elif validated.focus is not None:
+                assert breakdown and breakdown.alternative
+                lesson, tip = _PRACTICE[validated.focus]
+                output = MoveExplanation(
+                    status="explained",
+                    summary=breakdown.assessment,
+                    what_went_wrong=breakdown.played.key_fact,
+                    why_best_move_works=breakdown.alternative.key_fact,
+                    lesson=lesson,
+                    practice_tip=tip,
+                )
+            else:
+                assert breakdown
+                output = MoveExplanation(
+                    status="insufficient_evidence", summary=breakdown.assessment
+                )
         return CoachingResponse(
             job_id=row.id,
             status=row.status,
             evidence=evidence,
+            move_breakdown=breakdown,
+            game_review=game_review_moments(evidence, game_practice)
+            if isinstance(evidence, GameCoachingEvidence)
+            else (),
             coach=output,
             error_code=row.error_code,
             cached=cached,
             model_digest=row.model_digest,
             attempt_count=row.attempt_count,
-            message="Coaching failed. Check Ollama and the local coaching worker, then retry."
+            message="The local model’s notes failed the evidence checks. The Stockfish breakdown is available above."
+            if breakdown is not None
+            and row.status == "failed"
+            and row.error_code in {"UNSUPPORTED_CLAIM", "FACT_CONTRADICTION"}
+            else "Coaching failed. Check Ollama and the local coaching worker, then retry."
             if row.status == "failed"
             else "Start the local coaching worker if this request remains queued."
             if row.status == "queued"
@@ -411,6 +653,11 @@ class CoachingProcessor:
                 self.service.builder.move(
                     evidence.game_id, evidence.ply, evidence.profile_hash
                 )
+                == evidence
+            )
+        if isinstance(evidence, GameCoachingEvidence):
+            return (
+                self.service.game_evidence(evidence.game_id, evidence.profile_hash)
                 == evidence
             )
         return True
@@ -475,12 +722,20 @@ class CoachingProcessor:
             schema: type[BaseModel]
             if isinstance(evidence, MotifEvidence):
                 schema, payload = MotifPrediction, motif_input(evidence)
-            else:
-                schema = (
-                    MoveExplanation
-                    if isinstance(evidence, MoveCoachingEvidence)
-                    else HistoricalExplanation
+            elif isinstance(evidence, MoveCoachingEvidence):
+                schema = MovePractice
+                payload = move_prompt_payload(evidence)
+            elif isinstance(evidence, GameCoachingEvidence):
+                schema = GamePractice
+                payload = json.dumps(
+                    [
+                        moment.model_dump(mode="json", exclude={"move"})
+                        for moment in evidence.moments
+                        if moment.allowed_focuses
+                    ]
                 )
+            else:
+                schema = HistoricalExplanation
                 payload = json.dumps(
                     row.evidence_json, sort_keys=True, separators=(",", ":")
                 )

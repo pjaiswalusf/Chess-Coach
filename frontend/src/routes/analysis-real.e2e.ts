@@ -136,6 +136,7 @@ test('real UI, API and worker survive hard stop and profile change', async ({
 		await expect(reopened.getByRole('group', { name: /Chessboard/ })).toBeVisible();
 		await reopened.getByRole('button', { name: 'Final position' }).click({ timeout: 10000 });
 		await expect(reopened.getByRole('button', { name: 'Next move' })).toBeDisabled();
+		await reopened.getByText('Move evidence', { exact: true }).click();
 		await expect(reopened.getByRole('heading', { name: /Move evidence/ })).toBeVisible();
 		await reopened.screenshot({
 			path: testInfo.outputPath('analysis-browser.png'),

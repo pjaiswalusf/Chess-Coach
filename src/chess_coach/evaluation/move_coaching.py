@@ -12,16 +12,16 @@ from time import perf_counter
 
 from pydantic import ValidationError
 
-from chess_coach.application.coaching import validated_output
+from chess_coach.application.coaching import move_prompt_payload, validated_output
 from chess_coach.application.errors import OperationError
 from chess_coach.config import Settings
 from chess_coach.domain.analysis import fingerprint
-from chess_coach.domain.coaching_models import MoveCoachingEvidence, MoveExplanation
+from chess_coach.domain.coaching_models import MoveCoachingEvidence, MovePractice
 from chess_coach.infrastructure.llm.client import OllamaCoach, generation_settings
 from chess_coach.infrastructure.llm.health import check_health
 from chess_coach.infrastructure.llm.prompts import (
     MOVE_EXPLANATION_PROMPT_VERSION,
-    OUTPUT_SCHEMA_VERSION,
+    MOVE_PRACTICE_SCHEMA_VERSION,
 )
 
 
@@ -97,10 +97,10 @@ def main() -> None:
         started = perf_counter()
         result: dict[str, object] = {"case_id": row["case_id"], "human_review": None}
         try:
-            raw = model.generate(evidence.model_dump_json(), MoveExplanation)
+            raw = model.generate(move_prompt_payload(evidence), MovePractice)
             result["raw_output"] = raw
             # First response only. A handled failure is not a parsing success.
-            parsed = MoveExplanation.model_validate_json(raw)
+            parsed = MovePractice.model_validate_json(raw)
             result["schema_valid"] = True
             output = validated_output(raw, evidence)
             result.update(
@@ -122,7 +122,11 @@ def main() -> None:
         results.append(result)
         print(
             json.dumps(
-                {k: v for k, v in result.items() if k not in {"output", "metrics", "raw_output"}}
+                {
+                    k: v
+                    for k, v in result.items()
+                    if k not in {"output", "metrics", "raw_output"}
+                }
             ),
             flush=True,
         )
@@ -131,7 +135,7 @@ def main() -> None:
         "model": settings.ollama_model,
         "model_digest": health.model_digest,
         "prompt_version": MOVE_EXPLANATION_PROMPT_VERSION,
-        "schema_version": OUTPUT_SCHEMA_VERSION,
+        "schema_version": MOVE_PRACTICE_SCHEMA_VERSION,
         "generation": generation_settings(settings),
         "count": len(results),
         "schema_valid": sum(r.get("schema_valid") is True for r in results),

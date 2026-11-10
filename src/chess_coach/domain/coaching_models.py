@@ -115,6 +115,67 @@ class MoveCoachingEvidence(EvidenceModel):
         board.push(move)
 
 
+class MoveLine(EvidenceModel):
+    san: str
+    key_fact: str
+    cue: str
+
+
+class MoveBreakdown(EvidenceModel):
+    assessment: str
+    played: MoveLine
+    alternative: MoveLine | None
+
+
+PracticeFocus = Literal["reply", "material", "check", "mate", "promotion", "castling"]
+
+
+class GameMoment(EvidenceModel):
+    ply: int = Field(gt=0)
+    move: str
+    played_fact: str
+    alternative_fact: str | None = None
+    allowed_focuses: tuple[PracticeFocus, ...]
+
+
+class GameCoachingEvidence(EvidenceModel):
+    schema_version: Literal["game-coaching-evidence-v1"] = "game-coaching-evidence-v1"
+    game_id: int = Field(gt=0)
+    profile_hash: str
+    source_hash: str
+    moments: tuple[GameMoment, ...] = Field(max_length=3)
+
+
+class GamePracticeChoice(EvidenceModel):
+    ply: int = Field(gt=0, strict=True)
+    focus: PracticeFocus
+
+
+class GamePractice(EvidenceModel):
+    status: Literal["explained"]
+    choices: tuple[GamePracticeChoice, ...] = Field(min_length=1, max_length=3)
+
+
+class GameReviewMoment(EvidenceModel):
+    ply: int
+    move: str
+    played_fact: str
+    alternative_fact: str | None
+    practice_tip: str | None = None
+
+
+class MovePractice(EvidenceModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+    status: Literal["explained", "insufficient_evidence"]
+    focus: PracticeFocus | None = None
+
+    @model_validator(mode="after")
+    def check_focus(self) -> MovePractice:
+        if (self.status == "explained") != (self.focus is not None):
+            raise ValueError("An explained response requires a practice focus")
+        return self
+
+
 class MoveExplanation(EvidenceModel):
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
     status: Literal["explained", "insufficient_evidence"]

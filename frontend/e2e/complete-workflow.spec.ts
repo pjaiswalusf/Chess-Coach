@@ -145,11 +145,17 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 		await expect(reopened.getByRole('group', { name: /Chessboard/ })).toBeVisible();
 		await reopened.getByRole('button', { name: '4. Ne2 — Critical error' }).click();
 		await expect(reopened.getByText('Before 4. Ne2 · Ply 7')).toBeVisible();
-		await expect(reopened.getByText('4. Qh5', { exact: true })).toHaveAttribute('title', 'f3h5');
+		await reopened.getByText('Engine best line', { exact: true }).click();
+		const engineLine = reopened.getByRole('region', { name: 'Engine best line' });
+		await expect(engineLine.getByText('4. Qh5', { exact: true })).toHaveAttribute('title', 'f3h5');
 		await expect(reopened.getByRole('img', { name: /Stockfish evaluations/ })).toBeVisible();
-		await reopened.getByRole('button', { name: 'Explain this move' }).click();
+		const moveCoaching = reopened.getByRole('region', { name: 'Move coaching' });
+		await expect(moveCoaching.getByRole('heading', { name: 'Coach’s remarks' })).toBeVisible();
+		await reopened.getByRole('button', { name: 'Get a practice tip' }).click();
+		await expect(moveCoaching.getByText('Practice this position')).toBeVisible();
+		await moveCoaching.getByText('Move evidence', { exact: true }).click();
 		await expect(
-			reopened.getByText('Compare the played move with the forcing alternative.')
+			moveCoaching.getByText(/After 4\. Ne2, Stockfish’s evaluation goes from/)
 		).toBeVisible();
 		await capture(reopened, 'game-review', reopened.getByRole('region', { name: 'Move coaching' }));
 

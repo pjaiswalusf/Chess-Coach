@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { coachingApi } from '#lib/api/coaching.js';
+	import type { Snippet } from 'svelte';
+	import { coachingApi, type CoachingResponse } from '#lib/api/coaching.js';
 	import { coachingJob } from '#lib/coaching-job.svelte.js';
 	import Button from './ui/Button.svelte';
 
@@ -7,8 +8,15 @@
 		game,
 		ply,
 		profile,
-		embedded = false
-	}: { game: number; ply: number; profile: string; embedded?: boolean } = $props();
+		evidence,
+		evidenceOpen = $bindable(false)
+	}: {
+		game: number;
+		ply: number;
+		profile: string;
+		evidence?: Snippet;
+		evidenceOpen?: boolean;
+	} = $props();
 	const job = coachingJob(
 		(signal) => coachingApi.get(game, ply, profile, signal),
 		(signal) => coachingApi.generate(game, ply, profile, signal)
@@ -18,39 +26,59 @@
 
 <section
 	aria-label="Move coaching"
-	class={embedded
-		? 'mt-3 space-y-2 border-t border-stone-300 pt-3 text-sm'
+	class={evidence
+		? 'space-y-2.5 rounded-xl border border-line bg-panel p-3 text-sm'
 		: 'space-y-3 rounded-xl border border-positive-line bg-positive-surface p-5'}
 >
-	<h3 class={embedded ? 'sr-only' : 'text-lg font-semibold'}>Coaching for ply {ply}</h3>
+	<h3 class={evidence ? 'font-semibold' : 'text-lg font-semibold'}>
+		{evidence ? 'Coach’s remarks' : `Coaching for ply ${ply}`}
+	</h3>
+	{#if result?.move_breakdown}
+		{@const breakdown = result.move_breakdown}
+		{#if evidence}
+			<p>{breakdown.played.key_fact}</p>
+			{#if breakdown.alternative}
+				<p>
+					<strong class="block">Stockfish’s alternative</strong>
+					{breakdown.alternative.key_fact}
+				</p>
+			{:else}
+				<p class="text-muted">Stockfish also chose this move.</p>
+			{/if}
+		{:else}
+			{@render moveBreakdown(breakdown, true)}
+		{/if}
+	{/if}
 	{#if job.loading}<p role="status">Loading saved explanation…</p>
 	{:else}
 		{#if job.error}<p role="alert">Coaching unavailable: {job.error}</p>{/if}
 		{#if result?.status === 'done' && result.coach}
-			<p class="font-medium">{result.coach.summary}</p>
 			{#if 'what_went_wrong' in result.coach}
-				{#if embedded}
+				{#if result.move_breakdown}
 					<details class="space-y-2">
-						<summary class="cursor-pointer font-semibold">Coaching details</summary>
-						{@render lesson(result.coach)}
+						<summary class="cursor-pointer font-semibold">Practice this position</summary>
+						<p>{result.coach.lesson}</p>
+						<p>{result.coach.practice_tip}</p>
 					</details>
 				{:else}
+					<p class="font-medium">{result.coach.summary}</p>
 					{@render lesson(result.coach)}
 				{/if}
 			{/if}
-			<p class={embedded ? 'text-xs text-stone-600' : 'text-sm text-muted'}>
-				Local model explanation · Passed automated checks. Chess prose can still contain errors;
-				compare the engine evidence.
-			</p>
 		{:else if result?.status === 'insufficient_evidence'}
-			<p>
-				{result.coach?.summary ?? 'The available evidence is insufficient for reliable coaching.'}
-			</p>
+			{#if !result.move_breakdown}
+				<p>
+					{result.coach?.summary ??
+						'The available evidence is insufficient for additional coaching.'}
+				</p>
+			{/if}
 		{:else if job.active && !job.error}
 			<p role="status">Generating… {result?.message ?? 'Waiting for the local coaching worker.'}</p>
 		{:else if result?.status === 'failed'}
 			<p role="alert">{result.message} ({result.error_code})</p>
-		{:else if !job.error && !embedded}<p>No explanation generated yet.</p>{/if}
+		{:else if !job.error && !evidence && !result?.move_breakdown}<p>
+				No explanation generated yet.
+			</p>{/if}
 		{#if result?.status !== 'done' && result?.status !== 'insufficient_evidence'}
 			<Button
 				primary
@@ -58,12 +86,46 @@
 				disabled={job.active || job.statusError}
 				loading={job.submitting}
 			>
-				{job.submitting ? 'Requesting…' : 'Explain this move'}
+				{job.submitting ? 'Requesting…' : evidence ? 'Get a practice tip' : 'Explain this move'}
 			</Button>
 		{/if}
 		{#if job.statusError}<Button onclick={job.refresh}>Refresh coaching status</Button>{/if}
 	{/if}
+	{#if evidence}
+		<details bind:open={evidenceOpen} class="space-y-2 rounded-lg border border-line px-3 py-2">
+			<summary class="cursor-pointer text-sm font-semibold">Move evidence</summary>
+			{@render evidence()}
+			{#if result?.move_breakdown}{@render moveBreakdown(result.move_breakdown, false)}{/if}
+		</details>
+	{/if}
 </section>
+
+{#snippet moveBreakdown(
+	breakdown: NonNullable<CoachingResponse['move_breakdown']>,
+	showFacts: boolean
+)}
+	<div class="space-y-2.5">
+		<p class="font-semibold">{breakdown.assessment}</p>
+		<dl class="grid gap-2.5">
+			<div>
+				<dt class="text-xs font-bold uppercase">Played line</dt>
+				<dd class="mt-0.5">
+					<p class="font-mono text-sm wrap-anywhere">{breakdown.played.san}</p>
+					{#if showFacts}<p class="mt-1">{breakdown.played.key_fact}</p>{/if}
+				</dd>
+			</div>
+			{#if breakdown.alternative}
+				<div>
+					<dt class="text-xs font-bold uppercase">Stockfish’s alternative</dt>
+					<dd class="mt-0.5">
+						<p class="font-mono text-sm wrap-anywhere">{breakdown.alternative.san}</p>
+						{#if showFacts}<p class="mt-1">{breakdown.alternative.key_fact}</p>{/if}
+					</dd>
+				</div>
+			{/if}
+		</dl>
+	</div>
+{/snippet}
 
 {#snippet lesson(coach: {
 	what_went_wrong: string;

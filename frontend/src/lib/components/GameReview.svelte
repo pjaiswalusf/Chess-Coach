@@ -2,11 +2,12 @@
 	import { resolve } from '$app/paths';
 	import { getGame, getGameAnalysis, type ReviewMove } from '#lib/api/review.js';
 	import { asyncRead } from '#lib/async-read.svelte.js';
-	import { evaluationLabel, formatDate, results } from '#lib/utils/display.js';
+	import { formatDate, results } from '#lib/utils/display.js';
 	import { moveRatings } from '#lib/utils/review-rating.js';
 	import BoardEvaluationBar from './BoardEvaluationBar.svelte';
 	import ChessBoard from './ChessBoard.svelte';
 	import EvaluationChart from './EvaluationChart.svelte';
+	import GameCoaching from './GameCoaching.svelte';
 	import MoveCoaching from './MoveCoaching.svelte';
 	import ReviewMoveList from './ReviewMoveList.svelte';
 	import ReviewRatingIcon from './ReviewRatingIcon.svelte';
@@ -25,6 +26,7 @@
 	);
 	let selection = $state<{ ply: number; before: boolean } | null>(null);
 	let flipped = $state(false);
+	let showMoveEvidence = $state(false);
 
 	const recorded = $derived(game.state.status === 'success' ? game.state.data : null);
 	const report = $derived(analysis.state.status === 'success' ? analysis.state.data : null);
@@ -151,7 +153,7 @@
 					/>
 				</div>
 				{@render player(orientation)}
-				<div class="mt-3 lg:hidden">
+				<div class="mt-3 pl-9 sm:pl-11">
 					{@render moveNavigation()}
 				</div>
 			</section>
@@ -172,130 +174,127 @@
 					<Button onclick={() => (flipped = !flipped)}>Flip board</Button>
 				</header>
 				<div class="space-y-4 px-4 py-4">
-					<div class="rounded-2xl bg-stone-50 p-4 text-stone-900 shadow-sm sm:p-5">
-						{#if selected}
-							{@const mark = moveRatings[selected.rating]}
-							<div class="flex flex-wrap items-center justify-between gap-2">
-								<div class="flex items-center gap-2.5">
-									<ReviewRatingIcon rating={selected.rating} large />
-									<h3 class="text-xl font-bold">{mark.label}</h3>
-								</div>
-								<span
-									class="rounded-md bg-stone-200 px-2.5 py-1 text-sm font-bold tabular-nums"
-									title="Evaluation after the move from White’s perspective"
-								>
-									{evaluationLabel(
-										selected.eval_after_cp_white,
-										selected.mate_after_white,
-										selected.mate_after_winner
-									)}
-								</span>
+					{#if selected}
+						{@const mark = moveRatings[selected.rating]}
+						<div class="rounded-xl bg-panel p-3">
+							<div class="flex items-center gap-2">
+								<ReviewRatingIcon rating={selected.rating} />
+								<h3 class="font-bold">{notation(selected)} · {mark.label}</h3>
 							</div>
-							<h4 class="mt-2 text-sm font-semibold">Move evidence · {notation(selected)}</h4>
-							<p class="mt-1 text-sm leading-relaxed">{mark.explanation}</p>
-							<dl class="mt-2 grid grid-cols-3 gap-2 text-xs tabular-nums">
-								<div>
-									<dt class="text-stone-600">Before</dt>
-									<dd class="font-semibold">
-										{evaluation(
-											selected.eval_before_cp_white,
-											selected.mate_before_white,
-											selected.mate_before_winner
-										)}
-									</dd>
-								</div>
-								<div>
-									<dt class="text-stone-600">After</dt>
-									<dd class="font-semibold">
-										{evaluation(
-											selected.eval_after_cp_white,
-											selected.mate_after_white,
-											selected.mate_after_winner
-										)}
-									</dd>
-								</div>
-								<div>
-									<dt class="text-stone-600">Mover loss</dt>
-									<dd class="font-semibold">
-										{selected.loss_cp === null ? 'Unavailable in cp' : `${selected.loss_cp} cp`}
-									</dd>
-								</div>
-							</dl>
 							<div class="mt-2 flex flex-wrap items-center justify-between gap-1.5">
-								<p class="text-xs text-stone-600" aria-live="polite">
+								<p class="text-xs text-muted" aria-live="polite">
 									{before ? 'Before' : 'After'}
 									{notation(selected)} · Ply {selected.ply}
 								</p>
 								<button
 									type="button"
 									onclick={() => show(selected.ply, !before)}
-									class="rounded px-1 py-1 text-xs font-semibold underline underline-offset-2 hover:bg-stone-200 focus-visible:outline-2"
+									class="rounded px-1 py-1 text-xs font-semibold underline underline-offset-2 hover:bg-raised focus-visible:outline-2"
 									>{before ? 'Show position after move' : 'Show position before move'}</button
 								>
 							</div>
-							{#if profileHash}
-								{#key `${selected.ply}:${profileHash}`}
-									<MoveCoaching game={id} ply={selected.ply} profile={profileHash} embedded />
-								{/key}
-							{/if}
-						{:else}
-							<h3 class="text-lg font-bold" aria-live="polite">Starting position</h3>
-							<p class="mt-1 text-sm text-stone-700">
-								Select a move or scrub the graph to see its rating and the Stockfish evidence.
-							</p>
-						{/if}
-					</div>
+						</div>
+						{#if profileHash}
+							{#key `${selected.ply}:${profileHash}`}
+								<MoveCoaching
+									game={id}
+									ply={selected.ply}
+									profile={profileHash}
+									bind:evidenceOpen={showMoveEvidence}
+								>
+									{#snippet evidence()}
+										<h4 class="sr-only">Move evidence · {notation(selected)}</h4>
 
-					<section aria-label="Engine best line" class="space-y-2">
-						<div class="flex min-h-7 flex-wrap items-center justify-between gap-2">
-							<h3 class="text-sm font-semibold">Engine best line</h3>
-							{#if engineLine?.best_move_uci}
-								<button
-									type="button"
-									onclick={() => show(engineLine.ply, true)}
-									aria-pressed={before && selected?.ply === engineLine.ply}
-									class="rounded-md border border-positive-line bg-positive-surface px-2.5 py-1 text-xs font-semibold text-accent hover:bg-raised focus-visible:outline-2 focus-visible:outline-accent"
-									>Show best move</button
-								>
-							{/if}
-						</div>
-						<div
-							role="region"
-							aria-label="Engine continuation"
-							class="flex h-16 items-start gap-2 overflow-y-auto rounded-md bg-panel p-2.5 text-sm focus-visible:outline-2 focus-visible:outline-accent"
-						>
-							{#if engineLine?.pv_san}
-								<span
-									class="shrink-0 rounded bg-square-light px-1.5 py-0.5 text-xs font-bold text-square-ink tabular-nums"
-								>
-									{evaluation(
-										engineLine.eval_before_cp_white,
-										engineLine.mate_before_white,
-										engineLine.mate_before_winner
-									)}
-								</span>
-								<p
-									class="min-w-0 font-mono leading-relaxed wrap-anywhere"
-									title={engineLine.pv_json.join(' ')}
-								>
-									{engineLine.pv_san}
-								</p>
-							{:else}
-								<p class="text-muted">No engine line is available for this position.</p>
-							{/if}
-						</div>
-						<p class="min-h-4 text-xs text-muted">
-							{#if engineLine?.pv_san}
-								From before {notation(engineLine)} · White perspective
-							{/if}
-						</p>
-					</section>
+										<dl class="mt-2 grid grid-cols-3 gap-2 text-xs tabular-nums">
+											<div>
+												<dt class="text-muted">Before</dt>
+												<dd class="font-semibold">
+													{evaluation(
+														selected.eval_before_cp_white,
+														selected.mate_before_white,
+														selected.mate_before_winner
+													)}
+												</dd>
+											</div>
+											<div>
+												<dt class="text-muted">After</dt>
+												<dd class="font-semibold">
+													{evaluation(
+														selected.eval_after_cp_white,
+														selected.mate_after_white,
+														selected.mate_after_winner
+													)}
+												</dd>
+											</div>
+											<div>
+												<dt class="text-muted">Mover loss</dt>
+												<dd class="font-semibold">
+													{selected.loss_cp === null
+														? 'Unavailable in cp'
+														: `${selected.loss_cp} cp`}
+												</dd>
+											</div>
+										</dl>
+									{/snippet}
+								</MoveCoaching>
+							{/key}
+						{/if}
+					{/if}
+					{#if profileHash}
+						{#key profileHash}
+							<GameCoaching game={id} profile={profileHash} onSelect={(ply) => show(ply, true)} />
+						{/key}
+					{/if}
+
+					<details class="space-y-2 rounded-lg border border-line px-3 py-2">
+						<summary class="cursor-pointer text-sm font-semibold">Engine best line</summary>
+						<section aria-label="Engine best line" class="space-y-2">
+							<div class="flex min-h-7 flex-wrap items-center justify-end gap-2">
+								{#if engineLine?.best_move_uci}
+									<button
+										type="button"
+										onclick={() => show(engineLine.ply, true)}
+										aria-pressed={before && selected?.ply === engineLine.ply}
+										class="rounded-md border border-positive-line bg-positive-surface px-2.5 py-1 text-xs font-semibold text-accent hover:bg-raised focus-visible:outline-2 focus-visible:outline-accent"
+										>Show best move</button
+									>
+								{/if}
+							</div>
+							<div
+								role="region"
+								aria-label="Engine continuation"
+								class="flex h-16 items-start gap-2 overflow-y-auto rounded-md bg-panel p-2.5 text-sm focus-visible:outline-2 focus-visible:outline-accent"
+							>
+								{#if engineLine?.pv_san}
+									<span
+										class="shrink-0 rounded bg-square-light px-1.5 py-0.5 text-xs font-bold text-square-ink tabular-nums"
+									>
+										{evaluation(
+											engineLine.eval_before_cp_white,
+											engineLine.mate_before_white,
+											engineLine.mate_before_winner
+										)}
+									</span>
+									<p
+										class="min-w-0 font-mono leading-relaxed wrap-anywhere"
+										title={engineLine.pv_json.join(' ')}
+									>
+										{engineLine.pv_san}
+									</p>
+								{:else}
+									<p class="text-muted">No engine line is available for this position.</p>
+								{/if}
+							</div>
+							<p class="min-h-4 text-xs text-muted">
+								{#if engineLine?.pv_san}
+									From before {notation(engineLine)} · White perspective
+								{/if}
+							</p>
+						</section>
+					</details>
 
 					<ReviewMoveList {moves} selected={selected?.ply} onSelect={show} />
 					<EvaluationChart {moves} {scores} {position} onSelect={show} />
-				</div>
-				<div class="hidden border-t border-line bg-panel px-4 py-3 lg:block">
-					{@render moveNavigation()}
 				</div>
 
 				<section
