@@ -25,7 +25,7 @@ from chess_coach.application.parse_imported_games import ParseImportedGames
 from chess_coach.application.sync_games import SyncGamesService
 from chess_coach.application.system import DependencyStatus
 from chess_coach.config import Settings, get_settings
-from chess_coach.domain.coaching_models import LLMHealth
+from chess_coach.domain.coaching_models import LLMHealth, MoveExplanation
 from chess_coach.infrastructure.analysis_lock import worker_guard
 from chess_coach.infrastructure.chesscom.client import BASE_URL, ChessComClient
 from chess_coach.infrastructure.persistence.analysis_repository import (
@@ -47,6 +47,7 @@ from chess_coach.infrastructure.pgn.parser import parse_game
 PLAYER = "testplayer"
 ARCHIVE = f"{BASE_URL}/player/{PLAYER}/games/2026/10"
 NOW = datetime(2026, 11, 7, tzinfo=UTC)
+ALEMBIC_INI = Path(__file__).resolve().parents[2] / "alembic.ini"
 
 
 def source(directory: Path, request: httpx.Request) -> httpx.Response:
@@ -83,7 +84,7 @@ class WorkflowEngine(FakeEngine):
     def analyze(self, board, **kwargs):
         result = super().analyze(board, **kwargs)
         ply = len(board.move_stack)
-        best = "f3f7" if ply == 6 else result.best_move_uci
+        best = "f3h5" if ply == 6 else result.best_move_uci
         return replace(
             result,
             score_cp_white={6: 350, 7: -150}.get(ply, 0),
@@ -99,7 +100,14 @@ class WorkflowEngine(FakeEngine):
             : multipv - 1
         ]
         return [
-            replace(result, score_cp_white=None, mate_white=1, mate_winner=chess.WHITE),
+            replace(
+                result,
+                score_cp_white=None,
+                mate_white=1,
+                mate_winner=chess.WHITE,
+                best_move_uci=mate.uci(),
+                pv_uci=(mate.uci(),),
+            ),
             *(
                 replace(
                     result, score_cp_white=-index * 20, best_move_uci=uci, pv_uci=(uci,)
@@ -114,6 +122,15 @@ class WorkflowModel:
         self.metrics = {}
 
     def generate(self, evidence_json, schema):
+        if schema is MoveExplanation:
+            return MoveExplanation(
+                status="explained",
+                summary="Compare the played move with the forcing alternative.",
+                what_went_wrong="The recorded advantage dropped after the played move.",
+                why_best_move_works="The fixture line keeps more pressure on the king.",
+                lesson="Review forcing candidates before committing to a move.",
+                practice_tip="List your checks and captures before choosing a candidate.",
+            ).model_dump_json()
         evidence = json.loads(evidence_json)
         return json.dumps(
             {
@@ -131,10 +148,14 @@ class WorkflowModel:
 
 
 def main(directory: Path, port: int) -> None:
+    if directory.resolve() != Path.cwd() or not directory.name.startswith(
+        "chess-coach-e2e-"
+    ):
+        raise SystemExit("Run the fixture API from its dedicated test directory.")
     database = directory / "workflow.db"
     os.environ["CHESS_COACH_DATABASE_PATH"] = str(database)
     get_settings.cache_clear()
-    command.upgrade(Config("alembic.ini"), "head")
+    command.upgrade(Config(str(ALEMBIC_INI)), "head")
     settings = Settings(database_path=database, _env_file=None)
     db = create_database_engine(settings.database_url)
     sessions = create_session_factory(db)
@@ -248,7 +269,14 @@ def main(directory: Path, port: int) -> None:
     app.dependency_overrides[dependencies.get_llm_health] = health
     app.dependency_overrides[dependencies.get_coaching_service] = lambda: coaching
     try:
-        uvicorn.run(app, host="127.0.0.1", port=port, access_log=False)
+        uvicorn.run(
+            app,
+            host="127.0.0.1",
+            port=port,
+            workers=1,
+            proxy_headers=False,
+            access_log=False,
+        )
     finally:
         provider.close()
         db.dispose()

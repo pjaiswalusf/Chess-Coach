@@ -1,60 +1,31 @@
 # Chess Coach
 
-A local-first chess coach for completed games. Includes historical imports, PGN
-validation, persistent Stockfish analysis, resumable local runs, and a Svelte UI.
-The UI includes deterministic player analytics and optional explanations from a local Ollama model. Shared development rules live in [AGENTS.md](AGENTS.md).
+Chess Coach helps you review completed games and find recurring mistakes
+across your own history. Import a Chess.com archive, analyze games with
+Stockfish, then trace a pattern back to a specific position. Turn selected
+mistakes into one-move puzzles for spaced review.
+
+Stockfish supplies evaluations and candidate moves. Python checks legality,
+calculates loss and aggregates historical evidence. Optional Ollama
+explanations use those saved facts. The game library and inference stay on
+your machine. Chess.com sync reads public historical archives.
 
 ## Run locally on macOS
 
-Install Git, [uv](https://docs.astral.sh/uv/), Python 3.14, Node 24 LTS,
-and pnpm 12 (the lockfile uses pnpm 12). With Homebrew:
+Use Python 3.14, uv, Node 24, pnpm 12.15.0 and Stockfish. Follow the
+[setup guide](docs/SETUP.md) to install locked dependencies, migrate SQLite,
+build the interface and start the API and workers. The packaged app serves
+the UI and API on port 8000.
 
-```sh
-brew install uv node@24 pnpm stockfish
-export PATH="$(brew --prefix node@24)/bin:$PATH"
-uv python install 3.14
-```
+- [Architecture and failure boundaries](docs/architecture.md)
+- [Testing and CI](docs/TESTING.md)
+- [Model evaluation](docs/EVALUATION.md)
+- [M5 benchmarks](docs/BENCHMARKS.md)
+- [Operations and troubleshooting](docs/operations.md)
+- [Limitations](docs/LIMITATIONS.md)
+- [Synthetic demonstration](docs/demo/README.md)
 
-From the repository root, set up a **new** installation:
-
-```sh
-uv sync --locked
-pnpm --dir frontend install --frozen-lockfile
-cp .env.example .env
-uv run --locked alembic upgrade head
-pnpm --dir frontend build
-./scripts/start.sh
-```
-
-Open [Chess Coach](http://127.0.0.1:8000). FastAPI serves the built interface and
-the API from one loopback server. Node is used to build the interface; it is
-not needed to serve it. Press Ctrl+C to stop the server. If you already have
-games in Chess Coach, keep your `.env` and follow the
-[backup and upgrade steps](docs/operations.md#backup-upgrade-and-restore).
-
-For development, run `./scripts/dev.sh` after setup and open
-[the development app](http://127.0.0.1:5173). It starts FastAPI and Vite with
-reload and stops both on Ctrl+C.
-
-To import or analyze games, start the workers in two separate terminals from
-the repository root. Each worker also stops on Ctrl+C:
-
-```sh
-uv run --locked chess-coach sync-worker
-uv run --locked chess-coach analysis-worker --with-coaching
-```
-
-In **Sync**, enter a Chess.com username and import your completed games.
-Select **Analyze Pending Games** after the import, then open **Games** to review
-a position or **Coach** to see measured patterns. Saved jobs and reports survive
-an API restart. For optional AI explanations, install [Ollama](https://ollama.com/download/mac),
-start it locally, and run `ollama pull qwen3.5:4b-q4_K_M` or pull the model set in
-your `.env`. Existing reviews, measured analytics, and training remain usable
-with Ollama offline. Open **System** for diagnostics.
-
-See the [operations runbook](docs/operations.md) for storage, recovery,
-health endpoints and troubleshooting, and [AGENTS.md](AGENTS.md#completion-checks)
-for development checks.
+Development rules and completion checks live in [AGENTS.md](AGENTS.md).
 
 ## Interfaces reserved for future features
 

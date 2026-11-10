@@ -3,13 +3,22 @@ import { once } from 'node:events';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
+
+const demo = process.env.CI ? undefined : process.env.CHESS_COACH_DEMO_DIR;
+if (demo) {
+	test.use({
+		video: 'on',
+		viewport: { width: 1280, height: 900 },
+		launchOptions: { slowMo: 150 }
+	});
+}
 
 test('recovers from source and API outages, then reviews, coaches and practices from saved games', async ({
 	page,
 	context
 }, info) => {
-	test.setTimeout(75_000);
+	test.setTimeout(demo ? 150_000 : 75_000);
 	const directory = mkdtempSync(join(tmpdir(), 'chess-coach-e2e-'));
 	const root = resolve('..');
 	const python = process.env.CHESS_COACH_E2E_PYTHON ?? join(root, '.venv/bin/python');
@@ -20,11 +29,26 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 	const observe = (tab: Page) => tab.on('pageerror', (error) => errors.push(error.message));
 	const navigate = (tab: Page, name: string) =>
 		tab.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name }).click();
+	async function holdDemoFrame(focus: Locator) {
+		if (!demo) return;
+		await focus.scrollIntoViewIfNeeded();
+		// Give viewers time to read the recording after the state has been verified.
+		await new Promise((resolve) => setTimeout(resolve, 5_000));
+	}
+	async function capture(tab: Page, name: string, focus: Locator) {
+		if (!demo) return;
+		await tab.screenshot({ path: join(demo, `${name}.png`), fullPage: true });
+		await holdDemoFrame(focus);
+	}
 	observe(page);
 
 	async function start() {
-		server = spawn(python, ['tests/fixtures/phase20_app.py', directory, '8001'], {
-			cwd: root,
+		const env = Object.fromEntries(
+			Object.entries(process.env).filter(([key]) => !key.startsWith('CHESS_COACH_'))
+		);
+		server = spawn(python, [join(root, 'tests/fixtures/phase20_app.py'), directory, '8001'], {
+			cwd: directory,
+			env,
 			stdio: ['ignore', 'pipe', 'pipe']
 		});
 		server.on('error', (error) => (log += `${error.message}\n`));
@@ -83,6 +107,14 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 		const games = await context.request.get('/api/v1/games');
 		expect(games.ok()).toBeTruthy();
 		expect((await games.json()).total).toBe(14);
+		await sync.click();
+		const unchanged = page
+			.getByRole('status')
+			.filter({ has: page.getByText('completed', { exact: true }) })
+			.getByText(/New games: 0/);
+		await expect(unchanged).toBeVisible();
+		expect((await (await context.request.get('/api/v1/games')).json()).total).toBe(14);
+		await holdDemoFrame(unchanged);
 
 		const accepted = page.waitForResponse(
 			(response) =>
@@ -98,14 +130,14 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 		await expect(analyze).toBeDisabled();
 		const progress = `/api/v1/analysis-runs/${run_id}/progress`;
 		expect((await (await context.request.get(progress)).json()).status).toBe('running');
-		await page.close();
+		if (!demo) await page.close();
 		writeFileSync(marker('continue-analysis'), '');
 		await expect
 			.poll(async () => (await (await context.request.get(progress)).json()).status)
 			.toBe('completed');
 
-		const reopened = await context.newPage();
-		observe(reopened);
+		const reopened = demo ? page : await context.newPage();
+		if (!demo) observe(reopened);
 		await reopened.goto('/sync');
 		await expect(reopened.getByText(/Analyzed: 13/)).toBeVisible();
 		await navigate(reopened, 'Games');
@@ -113,14 +145,20 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 		await expect(reopened.getByRole('group', { name: /Chessboard/ })).toBeVisible();
 		await reopened.getByRole('button', { name: '4. Ne2 — Critical error' }).click();
 		await expect(reopened.getByText('Before 4. Ne2 · Ply 7')).toBeVisible();
-		await expect(reopened.getByText('f3f7', { exact: true }).first()).toBeVisible();
+		await expect(reopened.getByText('f3h5', { exact: true }).first()).toBeVisible();
 		await expect(reopened.getByRole('img', { name: /Stockfish evaluations/ })).toBeVisible();
+		await reopened.getByRole('button', { name: 'Explain this move' }).click();
+		await expect(
+			reopened.getByText('Compare the played move with the forcing alternative.')
+		).toBeVisible();
+		await capture(reopened, 'game-review', reopened.getByRole('region', { name: 'Move coaching' }));
 
 		await navigate(reopened, 'Coach');
 		await expect(reopened.getByText(/13 analyzed of 13 selected games/)).toBeVisible();
 		await reopened.getByRole('button', { name: 'Generate historical coaching' }).click();
 		const advice = 'Review your opening decisions before moving.';
 		await expect(reopened.getByText(advice)).toBeVisible();
+		await capture(reopened, 'coaching', reopened.getByText(advice));
 
 		await navigate(reopened, 'Training');
 		const board = reopened.getByRole('group', { name: /Chessboard/ });
@@ -129,6 +167,20 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 		await reopened.getByRole('button', { name: 'Submit move' }).click();
 		await expect(reopened.getByText('Correct', { exact: true })).toBeVisible();
 		await expect(reopened.getByText(/1 attempt ·/)).toBeVisible();
+		await capture(reopened, 'training', reopened.getByText('Correct', { exact: true }));
+
+		if (demo) {
+			await navigate(reopened, 'Dashboard');
+			await expect(reopened.getByText(/13 analyzed of 13 selected games/)).toBeVisible();
+			await capture(
+				reopened,
+				'dashboard',
+				reopened.getByRole('heading', { name: 'Performance by phase' })
+			);
+			await navigate(reopened, 'System');
+			await expect(reopened.getByRole('heading', { name: 'Local services' })).toBeVisible();
+			await capture(reopened, 'system', reopened.getByRole('heading', { name: 'Local services' }));
+		}
 
 		await stop();
 		await reopened.goto('/');
@@ -145,6 +197,12 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 		await navigate(reopened, 'Training');
 		await expect(reopened.getByText(/1 attempt ·/)).toBeVisible();
 		expect(errors).toEqual([]);
+		if (demo) {
+			const video = reopened.video();
+			if (!video) throw new Error('Fixture video recording was unavailable.');
+			await reopened.close();
+			await video.saveAs(join(demo, 'workflow.webm'));
+		}
 	} catch (error) {
 		await info.attach('fixture-api.log', { body: log, contentType: 'text/plain' });
 		throw error;
