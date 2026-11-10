@@ -1,0 +1,122 @@
+{
+  "git_revision": "8a30a0a95ae93ca0f577bd8800785ca666338ce1",
+  "git_status": "M .gitignore\n M pyproject.toml\n?? benchmarks/\n?? docs/benchmarks/m5-air.md\n?? tests/unit/test_benchmark_harness.py",
+  "tracked_diff_sha256": "7f6e6f336dd926384e0785d91af8d239fa64939b98baa4e501177f1dcec551b5",
+  "benchmark_sources_sha256": {
+    "__init__.py": "64e0d79d9d459e4a7ca62829b068c378a6f5dab5b753a2e180e13ac584ce9d64",
+    "benchmark_stockfish.py": "b007916b2d1ec7cba90a6669202bcc39320a4b1cabb6aa8a0570a1bc9d8d1478",
+    "health.py": "13e95040f7affd9d4a6102ccfa91853f0360c7758cd5bff2af0e357d9d4ee026",
+    "prepare_dataset.py": "c885573b1fb3d36446ba9d8bcba8d0d7790ed53174ee89cfc308c5fdcc862f49"
+  },
+  "run_id": "final-interrupt-smoke",
+  "status": "INTERRUPTED",
+  "started_at_utc": "2026-11-10T04:40:52.724025+00:00",
+  "dataset_version": "m5-benchmark-v1",
+  "positions_sha256": "eddc39b847280aba592b43a5438a4a36d3ee9ddf8e64d275b653f0b3240e72ce",
+  "games_sha256": "a5e48afe9e33c2c48a903bc7e5ac2000c0a6cc70999dd87a9945b6427857e52f",
+  "draw_policy": "automatic-only-v1",
+  "partition": "calibration",
+  "position_order": [
+    "pos_0001",
+    "pos_0002",
+    "pos_0003",
+    "pos_0004",
+    "pos_0005",
+    "pos_0006",
+    "pos_0007",
+    "pos_0008",
+    "pos_0009",
+    "pos_0010"
+  ],
+  "cache_reset_policy": "fresh UCI game per search; ucinewgame + ready handshake; no app cache",
+  "stockfish_executable": "/opt/homebrew/bin/stockfish",
+  "stockfish_executable_sha256": "524bb2fe474ed6c5bbc49b4edd05f76d8df09e189bded31c74f52e417ba6aa27",
+  "threads": 2,
+  "hash_mb": 512,
+  "node_budget": 1000000,
+  "multipv": 1,
+  "repetitions": 1,
+  "planned": 10,
+  "engine_startup_seconds": 0.14329362499847775,
+  "health_before": {
+    "captured_at_utc": "2026-11-10T04:40:52.764947+00:00",
+    "uptime": {
+      "returncode": 0,
+      "stdout": "10:10  up 2 days,  1:24, 1 user, load averages: 2.56 2.29 2.10",
+      "stderr": ""
+    },
+    "disk": {
+      "returncode": 0,
+      "stdout": "Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk3s5   460Gi   133Gi   299Gi    31%    1.8M  3.1G    0%   /System/Volumes/Data",
+      "stderr": ""
+    },
+    "swap": {
+      "returncode": 0,
+      "stdout": "vm.swapusage: total = 3072.00M  used = 2015.44M  free = 1056.56M  (encrypted)",
+      "stderr": ""
+    },
+    "memory_pressure_level": {
+      "returncode": 0,
+      "stdout": "kern.memorystatus_vm_pressure_level: 1",
+      "stderr": ""
+    },
+    "memory_pressure_query": {
+      "returncode": 0,
+      "stdout": "The system has 17179869184 (1048576 pages with a page size of 16384).\nSystem-wide memory free percentage: 52%",
+      "stderr": ""
+    },
+    "power_source": {
+      "returncode": 0,
+      "stdout": "Now drawing from 'Battery Power'\n -InternalBattery-0 (id=23461987)\t57%; discharging; 3:52 remaining present: true",
+      "stderr": ""
+    }
+  },
+  "engine_pid": 51016,
+  "engine_id": {
+    "name": "Stockfish 19",
+    "author": "the Stockfish developers (see AUTHORS file)"
+  },
+  "engine_returncode": 0,
+  "record_counts": {
+    "SUCCEEDED": 1,
+    "INTERRUPTED": 1,
+    "SKIPPED": 8
+  },
+  "attempted": 2,
+  "search_wall_seconds": 0.9621113339962903,
+  "batch_total_seconds": 1.1251822080012062,
+  "finished_at_utc": "2026-11-10T04:40:53.908934+00:00",
+  "health_after": {
+    "captured_at_utc": "2026-11-10T04:40:53.908944+00:00",
+    "uptime": {
+      "returncode": 0,
+      "stdout": "10:10  up 2 days,  1:24, 1 user, load averages: 2.51 2.29 2.09",
+      "stderr": ""
+    },
+    "disk": {
+      "returncode": 0,
+      "stdout": "Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on\n/dev/disk3s5   460Gi   133Gi   299Gi    31%    1.8M  3.1G    0%   /System/Volumes/Data",
+      "stderr": ""
+    },
+    "swap": {
+      "returncode": 0,
+      "stdout": "vm.swapusage: total = 3072.00M  used = 2015.44M  free = 1056.56M  (encrypted)",
+      "stderr": ""
+    },
+    "memory_pressure_level": {
+      "returncode": 0,
+      "stdout": "kern.memorystatus_vm_pressure_level: 1",
+      "stderr": ""
+    },
+    "memory_pressure_query": {
+      "returncode": 0,
+      "stdout": "The system has 17179869184 (1048576 pages with a page size of 16384).\nSystem-wide memory free percentage: 53%",
+      "stderr": ""
+    },
+    "power_source": {
+      "returncode": 0,
+      "stdout": "Now drawing from 'Battery Power'\n -InternalBattery-0 (id=23461987)\t57%; discharging; 3:52 remaining present: true",
+      "stderr": ""
+    }
+  }
+}
