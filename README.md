@@ -4,78 +4,57 @@ A local-first chess coach for completed games. Includes historical imports, PGN
 validation, persistent Stockfish analysis, resumable local runs, and a Svelte UI.
 The UI includes deterministic player analytics and optional explanations from a local Ollama model. Shared development rules live in [AGENTS.md](AGENTS.md).
 
-## Backend setup
+## Run locally on macOS
 
-Use Python 3.14 and uv. Run commands from the repository root:
+Install Git, [uv](https://docs.astral.sh/uv/), Python 3.14, Node 24 LTS,
+and pnpm 12 (the lockfile uses pnpm 12). With Homebrew:
 
 ```sh
-uv sync
+brew install uv node@24 pnpm stockfish
+export PATH="$(brew --prefix node@24)/bin:$PATH"
+uv python install 3.14
+```
+
+From the repository root, set up a **new** installation:
+
+```sh
+uv sync --locked
+pnpm --dir frontend install --frozen-lockfile
 cp .env.example .env
-uv run chess-coach
+uv run --locked alembic upgrade head
+pnpm --dir frontend build
+./scripts/start.sh
 ```
 
-The CLI starts FastAPI on `127.0.0.1:8000`. For development with automatic reload:
+Open [Chess Coach](http://127.0.0.1:8000). FastAPI serves the built interface and
+the API from one loopback server. Node is used to build the interface; it is
+not needed to serve it. Press Ctrl+C to stop the server. If you already have
+games in Chess Coach, keep your `.env` and follow the
+[backup and upgrade steps](docs/operations.md#backup-upgrade-and-restore).
+
+For development, run `./scripts/dev.sh` after setup and open
+[the development app](http://127.0.0.1:5173). It starts FastAPI and Vite with
+reload and stops both on Ctrl+C.
+
+To import or analyze games, start the workers in two separate terminals from
+the repository root. Each worker also stops on Ctrl+C:
 
 ```sh
-uv run uvicorn chess_coach.api.app:app --host 127.0.0.1 --port 8000 --no-access-log --reload
+uv run --locked chess-coach sync-worker
+uv run --locked chess-coach analysis-worker --with-coaching
 ```
 
-- `GET /health/live` checks whether FastAPI responds. The existing `/health`
-  endpoint serves the original liveness contract.
-- `GET /health/ready` checks the local data directory and SQLite schema.
-  Core failures return HTTP 503 with a diagnostic code.
-- `GET /api/v1/system/health` reports component checks, recovery steps, and
-  stored-game counts. Core failures return a structured HTTP 503.
-- `GET /api/v1/system/metrics` reports the latest finished analysis run and
-  coaching measurements over the last seven days.
-- `GET /api/v1/system` summarizes local availability and library counts.
-  The summary reports Chess.com as `not_checked` without calling it.
-- `/docs` shows the interactive API documentation.
+In **Sync**, enter a Chess.com username and import your completed games.
+Select **Analyze Pending Games** after the import, then open **Games** to review
+a position or **Coach** to see measured patterns. Saved jobs and reports survive
+an API restart. For optional AI explanations, install [Ollama](https://ollama.com/download/mac),
+start it locally, and run `ollama pull qwen3.5:4b-q4_K_M` or pull the model set in
+your `.env`. Existing reviews, measured analytics, and training remain usable
+with Ollama offline. Open **System** for diagnostics.
 
-Install Stockfish and set `CHESS_COACH_STOCKFISH_EXECUTABLE` if needed.
-Start Ollama and pull the model named by `CHESS_COACH_OLLAMA_MODEL`.
-Opening or refreshing System runs one bounded UCI check and reads the Ollama
-model inventory. Analysis polling reads persisted run state. An installed model
-can be verified without loading it for inference, and new analysis requires
-the local analysis worker.
-
-Settings read `.env` from the current working directory; environment variables
-override that file. Relative database paths are also relative to the working
-directory. Launch from the repository root for consistent paths. Run `uv run alembic upgrade head` to create or upgrade the configured database.
-
-## Frontend setup
-
-After applying migrations and starting FastAPI, start each local worker from the
-repository root in its own terminal:
-
-```sh
-uv run chess-coach sync-worker
-uv run chess-coach analysis-worker --with-coaching
-```
-
-Use the combined worker with the default `CHESS_COACH_LLM_KEEP_ALIVE=0`. It
-finishes pending engine work first and releases Stockfish before processing an
-explicit coaching request. Ollama is optional for imports, engine review, and
-measured analytics.
-
-Start the frontend from another terminal:
-
-```sh
-cd frontend
-pnpm install
-pnpm dev
-```
-
-Open [Chess Coach](http://127.0.0.1:5173). In **Sync**, enter a Chess.com username
-and start the import. After it finishes, select **Analyze Pending Games**. You can
-reload or leave while work runs; Sync rediscovers the persisted runs. Open
-**Games** to review a position and **Coach** to inspect recurring weaknesses and
-their source moves. **System** shows which local capabilities are available.
-
-Both Vite development and local preview forward `/api/*`, `/health`, and the
-liveness and readiness endpoints to
-FastAPI. See [frontend setup and checks](frontend/README.md) and
-[backend checks](AGENTS.md#completion-checks).
+See the [operations runbook](docs/operations.md) for storage, recovery,
+health endpoints and troubleshooting, and [AGENTS.md](AGENTS.md#completion-checks)
+for development checks.
 
 ## Interfaces reserved for future features
 

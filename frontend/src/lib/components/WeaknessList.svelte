@@ -34,7 +34,7 @@
 									<li>
 										<a
 											href={resolve(
-												`/games/[id]?ply=${ply}${profile ? '&profile=' + encodeURIComponent(profile) : ''}`,
+												`/games/[id=gameId]?ply=${ply}${profile ? '&profile=' + encodeURIComponent(profile) : ''}`,
 												{ id: String(id) }
 											)}
 											class="text-emerald-800 underline"

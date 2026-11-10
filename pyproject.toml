@@ -38,4 +38,5 @@ dev = [
 
 [tool.pytest.ini_options]
 addopts = "-m 'not engine'"
+pythonpath = ["."]
 markers = ["engine: opt-in tests requiring a local Stockfish executable"]

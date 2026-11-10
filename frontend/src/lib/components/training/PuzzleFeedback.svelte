@@ -16,7 +16,7 @@
 	<a
 		class="inline-block text-sm font-semibold text-emerald-800 underline"
 		href={resolve(
-			`/games/[id]?ply=${result.source_ply}&profile=${encodeURIComponent(result.source_profile_hash)}`,
+			`/games/[id=gameId]?ply=${result.source_ply}&profile=${encodeURIComponent(result.source_profile_hash)}`,
 			{ id: String(result.source_game_id) }
 		)}>Review source game, ply {result.source_ply}</a
 	>

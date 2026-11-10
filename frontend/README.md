@@ -8,7 +8,7 @@ and completion checks live in [AGENTS.md](../AGENTS.md).
 From this directory:
 
 ```sh
-pnpm install
+pnpm install --frozen-lockfile
 pnpm test:setup
 ```
 
@@ -18,12 +18,9 @@ browsers or install dependencies.
 
 ## Development
 
-```sh
-pnpm dev
-```
-
-Vite binds to `127.0.0.1:5173` and forwards `/health` and `/api/*` to FastAPI on
-`127.0.0.1:8000`. Start FastAPI using the [root setup instructions](../README.md#backend-setup).
+From the repository root, run `./scripts/dev.sh` after completing the
+[local setup](../README.md#run-locally-on-macos). Vite binds to
+`127.0.0.1:5173` and forwards `/health` and `/api/*` to FastAPI on `127.0.0.1:8000`.
 The local build preview uses the same proxy on `127.0.0.1:4173`. Neither mode
 enables CORS. System refreshes process health and dependency diagnostics separately.
 Sync rediscovers persistent runs when opened. Dashboard, Games, and Coach read
@@ -58,8 +55,8 @@ mutation can occur after the backend accepts the operation.
 - `pnpm check`: Svelte and TypeScript checks.
 - `pnpm test`: run unit and browser component tests once.
 - `pnpm test:unit`: run tests in watch mode.
-- `pnpm test:e2e`: run Playwright end-to-end tests (builds and previews the app).
-- `pnpm build`: production build.
+- `pnpm test:e2e`: build the app and run Playwright workflows, including a packaged smoke test with FastAPI on port 8000.
+- `pnpm build`: generate the static app in `frontend/build/` for `./scripts/start.sh`.
 - `pnpm preview`: preview the production build.
 
 With ports 5173 and 8000 free and the root Python environment synced, run
