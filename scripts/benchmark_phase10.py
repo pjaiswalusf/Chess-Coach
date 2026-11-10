@@ -9,6 +9,7 @@ import json
 import os
 import sqlite3
 import time
+from contextlib import closing
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -35,7 +36,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--games", type=int, required=True)
 parser.add_argument("--prepare-only", action="store_true")
 parser.add_argument("--database", type=Path, required=True)
-parser.add_argument("--source", type=Path, default=Path("data/phase10-before.db"))
+source_group = parser.add_mutually_exclusive_group()
+source_group.add_argument("--source", type=Path, default=Path("data/phase10-before.db"))
+source_group.add_argument("--fixtures", action="store_true")
+parser.add_argument(
+    "--cache-from", type=Path, help="Seed only the position cache from a prior run"
+)
 args = parser.parse_args()
 if args.database.exists():
     raise SystemExit("Use a new isolated database path")
@@ -45,10 +51,25 @@ settings = Settings(database_path=args.database)
 db = create_database_engine(settings.database_url)
 sessions = create_session_factory(db)
 store = AnalysisRepository(sessions, args.database)
-with sqlite3.connect(f"file:{args.source.resolve()}?mode=ro", uri=True) as source:
-    records = source.execute(
-        "SELECT g.raw_pgn, p.username FROM games g JOIN tracked_players p ON p.id=g.tracked_player_id ORDER BY g.id"
-    ).fetchall()
+if args.fixtures:
+    fixtures = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "pgn"
+    records = [
+        ((fixtures / f"{name}.pgn").read_text(), "Pratik")
+        for name in (
+            "white_win",
+            "black_win",
+            "checkmate",
+            "draw",
+            "timeout",
+            "clocks",
+            "custom",
+        )
+    ]
+else:
+    with sqlite3.connect(f"file:{args.source.resolve()}?mode=ro", uri=True) as source:
+        records = source.execute(
+            "SELECT g.raw_pgn, p.username FROM games g JOIN tracked_players p ON p.id=g.tracked_player_id ORDER BY g.id"
+        ).fetchall()
 accepted = []
 for raw, username in records:
     try:
@@ -92,6 +113,19 @@ with sessions.begin() as session:
                 chess_library_version=chess.__version__,
                 parsed_metadata=metadata,
             )
+        )
+if args.cache_from:
+    # Both files must use the current migration schema. The source is read-only.
+    with (
+        closing(sqlite3.connect(args.database.resolve().as_uri(), uri=True)) as target,
+        target,
+    ):
+        target.execute(
+            "ATTACH DATABASE ? AS cache_source",
+            (f"{args.cache_from.resolve().as_uri()}?mode=ro",),
+        )
+        target.execute(
+            "INSERT INTO position_cache SELECT * FROM cache_source.position_cache"
         )
 if args.prepare_only:
     db.dispose()

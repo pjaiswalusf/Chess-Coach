@@ -25,6 +25,19 @@ from chess_coach.infrastructure.llm.prompts import (
 )
 
 
+def template_result(case_id: str, evidence: MoveCoachingEvidence) -> dict:
+    return {
+        "case_id": case_id,
+        "summary": "Compare the played move with the engine preference.",
+        "played_move_uci": evidence.played_move_uci,
+        "best_move_uci": evidence.best_move_uci,
+        "before": evidence.before.model_dump(),
+        "after": evidence.after.model_dump(),
+        "loss_cp": evidence.loss_cp,
+        "human_review": None,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -35,7 +48,9 @@ def main() -> None:
     parser.add_argument(
         "--output", type=Path, default=Path("evaluation/results/phase14.json")
     )
-    parser.add_argument("--validate-only", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--validate-only", action="store_true")
+    mode.add_argument("--template-baseline", action="store_true")
     parser.add_argument("--limit", type=int)
     args = parser.parse_args()
     rows = [
@@ -56,6 +71,21 @@ def main() -> None:
                 }
             )
         )
+        return
+    if args.template_baseline:
+        results = [
+            template_result(row["case_id"], evidence)
+            for row, evidence in fixtures[: args.limit]
+        ]
+        summary = {
+            "dataset_hash": fingerprint(rows),
+            "baseline": "engine-facts-v1",
+            "count": len(results),
+            "human_reviewed": 0,
+            "results": results,
+        }
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(summary, indent=2) + "\n")
         return
     settings = Settings()
     health = check_health(settings)

@@ -5,7 +5,7 @@ on a public network without authentication and additional security controls.
 
 ## Install on macOS
 
-Follow the [README setup](../README.md#run-locally-on-macos) from a Git clone.
+Follow the [setup guide](SETUP.md) from a Git clone.
 The locked installs are `uv sync --locked` and
 `pnpm --dir frontend install --frozen-lockfile`. The tested toolchain is Python
 3.14, Node 24 and pnpm 12. Check `uv run --locked python --version`,
