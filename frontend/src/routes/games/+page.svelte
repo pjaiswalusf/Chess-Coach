@@ -126,7 +126,7 @@
 							<tr>
 								<th scope="row" class="p-2">
 									<a
-										href={resolve('/games/[id]', { id: String(game.id) })}
+										href={resolve('/games/[id=gameId]', { id: String(game.id) })}
 										class="font-semibold text-emerald-800 underline">vs {game.opponent}</a
 									>
 								</th>

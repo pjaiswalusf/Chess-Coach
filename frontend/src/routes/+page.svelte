@@ -72,7 +72,7 @@
 				{#each recent.state.data.items as game (game.id)}
 					<li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2">
 						<a
-							href={resolve('/games/[id]', { id: String(game.id) })}
+							href={resolve('/games/[id=gameId]', { id: String(game.id) })}
 							class="font-medium break-all text-emerald-800 underline">vs {game.opponent}</a
 						>
 						<span class="text-sm text-slate-700"

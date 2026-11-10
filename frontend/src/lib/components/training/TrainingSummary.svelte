@@ -91,7 +91,7 @@
 									<a
 										class="text-emerald-800 underline"
 										href={resolve(
-											`/games/[id]?profile=${encodeURIComponent(cohort.profile_hash)}`,
+											`/games/[id=gameId]?profile=${encodeURIComponent(cohort.profile_hash)}`,
 											{ id: String(id) }
 										)}>Game {id}</a
 									>

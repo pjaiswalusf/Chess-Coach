@@ -1,7 +1,10 @@
 """Local HTTP transport. Workers own all historical engine/import execution."""
 
 import logging
-from collections.abc import Awaitable, Callable
+import re
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Annotated
 from uuid import uuid4
 
@@ -13,6 +16,11 @@ from structlog.contextvars import bound_contextvars
 
 from chess_coach.api.dependencies import get_readiness_failure
 from chess_coach.api.errors import ERROR_RESPONSES, error, install_handlers
+from chess_coach.api.frontend import (
+    FRONTEND_BUILD,
+    frontend_available,
+    install_frontend,
+)
 from chess_coach.api.routes.analysis import router as analysis_router
 from chess_coach.api.routes.analytics import router as analytics_router
 from chess_coach.api.routes.coaching import router as coaching_router
@@ -23,18 +31,41 @@ from chess_coach.api.routes.training import router as training_router
 from chess_coach.api.schemas.contracts import HealthResponse
 from chess_coach.api.schemas.system import Liveness, NotReady, Readiness
 from chess_coach.config import get_settings
+from chess_coach.infrastructure.system.diagnostics import core_checks
 from chess_coach.observability.logging import configure_logging
 
 logger = logging.getLogger(__name__)
+LOCAL_HOST = re.compile(
+    r"(?:localhost|127\.0\.0\.1|\[::1\])(?::[0-9]+)?", re.IGNORECASE
+)
 
 
-def create_app() -> FastAPI:
+def create_app(
+    *, frontend_build: Path = FRONTEND_BUILD, force_packaged: bool = False
+) -> FastAPI:
     try:
-        level = get_settings().log_level
+        settings = get_settings()
     except ValidationError, OSError:
-        level = None
-    configure_logging(level)
-    app = FastAPI(title="Chess Coach API", version="0.1.0", responses=ERROR_RESPONSES)
+        settings = None
+    configure_logging(settings.log_level if settings else None)
+    packaged = force_packaged or (settings is not None and settings.serve_frontend)
+
+    @asynccontextmanager
+    async def packaged_lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        _, checks = core_checks(get_settings)
+        for check in checks:
+            if check.required and check.status == "fail":
+                raise RuntimeError(
+                    f"{check.code}: {check.message} {check.action or ''}"
+                )
+        yield
+
+    app = FastAPI(
+        title="Chess Coach API",
+        version="0.1.0",
+        responses=ERROR_RESPONSES,
+        lifespan=packaged_lifespan if packaged else None,
+    )
     install_handlers(app)
 
     @app.get(
@@ -63,6 +94,8 @@ def create_app() -> FastAPI:
         response: Response,
     ) -> Readiness | JSONResponse:
         response.headers["Cache-Control"] = "no-store"
+        if not failure and packaged and not frontend_available(frontend_build):
+            failure = "FRONTEND_BUILD_MISSING"
         if failure:
             return JSONResponse(
                 status_code=503,
@@ -82,18 +115,21 @@ def create_app() -> FastAPI:
     ):
         app.include_router(router)
 
+    if packaged:
+        install_frontend(app, frontend_build)
+
     @app.middleware("http")
     async def local_requests_only(
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
-        host = request.url.hostname
-        if host not in {"localhost", "127.0.0.1", "::1"}:
+        hosts = request.headers.getlist("host")
+        if len(hosts) != 1 or LOCAL_HOST.fullmatch(hosts[0]) is None:
             return error(400, "HOST_NOT_ALLOWED", "Use the local Chess Coach address.")
         origin = request.headers.get("origin")
         allowed = {
             f"http://{host}:{port}"
             for host in ("localhost", "127.0.0.1")
-            for port in (5173, 4173, 8000)
+            for port in ((8000,) if packaged else (5173, 4173, 8000))
         }
         probes = request.url.path.rstrip("/") in {
             "/health/ready",
@@ -136,6 +172,11 @@ def create_app() -> FastAPI:
             return response
 
     return app
+
+
+def create_packaged_app() -> FastAPI:
+    # The launcher must still fail closed if another setting is invalid.
+    return create_app(force_packaged=True)
 
 
 app = create_app()

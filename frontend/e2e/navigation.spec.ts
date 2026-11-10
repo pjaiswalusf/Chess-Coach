@@ -66,6 +66,7 @@ test('navigates all six pages with current links, direct entry, and browser hist
 test('supports keyboard navigation and fits a narrow viewport', async ({ page }) => {
 	await page.setViewportSize({ width: 375, height: 720 });
 	await page.goto('/');
+	await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
 	const skip = page.getByRole('link', { name: 'Skip to content' });
 	await page.keyboard.press('Tab');
 	await expect(skip).toBeFocused();
@@ -74,6 +75,7 @@ test('supports keyboard navigation and fits a narrow viewport', async ({ page })
 	await expect(page.getByRole('main')).toBeFocused();
 
 	await page.goto('/');
+	await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
 	await page.keyboard.press('Tab');
 	await page.keyboard.press('Tab');
 	await page.keyboard.press('Tab');
