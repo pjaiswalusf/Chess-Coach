@@ -48,7 +48,7 @@
 		<label class="grid gap-1 text-sm font-medium">
 			Analysis window
 			<select
-				class="rounded-lg border-slate-300"
+				class="rounded-lg border-control-line bg-canvas text-ink focus:border-accent focus:ring-accent"
 				value={window}
 				onchange={(event) => selectWindow(event.currentTarget.value)}
 			>
@@ -75,7 +75,7 @@
 	{#if report.status === 'NO_GAMES'}
 		<EmptyState title="No completed games in this window.">
 			<p>Import and analyze completed games to see historical coaching.</p>
-			<a href={resolve('/sync')} class="font-semibold text-emerald-800 underline">Go to Sync</a>
+			<a href={resolve('/sync')} class="font-semibold text-accent underline">Go to Sync</a>
 		</EmptyState>
 	{:else}
 		<Card>
@@ -84,7 +84,7 @@
 				{report.health?.analyzed_games} analyzed of {report.health?.selected_games} selected games · {report
 					.health?.analyzed_player_moves} analyzed player moves
 			</p>
-			<p class="text-sm text-slate-700">
+			<p class="text-sm text-muted">
 				All colors and time controls · {report.analytics_version} / {report.policy_version}
 			</p>
 			{#if report.status === 'PARTIAL'}<p>

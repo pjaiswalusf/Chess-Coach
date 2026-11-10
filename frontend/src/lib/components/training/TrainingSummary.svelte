@@ -20,7 +20,7 @@
 		<MetricCard label="Answer accuracy" value={accuracy(stats.accuracy)} />
 		<MetricCard label="Due now" value={stats.puzzles_due} />
 	</div>
-	<p class="text-sm text-slate-700">
+	<p class="text-sm text-muted">
 		{stats.attempts_total} attempt{stats.attempts_total === 1 ? '' : 's'} · {stats.correct_attempts} correct
 		· {stats.incorrect_attempts} incorrect
 		{#if stats.average_attempts !== null}
@@ -64,7 +64,7 @@
 				</p>
 			{/if}
 			{#each progress.cohorts as cohort (`${cohort.time_class}/${cohort.time_control}/${cohort.color}/${cohort.profile_hash}/${cohort.analysis_version}`)}
-				<details class="rounded-lg border border-slate-200 p-3 text-sm">
+				<details class="rounded-lg border border-line p-3 text-sm">
 					<summary class="cursor-pointer font-semibold">
 						<span class="capitalize">{cohort.time_class} · {cohort.color}</span> · {cohort.time_control}
 						{#if cohort.change_per_100 != null}
@@ -89,7 +89,7 @@
 							<div class="flex flex-wrap gap-x-2">
 								{#each period.evidence.game_ids as id (id)}
 									<a
-										class="text-emerald-800 underline"
+										class="text-accent underline"
 										href={resolve(
 											`/games/[id=gameId]?profile=${encodeURIComponent(cohort.profile_hash)}`,
 											{ id: String(id) }

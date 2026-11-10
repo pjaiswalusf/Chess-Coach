@@ -25,9 +25,13 @@ test('reviews a custom start, a promotion, and the final Black move on a narrow 
 	const board = page.getByRole('group', { name: 'Chessboard · Black at bottom' });
 	await expect(board.locator('[data-square]').first()).toHaveAttribute('data-square', 'h1');
 	await expect(board.getByTitle('a7: White pawn', { exact: true })).toBeVisible();
+	await expect(board.locator('[data-square="a7"] img')).toHaveJSProperty('naturalWidth', 800);
 	await page.getByRole('button', { name: 'Next move' }).focus();
 	await page.keyboard.press('Enter');
 	await expect(board.getByTitle('a8: White queen', { exact: true })).toBeVisible();
+	const promoted = board.locator('[data-square="a8"] img');
+	await expect(promoted).toHaveAttribute('src', /\/wQ\.svg$/);
+	await expect(promoted).toHaveJSProperty('naturalWidth', 800);
 	await page.getByRole('button', { name: 'Final position' }).click();
 	await expect(board.getByTitle('g6: Black king', { exact: true })).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Next move' })).toBeDisabled();

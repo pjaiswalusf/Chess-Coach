@@ -13,7 +13,7 @@
 
 <section
 	aria-label="Move coaching"
-	class="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-5"
+	class="space-y-3 rounded-xl border border-positive-line bg-positive-surface p-5"
 >
 	<h3 class="text-lg font-semibold">Coaching for ply {ply}</h3>
 	{#if job.loading}<p role="status">Loading saved explanation…</p>
@@ -27,7 +27,7 @@
 				<p><strong>Lesson:</strong> {result.coach.lesson}</p>
 				<p><strong>Practice:</strong> {result.coach.practice_tip}</p>
 			{/if}
-			<p class="text-sm text-slate-600">
+			<p class="text-sm text-muted">
 				Local model explanation · Passed automated checks. Chess prose can still contain errors;
 				compare the engine evidence above.
 			</p>
@@ -42,6 +42,7 @@
 		{:else if !job.error}<p>No explanation generated yet.</p>{/if}
 		{#if result?.status !== 'done' && result?.status !== 'insufficient_evidence'}
 			<Button
+				primary
 				onclick={job.submit}
 				disabled={job.active || job.statusError}
 				loading={job.submitting}

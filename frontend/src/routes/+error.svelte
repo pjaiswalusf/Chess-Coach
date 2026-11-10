@@ -14,12 +14,12 @@
 	<h1 class="text-3xl font-semibold tracking-tight">
 		{notFound ? 'Page not found' : 'Something went wrong'}
 	</h1>
-	<p class="text-slate-600">
+	<p class="text-muted">
 		{notFound
 			? 'The requested page does not exist.'
 			: 'The application couldn’t display this page.'}
 	</p>
-	<a href={resolve('/')} class="font-medium text-emerald-800 underline underline-offset-4"
+	<a href={resolve('/')} class="font-medium text-accent underline underline-offset-4"
 		>Return to Dashboard</a
 	>
 </Card>

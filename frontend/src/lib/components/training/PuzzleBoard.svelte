@@ -60,7 +60,7 @@
 />
 
 {#if !solution}
-	<p role="status" class="text-sm text-slate-700">
+	<p role="status" class="text-sm text-muted">
 		{#if to}Selected {from} to {to}.{:else if from}Select a destination for {from}.{:else}Select a
 			piece to move.{/if}
 	</p>
@@ -68,7 +68,7 @@
 		<label class="flex items-center gap-2 text-sm">
 			Promote to
 			<select
-				class="rounded-md border-slate-300"
+				class="rounded-md border-control-line bg-canvas text-ink focus:border-accent focus:ring-accent"
 				value={promotion}
 				{disabled}
 				onchange={(event) => {

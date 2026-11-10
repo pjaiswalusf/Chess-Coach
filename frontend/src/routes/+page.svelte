@@ -25,8 +25,7 @@
 
 <div class="flex flex-wrap items-center justify-between gap-3">
 	<h1 class="text-3xl font-semibold tracking-tight">Dashboard</h1>
-	<a href={resolve('/sync')} class="font-semibold text-emerald-800 underline"
-		>Import and analyze games</a
+	<a href={resolve('/sync')} class="font-semibold text-accent underline">Import and analyze games</a
 	>
 </div>
 
@@ -68,14 +67,14 @@
 		/>
 	{:else if recent.state.status === 'success'}
 		{#if recent.state.data.items.length}
-			<ul class="divide-y divide-slate-200">
+			<ul class="divide-y divide-line">
 				{#each recent.state.data.items as game (game.id)}
 					<li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2">
 						<a
 							href={resolve('/games/[id=gameId]', { id: String(game.id) })}
-							class="font-medium break-all text-emerald-800 underline">vs {game.opponent}</a
+							class="font-medium break-all text-accent underline">vs {game.opponent}</a
 						>
-						<span class="text-sm text-slate-700"
+						<span class="text-sm text-muted"
 							>{formatDate(game.played_at)} · <span class="capitalize">{game.player_color}</span> · {results[
 								game.result
 							]} · <span class="capitalize">{game.analysis_status}</span></span
@@ -83,7 +82,7 @@
 					</li>
 				{/each}
 			</ul>
-			<a href={resolve('/games')} class="text-sm font-medium text-emerald-800 underline"
+			<a href={resolve('/games')} class="text-sm font-medium text-accent underline"
 				>Browse all games</a
 			>
 		{:else}
@@ -130,7 +129,7 @@
 				{#each ['opening', 'middlegame', 'endgame'] as phase (phase)}
 					{@const segment = report.phases.find((item) => item.key === phase)}
 					{@const rate = segment?.summary.moves.significant}
-					<div class="rounded-lg bg-slate-100 p-3">
+					<div class="rounded-lg bg-raised p-3">
 						<dt class="font-medium capitalize">{phase}</dt>
 						<dd class="text-sm">
 							{segment?.evidence_status === 'sufficient' && rate?.per_100 != null
@@ -144,9 +143,9 @@
 	</Card>
 	<Card>
 		<h2 class="text-lg font-semibold">Recurring weaknesses</h2>
-		<p class="text-sm text-slate-700">Up to three supported weaknesses per category.</p>
+		<p class="text-sm text-muted">Up to three supported weaknesses per category.</p>
 		<WeaknessList patterns={report.patterns} />
-		<a href={resolve('/coach')} class="font-medium text-emerald-800 underline"
+		<a href={resolve('/coach')} class="font-medium text-accent underline"
 			>Explore coaching evidence</a
 		>
 	</Card>

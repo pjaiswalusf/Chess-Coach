@@ -108,23 +108,23 @@
 
 <div class="space-y-8">
 	<header class="space-y-2">
-		<p class="text-sm font-semibold tracking-widest text-emerald-700 uppercase">Chess Coach</p>
+		<p class="text-sm font-semibold tracking-widest text-accent uppercase">Chess Coach</p>
 		<h1 class="text-3xl font-semibold">Analyze your completed games</h1>
-		<p class="text-slate-600">
+		<p class="text-muted">
 			Local engine evidence from your historical games. Progress is saved as each game completes.
 		</p>
 	</header>
 
 	{#if error || connectionError}<p
 			role="alert"
-			class="rounded-lg border border-red-300 bg-red-50 p-4"
+			class="rounded-lg border border-danger-line bg-danger-surface p-4"
 		>
 			{error || connectionError}
 		</p>{/if}
 	{#if loading}
 		<p role="status">Loading analysis status…</p>
 	{:else}
-		<section aria-label="System status" class="rounded-xl border border-slate-200 p-5">
+		<section aria-label="System status" class="rounded-xl border border-line p-5">
 			<h2 class="mb-3 text-lg font-semibold">System</h2>
 			<p>
 				API: {connectionError ? 'Connection needs attention' : 'Connected'} · Database: {status?.database ??
@@ -135,7 +135,7 @@
 					'Not detected'}
 			</p>
 			{#if !status?.available}
-				<p class="mt-2 text-amber-800">
+				<p class="mt-2 text-warning">
 					Start the local analysis worker to process games. Previously completed analyses remain
 					saved.
 				</p>
@@ -154,7 +154,7 @@
 				<select
 					bind:value={player}
 					disabled={submitting || !!active}
-					class="rounded-lg border border-slate-300 px-3 py-2"
+					class="rounded-lg border border-control-line bg-canvas px-3 py-2 text-ink focus:border-accent focus:ring-accent"
 				>
 					{#each status?.players ?? [] as item (item.id)}<option value={item.id}
 							>{item.username}</option
@@ -162,6 +162,7 @@
 				</select>
 			</label>
 			<Button
+				primary
 				type="submit"
 				disabled={!player || !status?.available || !!active}
 				loading={submitting}
@@ -175,16 +176,16 @@
 
 		<section aria-label="Analysis runs" class="space-y-4">
 			<h2 class="text-xl font-semibold">Analysis runs</h2>
-			{#if !runs.length}<p class="text-slate-600">No analysis runs yet.</p>{/if}
+			{#if !runs.length}<p class="text-muted">No analysis runs yet.</p>{/if}
 			{#each runs as run (run.id)}
-				<article class="space-y-3 rounded-xl border border-slate-200 p-5">
+				<article class="space-y-3 rounded-xl border border-line p-5">
 					<div class="flex items-center justify-between gap-4">
 						<h3 class="font-semibold">Run #{run.id} · {run.status.replaceAll('_', ' ')}</h3>
 						{#if ['queued', 'running'].includes(run.status)}
 							<button
 								onclick={() => submit(run.id)}
 								disabled={submitting || run.cancel_requested}
-								class="rounded-lg border border-slate-300 px-3 py-2 disabled:opacity-40"
+								class="rounded-lg border border-control-line px-3 py-2 disabled:opacity-40"
 								>{run.cancel_requested ? 'Cancellation requested' : 'Cancel run'}</button
 							>
 						{/if}
@@ -193,29 +194,29 @@
 						aria-label={`Run ${run.id} progress`}
 						max="100"
 						value={run.progress_percent}
-						class="h-3 w-full accent-emerald-700"
+						class="h-3 w-full accent-accent"
 					></progress>
 					<p>
 						{run.games_completed + run.games_failed + run.games_skipped}/{run.games_total} processed ·
 						{run.games_completed} completed · {run.games_skipped} already compatible · {run.games_failed}
 						failed
 					</p>
-					<p class="text-sm text-slate-600">
+					<p class="text-sm text-muted">
 						{run.games_excluded} excluded pending validation · {run.positions_analyzed} engine searches
 						· {run.cache_hits} cache hits
 					</p>
-					<p class="text-sm text-slate-600">
+					<p class="text-sm text-muted">
 						{run.engine_version} · {run.engine_config_json.nodes} nodes · Single-pass estimates
 					</p>
-					{#if run.last_heartbeat_at}<p class="text-sm text-slate-600">
+					{#if run.last_heartbeat_at}<p class="text-sm text-muted">
 							Last progress: {new Date(run.last_heartbeat_at).toLocaleString()}
 						</p>{/if}
 					{#if ['queued', 'running'].includes(run.status) && !run.worker_available}<p
-							class="text-amber-800"
+							class="text-warning"
 						>
 							Worker unavailable. Restart it with the same configuration to recover unfinished work.
 						</p>{/if}
-					{#if run.error_code}<p class="text-amber-800">
+					{#if run.error_code}<p class="text-warning">
 							{run.error_code}: {run.error_message ?? 'Completed results are preserved.'}
 						</p>{/if}
 					{#if ['failed'].includes(run.status)}
@@ -225,7 +226,7 @@
 								void submit();
 							}}
 							disabled={submitting || !!active || !status?.available}
-							class="rounded-lg border border-emerald-700 px-3 py-2 text-emerald-800 disabled:opacity-40"
+							class="rounded-lg border border-accent px-3 py-2 text-accent disabled:opacity-40"
 							>Retry eligible games</button
 						>
 					{/if}
@@ -240,7 +241,7 @@
 									>
 									{#if ['done', 'skipped'].includes(game.status)}<button
 											onclick={() => viewGame(game.game_id, run.profile_hash)}
-											class="text-emerald-800 underline">View moves for game {game.game_id}</button
+											class="text-accent underline">View moves for game {game.game_id}</button
 										>{/if}
 								</li>{/each}
 						</ul>
@@ -253,7 +254,7 @@
 	{#if selectedGame !== null}
 		<section aria-label="Move evidence" class="space-y-3">
 			<h2 class="text-xl font-semibold">Game #{selectedGame} · Move evidence</h2>
-			<p class="text-sm text-slate-600">
+			<p class="text-sm text-muted">
 				Scores are from White’s perspective. Centipawn loss uses the mover’s perspective. Mate is
 				separate; these are engine estimates, not confirmed mistake labels.
 			</p>
@@ -276,7 +277,7 @@
 							></thead
 						>
 						<tbody
-							>{#each moves as move (move.ply)}<tr class="border-b border-slate-100">
+							>{#each moves as move (move.ply)}<tr class="border-b border-line">
 									<td class="p-2">{move.ply}</td><td class="p-2">{move.played_move_san}</td><td
 										class="p-2">{move.best_move_uci ?? '—'}</td
 									>
@@ -287,9 +288,8 @@
 									>
 									<td class="p-2">{move.loss_cp ?? '—'}</td>
 									<td class="p-2"
-										><button
-											onclick={() => (selectedPly = move.ply)}
-											class="text-emerald-800 underline">Explain ply {move.ply}</button
+										><button onclick={() => (selectedPly = move.ply)} class="text-accent underline"
+											>Explain ply {move.ply}</button
 										></td
 									>
 								</tr>{/each}</tbody
