@@ -1,0 +1,49 @@
+{
+  "dataset_version": "m5-benchmark-v1",
+  "selection_seed": 42,
+  "selection_strategy": "length/endgame strata, game-level split, phase quotas, unique FEN",
+  "source_player_id": 1,
+  "eligible_games": 609,
+  "excluded_games_by_reason": {},
+  "games_selected": 100,
+  "games_by_bucket": {
+    "short": 30,
+    "typical": 43,
+    "long": 6,
+    "endgame-rich": 21
+  },
+  "games_by_tracked_color": {
+    "white": 59,
+    "black": 41
+  },
+  "games_by_time_class": {
+    "rapid": 86,
+    "blitz": 11,
+    "daily": 3
+  },
+  "games_by_partition": {
+    "holdout": 20,
+    "calibration": 80
+  },
+  "positions_by_partition_and_phase": {
+    "calibration": {
+      "opening": 48,
+      "middlegame": 80,
+      "endgame": 64
+    },
+    "holdout": {
+      "opening": 12,
+      "middlegame": 20,
+      "endgame": 16
+    }
+  },
+  "positions_by_side_to_move": {
+    "white": 132,
+    "black": 108
+  },
+  "games_sha256": "a5e48afe9e33c2c48a903bc7e5ac2000c0a6cc70999dd87a9945b6427857e52f",
+  "positions_sha256": "eddc39b847280aba592b43a5438a4a36d3ee9ddf8e64d275b653f0b3240e72ce",
+  "draw_policy": "automatic-only-v1",
+  "parser_version": 1,
+  "chess_library_version": "1.11.2"
+}
