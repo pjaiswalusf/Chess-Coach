@@ -1,0 +1,804 @@
+{
+  "dataset_hash": "c3b94dffc4a150483a3dd66d7e977f40305a55f1c453b41f06b00df5366c68fa",
+  "model": "qwen3.5:4b-q4_K_M",
+  "model_digest": "d8b0f5e9760cd1682034f292d7ef72ec46f432149be0df7574bf2d6e92e38c04",
+  "prompt_version": "coaching-v1.1",
+  "schema_version": "coaching-output-v1",
+  "generation": {
+    "temperature": 0,
+    "num_ctx": 4096,
+    "num_predict": 800,
+    "keep_alive": "0",
+    "think": false,
+    "timeout": 90.0
+  },
+  "count": 50,
+  "schema_valid": 50,
+  "accepted": 4,
+  "human_reviewed": 0,
+  "factuality": "unmeasured; automated checks do not prove semantic correctness",
+  "results": [
+    {
+      "case_id": "case_001",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move e2e4 is the best move with no loss_cp or mate consequence demonstrated against alternatives.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3942,
+      "metrics": {
+        "total_duration": 3935333458,
+        "load_duration": 1816903292,
+        "prompt_eval_count": 621,
+        "eval_count": 43
+      }
+    },
+    {
+      "case_id": "case_002",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move e7e5 is the engine's best move with no loss in centipawns compared to alternatives, and no mate threat exists.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 2964,
+      "metrics": {
+        "total_duration": 2957755584,
+        "load_duration": 803971000,
+        "prompt_eval_count": 613,
+        "eval_count": 51
+      }
+    },
+    {
+      "case_id": "case_003",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move g1f3 is the best move with no loss_cp or mate consequence demonstrated against alternatives.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 2772,
+      "metrics": {
+        "total_duration": 2761091084,
+        "load_duration": 811165542,
+        "prompt_eval_count": 621,
+        "eval_count": 43
+      }
+    },
+    {
+      "case_id": "case_004",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move b8c6 is evaluated as best by the engine, and no loss or mate consequence is demonstrated in the supplied lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 2901,
+      "metrics": {
+        "total_duration": 2890247833,
+        "load_duration": 808251375,
+        "prompt_eval_count": 618,
+        "eval_count": 49
+      }
+    },
+    {
+      "case_id": "case_005",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move f1b5 leads to a position evaluated less favorably than the best line, but no specific tactical motif or causal diagnosis is supported by the supplied engine lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3159,
+      "metrics": {
+        "total_duration": 3146032417,
+        "load_duration": 804531250,
+        "prompt_eval_count": 632,
+        "eval_count": 57
+      }
+    },
+    {
+      "case_id": "case_006",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move a7a6 leads to a position evaluated 2 cp worse than the best line, but no tactical motif or causal diagnosis is supported by the supplied lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3150,
+      "metrics": {
+        "total_duration": 3139849500,
+        "load_duration": 808355416,
+        "prompt_eval_count": 593,
+        "eval_count": 56
+      }
+    },
+    {
+      "case_id": "case_007",
+      "human_review": null,
+      "raw_output": "{\"status\":\"insufficient_evidence\",\"summary\":\"No loss or mate consequence demonstrated in supplied lines.\"}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "No loss or mate consequence demonstrated in supplied lines.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 2215,
+      "metrics": {
+        "total_duration": 2203349166,
+        "load_duration": 806759958,
+        "prompt_eval_count": 615,
+        "eval_count": 22
+      }
+    },
+    {
+      "case_id": "case_008",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move g8f6 is evaluated as best by the engine, and no loss or mate consequence is demonstrated in the supplied lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 2938,
+      "metrics": {
+        "total_duration": 2925816125,
+        "load_duration": 804429625,
+        "prompt_eval_count": 613,
+        "eval_count": 49
+      }
+    },
+    {
+      "case_id": "case_009",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move leads to a position evaluated 13 cp worse than the best line, but no tactical motif or causal diagnosis is supported by the supplied lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3118,
+      "metrics": {
+        "total_duration": 3108343459,
+        "load_duration": 810461542,
+        "prompt_eval_count": 626,
+        "eval_count": 53
+      }
+    },
+    {
+      "case_id": "case_010",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move f8e7 is the best move with no loss_cp and no mate consequence demonstrated in the supplied lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 2898,
+      "metrics": {
+        "total_duration": 2876619458,
+        "load_duration": 800964375,
+        "prompt_eval_count": 610,
+        "eval_count": 46
+      }
+    },
+    {
+      "case_id": "case_011",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move f1e1 is not the best move (best_move_uci: d2d4), but no loss_cp or mate consequence is demonstrated in the supplied engine lines. The alternative line provided does not show a clear tactical motif or evaluation change sufficient to construct a reliable explanation.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3735,
+      "metrics": {
+        "total_duration": 3723350875,
+        "load_duration": 804449500,
+        "prompt_eval_count": 639,
+        "eval_count": 80
+      }
+    },
+    {
+      "case_id": "case_012",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move b7b5 is not the best move (best_move_uci: d7d6), but no loss_cp or mate consequence is demonstrated in the supplied lines. The alternative line d7d6 leads to a position with equal engine evaluation, and no tactical motif or causal diagnosis is supported by the provided data.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3893,
+      "metrics": {
+        "total_duration": 3881230333,
+        "load_duration": 809039583,
+        "prompt_eval_count": 619,
+        "eval_count": 88
+      }
+    },
+    {
+      "case_id": "case_013",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move a4b3 leads to a position with equal engine evaluation compared to the best line, and no loss or mate consequence is demonstrated.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 2888,
+      "metrics": {
+        "total_duration": 2875746458,
+        "load_duration": 808788041,
+        "prompt_eval_count": 635,
+        "eval_count": 51
+      }
+    },
+    {
+      "case_id": "case_014",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move d7d6 is the best move according to the engine, with no loss in centipawns compared to alternatives. No tactical motifs or causal diagnoses are supported by the provided lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3286,
+      "metrics": {
+        "total_duration": 3274033792,
+        "load_duration": 808048417,
+        "prompt_eval_count": 637,
+        "eval_count": 61
+      }
+    },
+    {
+      "case_id": "case_015",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move c2c3 is evaluated as best by the engine, and no loss or mate consequence is demonstrated in the supplied lines. The alternative refutation h7h6 does not show a clear disadvantage for White based on the provided data.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3507,
+      "metrics": {
+        "total_duration": 3496446459,
+        "load_duration": 813483334,
+        "prompt_eval_count": 608,
+        "eval_count": 71
+      }
+    },
+    {
+      "case_id": "case_016",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move e8g8 is not the best move (best_line_uci starts with c8g4), but the engine evaluation difference of 5 cp does not support a specific tactical motif or causal diagnosis. No mate state or forced sequence is demonstrated in the provided lines to justify a detailed explanation.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3827,
+      "metrics": {
+        "total_duration": 3815426666,
+        "load_duration": 810184000,
+        "prompt_eval_count": 609,
+        "eval_count": 83
+      }
+    },
+    {
+      "case_id": "case_017",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move c3c4 is the best move with a loss_cp of 0 and no mate consequence demonstrated in the engine lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 2919,
+      "metrics": {
+        "total_duration": 2906977375,
+        "load_duration": 806348750,
+        "prompt_eval_count": 626,
+        "eval_count": 49
+      }
+    },
+    {
+      "case_id": "case_018",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move c7c6 is not the best move (best_move_uci: b5c4), but the engine evaluation difference of 70 cp does not demonstrate a specific tactical motif or causal diagnosis. The supplied refutation lines do not provide enough detail to explain why c7c6 leads to a worse position than alternatives.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 4049,
+      "metrics": {
+        "total_duration": 4036752083,
+        "load_duration": 804246375,
+        "prompt_eval_count": 623,
+        "eval_count": 90
+      }
+    },
+    {
+      "case_id": "case_019",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move c4b5 is not the best move (best_move_uci: b1c3), but the engine evaluation difference of 41 cp does not demonstrate a specific tactical motif or causal diagnosis. The alternative line provided lacks sufficient detail to explain why c4b5 leads to a less favorable position beyond the general loss in material or positional value.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 4664,
+      "metrics": {
+        "total_duration": 4658680083,
+        "load_duration": 1078000792,
+        "prompt_eval_count": 635,
+        "eval_count": 95
+      }
+    },
+    {
+      "case_id": "case_020",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move a6b5 is evaluated as equal to the best line with zero loss in centipawns, and no mate or decisive tactical motif is demonstrated in the provided engine analysis.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3548,
+      "metrics": {
+        "total_duration": 3542340458,
+        "load_duration": 1078423417,
+        "prompt_eval_count": 635,
+        "eval_count": 59
+      }
+    },
+    {
+      "case_id": "case_021",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move leads to a position evaluated less favorably than the alternative, but no specific tactical motif or causal diagnosis is supported by the supplied lines.\"\n}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The played move leads to a position evaluated less favorably than the alternative, but no specific tactical motif or causal diagnosis is supported by the supplied lines.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 3304,
+      "metrics": {
+        "total_duration": 3293750708,
+        "load_duration": 1062627375,
+        "prompt_eval_count": 608,
+        "eval_count": 51
+      }
+    },
+    {
+      "case_id": "case_022",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move c8b7 does not lead to a position evaluated less favorably than the alternative h7h6, as the loss_cp is zero and no mate consequence is demonstrated.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3168,
+      "metrics": {
+        "total_duration": 3156610417,
+        "load_duration": 809946292,
+        "prompt_eval_count": 601,
+        "eval_count": 59
+      }
+    },
+    {
+      "case_id": "case_023",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move c1g5 leads to a position with equal engine evaluation compared to the best line, and no tactical loss or mate consequence is demonstrated.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3033,
+      "metrics": {
+        "total_duration": 3021316917,
+        "load_duration": 804113792,
+        "prompt_eval_count": 627,
+        "eval_count": 52
+      }
+    },
+    {
+      "case_id": "case_024",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move leads to a position evaluated less favorably than the best line, but no specific tactical motif or causal diagnosis is supported by the supplied engine lines.\"\n}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The played move leads to a position evaluated less favorably than the best line, but no specific tactical motif or causal diagnosis is supported by the supplied engine lines.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 3063,
+      "metrics": {
+        "total_duration": 3040662458,
+        "load_duration": 796988500,
+        "prompt_eval_count": 619,
+        "eval_count": 53
+      }
+    },
+    {
+      "case_id": "case_025",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move c3b1 leads to a position evaluated 38 points worse than the best line, but no specific tactical motif or causal diagnosis is supported by the supplied engine lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3290,
+      "metrics": {
+        "total_duration": 3277465916,
+        "load_duration": 804212500,
+        "prompt_eval_count": 648,
+        "eval_count": 59
+      }
+    },
+    {
+      "case_id": "case_026",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move h7h6 leads to a position evaluated less favorably than the best line, but no specific tactical motif or causal diagnosis is supported by the supplied engine lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3113,
+      "metrics": {
+        "total_duration": 3101301750,
+        "load_duration": 805865792,
+        "prompt_eval_count": 629,
+        "eval_count": 57
+      }
+    },
+    {
+      "case_id": "case_027",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move g5h4 leads to a position evaluated less favorably than the best line, but no specific tactical motif or causal diagnosis is supported by the supplied engine lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3176,
+      "metrics": {
+        "total_duration": 3163237875,
+        "load_duration": 803873042,
+        "prompt_eval_count": 616,
+        "eval_count": 57
+      }
+    },
+    {
+      "case_id": "case_028",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move c6c5 is not the best move; however, the provided engine lines do not demonstrate a specific tactical motif or causal diagnosis for the loss. The alternative line f6h5 leads to a position evaluated less favorably by the engine than the continuation following c6c5, but no further evidence supports a detailed explanation of why this occurs.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 4226,
+      "metrics": {
+        "total_duration": 4214074958,
+        "load_duration": 806790208,
+        "prompt_eval_count": 644,
+        "eval_count": 94
+      }
+    },
+    {
+      "case_id": "case_029",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move d4d5 leads to a position evaluated 83 centipawns worse than the best line, but no specific tactical motif or causal diagnosis is supported by the supplied engine lines. The alternative moves (d7b6, b1d2, b7a6) are not demonstrated as winning continuations in the provided data.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 4324,
+      "metrics": {
+        "total_duration": 4311263083,
+        "load_duration": 806355458,
+        "prompt_eval_count": 642,
+        "eval_count": 92
+      }
+    },
+    {
+      "case_id": "case_030",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The supplied analysis shows no loss in centipawns (loss_cp: 0) and no mate threat for the played move. The engine line provided does not demonstrate a tactical motif or a disadvantageous position resulting from d7b6 compared to alternatives.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3688,
+      "metrics": {
+        "total_duration": 3676067375,
+        "load_duration": 834887250,
+        "prompt_eval_count": 641,
+        "eval_count": 72
+      }
+    },
+    {
+      "case_id": "case_031",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move b1d2 leads to a position evaluated less favorably than the best line, but no specific tactical motif or causal diagnosis is supported by the supplied engine lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3345,
+      "metrics": {
+        "total_duration": 3334218000,
+        "load_duration": 804643417,
+        "prompt_eval_count": 645,
+        "eval_count": 57
+      }
+    },
+    {
+      "case_id": "case_032",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move f6h7 does not lead to a mate or a position with a demonstrated loss in the supplied engine lines, which begin with h4e7. No tactical motif is supported by the provided data.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3498,
+      "metrics": {
+        "total_duration": 3487913459,
+        "load_duration": 812061584,
+        "prompt_eval_count": 691,
+        "eval_count": 65
+      }
+    },
+    {
+      "case_id": "case_033",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move e4f4 leads to a position evaluated 10 cp worse than the best line, but no tactical motif or causal diagnosis is supported by the supplied engine lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3300,
+      "metrics": {
+        "total_duration": 3287468584,
+        "load_duration": 809028250,
+        "prompt_eval_count": 646,
+        "eval_count": 58
+      }
+    },
+    {
+      "case_id": "case_034",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move e6f7 leads to a position evaluated less favorably than the best line, but no specific tactical motif or causal diagnosis is supported by the supplied engine lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3101,
+      "metrics": {
+        "total_duration": 3088433375,
+        "load_duration": 807418000,
+        "prompt_eval_count": 627,
+        "eval_count": 57
+      }
+    },
+    {
+      "case_id": "case_035",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move f4g5 leads to a position evaluated less favorably than the best line, but no specific tactical motif or causal diagnosis is supported by the supplied engine lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3508,
+      "metrics": {
+        "total_duration": 3496372417,
+        "load_duration": 1062193333,
+        "prompt_eval_count": 616,
+        "eval_count": 57
+      }
+    },
+    {
+      "case_id": "case_036",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move f7g8 leads to a position evaluated less favorably than the best line, but no specific tactical motif or causal diagnosis is supported by the provided engine lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3685,
+      "metrics": {
+        "total_duration": 3679415459,
+        "load_duration": 1077595042,
+        "prompt_eval_count": 661,
+        "eval_count": 57
+      }
+    },
+    {
+      "case_id": "case_037",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move g5h6 leads to a position evaluated less favorably than the best line, but no specific tactical motif or causal diagnosis is supported by the supplied engine lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3550,
+      "metrics": {
+        "total_duration": 3537835875,
+        "load_duration": 1062664333,
+        "prompt_eval_count": 652,
+        "eval_count": 57
+      }
+    },
+    {
+      "case_id": "case_038",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move e5f6 leads to a position evaluated less favorably than the best line, but no specific tactical motif or causal diagnosis is supported by the supplied engine lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3169,
+      "metrics": {
+        "total_duration": 3157826917,
+        "load_duration": 803938125,
+        "prompt_eval_count": 630,
+        "eval_count": 57
+      }
+    },
+    {
+      "case_id": "case_039",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move leads to a position evaluated less favorably than the best line, but no specific tactical motif or causal diagnosis is supported by the supplied engine lines.\"\n}",
+      "schema_valid": true,
+      "output": {
+        "status": "insufficient_evidence",
+        "summary": "The played move leads to a position evaluated less favorably than the best line, but no specific tactical motif or causal diagnosis is supported by the supplied engine lines.",
+        "what_went_wrong": "",
+        "why_best_move_works": "",
+        "lesson": "",
+        "practice_tip": ""
+      },
+      "accepted": true,
+      "expected_status_match": null,
+      "latency_ms": 3476,
+      "metrics": {
+        "total_duration": 3451758834,
+        "load_duration": 1051356000,
+        "prompt_eval_count": 661,
+        "eval_count": 53
+      }
+    },
+    {
+      "case_id": "case_040",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move f6g7 leads to a position evaluated less favorably than the best line, but no specific tactical motif or causal diagnosis is supported by the supplied engine lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3217,
+      "metrics": {
+        "total_duration": 3204662750,
+        "load_duration": 806454000,
+        "prompt_eval_count": 636,
+        "eval_count": 57
+      }
+    },
+    {
+      "case_id": "case_041",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move f4g5 leads to a position evaluated less favorably than the best line, but no specific tactical motif or causal diagnosis is supported by the supplied engine lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3150,
+      "metrics": {
+        "total_duration": 3137215542,
+        "load_duration": 808383292,
+        "prompt_eval_count": 586,
+        "eval_count": 57
+      }
+    },
+    {
+      "case_id": "case_042",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move g7h8 is not the best move (best_move_uci: e7e6), but the engine evaluation difference of 12 cp does not support a specific tactical motif or causal diagnosis. The supplied refutation line and alternative moves do not demonstrate a clear tactical cause for the loss.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3916,
+      "metrics": {
+        "total_duration": 3904454250,
+        "load_duration": 805781500,
+        "prompt_eval_count": 628,
+        "eval_count": 84
+      }
+    },
+    {
+      "case_id": "case_043",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move g8e7 is not the best move (best_line_uci: d8h4), but no loss_cp or mate consequence is provided to explain the evaluation difference. Historical theme frequency is null.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3424,
+      "metrics": {
+        "total_duration": 3412871250,
+        "load_duration": 814060459,
+        "prompt_eval_count": 589,
+        "eval_count": 65
+      }
+    },
+    {
+      "case_id": "case_044",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move g8h6 is not the best move (best_line_uci: d8h4), but no loss_cp or mate consequence is provided to explain why. The alternative line d8h4 is not demonstrated in the supplied refutation lines.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3883,
+      "metrics": {
+        "total_duration": 3870566000,
+        "load_duration": 1083503667,
+        "prompt_eval_count": 594,
+        "eval_count": 74
+      }
+    },
+    {
+      "case_id": "case_045",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move g8f6 is not the best move (best_line_uci: d8h4), but no loss_cp or mate consequence is provided to explain the evaluation difference. Historical theme frequency is null.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3462,
+      "metrics": {
+        "total_duration": 3450522416,
+        "load_duration": 808338416,
+        "prompt_eval_count": 569,
+        "eval_count": 65
+      }
+    },
+    {
+      "case_id": "case_046",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move f8e7 is the only legal move available at this position; no alternative moves exist to compare against. The engine line d8h4 represents a future continuation from a different state, not an immediate refutation of f8e7. No loss_cp or mate consequence data is provided for the current ply.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 4135,
+      "metrics": {
+        "total_duration": 4124297833,
+        "load_duration": 807626167,
+        "prompt_eval_count": 609,
+        "eval_count": 87
+      }
+    },
+    {
+      "case_id": "case_047",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move h5h7 does not lead to a mate or a position with a demonstrated loss in the supplied engine lines, and no tactical motif is supported by the provided data.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3328,
+      "metrics": {
+        "total_duration": 3316142334,
+        "load_duration": 806629542,
+        "prompt_eval_count": 610,
+        "eval_count": 58
+      }
+    },
+    {
+      "case_id": "case_048",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The supplied analysis shows the played move h5f7 as best with no loss_cp or mate consequence, and historical_theme_frequency is null.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3131,
+      "metrics": {
+        "total_duration": 3119649916,
+        "load_duration": 807670666,
+        "prompt_eval_count": 564,
+        "eval_count": 49
+      }
+    },
+    {
+      "case_id": "case_049",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move h5h6 does not lead to a demonstrated loss or mate consequence compared to the best line h5f7, as no numeric loss_cp is provided and the engine evaluation change is not explicitly detailed in the supplied data.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3735,
+      "metrics": {
+        "total_duration": 3722382375,
+        "load_duration": 807942792,
+        "prompt_eval_count": 605,
+        "eval_count": 69
+      }
+    },
+    {
+      "case_id": "case_050",
+      "human_review": null,
+      "raw_output": "{\n  \"status\": \"insufficient_evidence\",\n  \"summary\": \"The played move h5g6 does not lead to a demonstrated loss or mate consequence compared to the alternative f7g6, as no numeric loss_cp is provided and the engine line alone does not prove a tactical motif.\"\n}",
+      "schema_valid": true,
+      "accepted": false,
+      "error": "UNSUPPORTED_CLAIM",
+      "latency_ms": 3767,
+      "metrics": {
+        "total_duration": 3753574083,
+        "load_duration": 807468583,
+        "prompt_eval_count": 575,
+        "eval_count": 66
+      }
+    }
+  ]
+}

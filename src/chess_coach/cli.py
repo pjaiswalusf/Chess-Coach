@@ -4,6 +4,8 @@ import argparse
 import json
 import logging
 from dataclasses import asdict
+from datetime import datetime
+from pathlib import Path
 
 import uvicorn
 from sqlalchemy.exc import SQLAlchemyError
@@ -31,6 +33,17 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Local post-game chess coach")
     commands = parser.add_subparsers(dest="command")
     commands.add_parser("serve", help="Serve the local API (default)")
+    pgn_import = commands.add_parser(
+        "import-pgn", help="Import completed single-game UTF-8 PGN files"
+    )
+    pgn_import.add_argument("--username", required=True)
+    pgn_import.add_argument(
+        "--played-at",
+        required=True,
+        type=datetime.fromisoformat,
+        help="Actual game time as an ISO timestamp with timezone; applies to all files",
+    )
+    pgn_import.add_argument("files", nargs="+", type=Path)
     sync = commands.add_parser(
         "sync", help="Import completed Chess.com monthly archives"
     )
@@ -192,6 +205,23 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(diagnose_engine(settings))
     engine = create_database_engine(settings.database_url)
     try:
+        if args.command == "import-pgn":
+            from chess_coach.application.import_pgn import import_files
+            from chess_coach.infrastructure.persistence.pgn_repository import (
+                PGNRepository,
+            )
+
+            imported = import_files(
+                PGNRepository(create_session_factory(engine)),
+                args.files,
+                args.username,
+                args.played_at,
+                settings.pgn_max_bytes,
+            )
+            print(json.dumps(imported, indent=2))
+            if imported["rejected"]:
+                raise SystemExit(1)
+            return
         if args.command == "training":
             from chess_coach.application.generate_puzzles import (
                 generate_puzzles,

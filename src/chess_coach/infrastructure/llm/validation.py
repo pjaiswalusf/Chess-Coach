@@ -19,7 +19,10 @@ def validate_text(output: MoveExplanation | HistoricalExplanation) -> None:
     # Prohibit numbers (including spelled-out numeric claims), notation and markup.
     if re.search(
         r"\d|[%<>]|\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|"
-        r"hundred|percent|twice|half)\b|\b[Oo0]-[Oo0]|\b[KQRBN]?[a-h][1-8]",
+        r"eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|"
+        r"twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|"
+        r"hundreds?|thousands?|millions?|billions?|dozens?|percent|twice|thrice|half)\b|"
+        r"\b[Oo0]-[Oo0]|\b[KQRBN]?[a-h][1-8]",
         text,
         re.IGNORECASE,
     ):
@@ -33,6 +36,15 @@ def validate_chess_claims(
 ) -> None:
     """Veto selected detectable contradictions; never claim full semantic verification."""
     import chess
+
+    if (
+        output.status == "explained"
+        and evidence.played_move_uci == evidence.best_move_uci
+    ):
+        raise OperationError(
+            "FACT_CONTRADICTION",
+            "The played move and engine preference are the same move; abstain from explaining a mistake.",
+        )
 
     text = " ".join(
         str(v) for k, v in output.model_dump().items() if k != "status"

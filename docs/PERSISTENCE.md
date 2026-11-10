@@ -105,3 +105,32 @@ in [sync-contract.md](sync-contract.md), not the planned Phase 8 move-replay has
 above. Migration `c7a001` adds archive checkpoints, rejection diagnostics and run
 summary JSON. See [phase-7-sync.md](phase-7-sync.md) for transactions, recovery,
 identity limitations, metrics and commands. Legal PGN replay remains Phase 8.
+
+## PGN file identity v1
+
+The Phase 24 `import-pgn` command implements file identity separately from the
+Chess.com UUID/URL identity. SHA-256 covers sorted compact JSON containing
+`pgn-file-v1`, the supplied played-at timestamp normalized to UTC, casefolded
+player names, full initial FEN, unknown-prehistory flag, result, ordered mainline
+UCI moves, and trimmed Event/Site/Date/Round/UTCDate/UTCTime/Time/TimeControl tags
+(missing tags become empty strings). Tag ordering, layout, comments, variations
+and engine annotations do not affect identity. The first source text is retained
+unchanged, including CRLF line endings; a duplicate does not overwrite it.
+
+Changing the supplied date or a source discriminator yields a separate identity.
+Two real encounters with identical moves and all identical identifying metadata
+cannot be distinguished; supply their actual distinct played-at timestamps.
+File and Chess.com imports intentionally do not deduplicate across sources.
+Do not import the same history through both sources expecting automatic merging.
+
+The command accepts one game per file, at most 100 files and the configured
+`pgn_max_bytes` per file. UTF-8 decoding is strict. It prepares bounded input,
+then reserves SQLite writes, checks conflicting jobs/player ownership and commits
+accepted games, rejection records and import counters atomically. Rejected PGNs
+never become analysis-eligible games. Invalid file access/encoding/size aborts
+before writes and does not archive partial bytes. Storage failures roll back the
+whole transaction; retry the same command. No original game text is changed.
+`source_evidence` records the import-run ID, identity version, completion
+provenance `pgn_declaration` and date provenance `user_supplied`. The timestamp
+must include a timezone and cannot be in the future. Time class remains unknown
+unless provided by a source integration; the importer does not invent it.
