@@ -1,5 +1,4 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
 	import { coachingApi, type CoachingResponse } from '#lib/api/coaching.js';
 	import type { ReviewRating } from '#lib/api/review.js';
 	import { moveRatings } from '#lib/utils/review-rating.js';
@@ -11,16 +10,12 @@
 		game,
 		ply,
 		profile,
-		rating,
-		evidence,
-		evidenceOpen = $bindable(false)
+		rating
 	}: {
 		game: number;
 		ply: number;
 		profile: string;
 		rating?: ReviewRating;
-		evidence?: Snippet;
-		evidenceOpen?: boolean;
 	} = $props();
 	const job = coachingJob(
 		(signal) => coachingApi.get(game, ply, profile, signal),
@@ -31,7 +26,7 @@
 
 <section
 	aria-label="Move coaching"
-	class={evidence
+	class={rating
 		? 'space-y-3 rounded-2xl bg-stone-50 p-4 text-sm leading-relaxed text-stone-900 shadow-sm sm:p-5'
 		: 'space-y-3 rounded-xl border border-positive-line bg-positive-surface p-5'}
 >
@@ -51,7 +46,7 @@
 	{/if}
 	{#if result?.move_breakdown}
 		{@const breakdown = result.move_breakdown}
-		{#if evidence}
+		{#if rating}
 			{#if breakdown.remark}
 				<p>{breakdown.remark}</p>
 			{:else}
@@ -72,7 +67,7 @@
 				<p class="text-muted">Stockfish also chose this move.</p>
 			{/if}
 		{:else}
-			{@render moveBreakdown(breakdown, true)}
+			{@render moveBreakdown(breakdown)}
 		{/if}
 	{/if}
 	{#if job.loading}<p role="status">Loading saved explanation…</p>
@@ -102,7 +97,7 @@
 			<p role="status">Generating… {result?.message ?? 'Waiting for the local coaching worker.'}</p>
 		{:else if result?.status === 'failed'}
 			<p role="alert">{result.message} ({result.error_code})</p>
-		{:else if !job.error && !evidence && !result?.move_breakdown}<p>
+		{:else if !job.error && !rating && !result?.move_breakdown}<p>
 				No explanation generated yet.
 			</p>{/if}
 		{#if result?.status !== 'done' && result?.status !== 'insufficient_evidence'}
@@ -112,24 +107,14 @@
 				disabled={job.active || job.statusError}
 				loading={job.submitting}
 			>
-				{job.submitting ? 'Requesting…' : evidence ? 'Get a practice tip' : 'Explain this move'}
+				{job.submitting ? 'Requesting…' : rating ? 'Get a practice tip' : 'Explain this move'}
 			</Button>
 		{/if}
 		{#if job.statusError}<Button onclick={job.refresh}>Refresh coaching status</Button>{/if}
 	{/if}
-	{#if evidence}
-		<details bind:open={evidenceOpen} class="space-y-2 rounded-lg border border-line px-3 py-2">
-			<summary class="cursor-pointer text-sm font-semibold">Move evidence</summary>
-			{@render evidence()}
-			{#if result?.move_breakdown}{@render moveBreakdown(result.move_breakdown, false)}{/if}
-		</details>
-	{/if}
 </section>
 
-{#snippet moveBreakdown(
-	breakdown: NonNullable<CoachingResponse['move_breakdown']>,
-	showFacts: boolean
-)}
+{#snippet moveBreakdown(breakdown: NonNullable<CoachingResponse['move_breakdown']>)}
 	<div class="space-y-2.5">
 		<p class="font-semibold">{breakdown.assessment}</p>
 		<dl class="grid gap-2.5">
@@ -137,7 +122,7 @@
 				<dt class="text-xs font-bold uppercase">Played line</dt>
 				<dd class="mt-0.5">
 					<p class="font-mono text-sm wrap-anywhere">{breakdown.played.san}</p>
-					{#if showFacts}<p class="mt-1">{breakdown.played.key_fact}</p>{/if}
+					<p class="mt-1">{breakdown.played.key_fact}</p>
 				</dd>
 			</div>
 			{#if breakdown.alternative}
@@ -145,7 +130,7 @@
 					<dt class="text-xs font-bold uppercase">Stockfish’s alternative</dt>
 					<dd class="mt-0.5">
 						<p class="font-mono text-sm wrap-anywhere">{breakdown.alternative.san}</p>
-						{#if showFacts}<p class="mt-1">{breakdown.alternative.key_fact}</p>{/if}
+						<p class="mt-1">{breakdown.alternative.key_fact}</p>
 					</dd>
 				</div>
 			{/if}
