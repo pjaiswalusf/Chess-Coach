@@ -45,9 +45,6 @@ test('reviews a custom start, a promotion, and the final Black move on a narrow 
 	await expect(evalBar.locator('rect')).toHaveAttribute('y', '0');
 	await expect(page.getByRole('button', { name: 'Next move' })).toBeDisabled();
 	await expect(page.getByText('190 cp', { exact: true })).toBeHidden();
-	await page.getByText('Move evidence', { exact: true }).click();
-	await expect(page.getByText('190 cp', { exact: true })).toBeVisible();
-	await expect(page.getByText('+210 cp', { exact: true })).toBeVisible();
 	await page.getByRole('button', { name: '38... Kg6 — Critical error' }).click();
 	await expect(board.getByTitle('h7: Black king', { exact: true })).toBeVisible();
 	await expect(board.getByText('g7: empty · Engine suggestion', { exact: true })).toHaveCount(1);
@@ -121,47 +118,11 @@ test('labels later engine moves when the backend has no selected-move remark', a
 	).toBeVisible();
 });
 
-test('prepares game coaching automatically and reuses it when the review reopens', async ({
-	page
-}) => {
-	const moment = {
-		ply: 2,
-		move: '38... Kg6',
-		played_fact: '39. Qg2+ gives check.',
-		alternative_fact: '38... Kg7 moves the king from h7 to g7.',
-		practice_tip: null
-	};
-	const ready = {
-		status: 'done',
-		game_review: [{ ...moment, practice_tip: 'Find a legal answer to the queen check.' }]
-	};
-	let starts = 0;
-	let done = false;
-	await page.route('**/api/v1/games/17/coaching?*', (route) => {
-		if (route.request().method() === 'POST') {
-			starts++;
-			return route.fulfill({ json: { status: 'queued', job_id: 41, game_review: [moment] } });
-		}
-		return route.fulfill({
-			json: done ? ready : { status: 'not_generated', game_review: [moment] }
-		});
-	});
-	await page.route('**/api/v1/coaching-jobs/41', (route) => {
-		done = true;
-		return route.fulfill({ json: ready });
-	});
-	await page.goto('/games/17');
-	const coaching = page.getByRole('region', { name: 'Game coaching' });
-	await expect(coaching.getByText(moment.played_fact, { exact: true })).toBeVisible();
-	await expect(coaching.getByText('Find a legal answer to the queen check.')).toBeVisible();
-	await expect(page.getByRole('region', { name: 'Engine best line' })).toBeHidden();
-	await coaching.getByRole('button', { name: 'Review 38... Kg6' }).click();
-	await expect(page.getByText('Before 38... Kg6 · Ply 2')).toBeVisible();
-	await expect(page.getByRole('heading', { name: 'Blunder', exact: true })).toBeVisible();
-	await expect(page.getByText('190 cp', { exact: true })).toBeHidden();
-	await page.reload();
-	await expect(coaching.getByText('Find a legal answer to the queen check.')).toBeVisible();
-	expect(starts).toBe(1);
+test('keeps the selected-move card without the Game coaching block', async ({ page }) => {
+	await page.goto('/games/17?ply=2');
+	const sidebar = page.getByRole('complementary', { name: 'Game analysis' });
+	await expect(sidebar.getByRole('heading', { name: 'Blunder', exact: true })).toBeVisible();
+	await expect(sidebar.getByRole('region', { name: 'Game coaching' })).toHaveCount(0);
 });
 
 test('keeps the engine line and interactive graph beside the board on desktop', async ({
@@ -301,7 +262,7 @@ test('shows coach remarks immediately at the starting position and after navigat
 			'The king repositions to g6. But there’s a stronger continuation to consider.'
 		)
 	).toBeVisible();
-	await expect(remarks.getByText('Move evidence', { exact: true })).toBeVisible();
+	await expect(remarks.getByText('Move evidence', { exact: true })).toHaveCount(0);
 	await expect(remarks.getByText('38...Kg6 39. Qg2+', { exact: true })).toBeHidden();
 	await page.getByRole('button', { name: 'Next move', exact: true }).click();
 	await expect(remarks.getByRole('heading', { name: 'Best', exact: true })).toBeVisible();

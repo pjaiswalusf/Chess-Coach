@@ -155,10 +155,6 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 		).toBeVisible();
 		await reopened.getByRole('button', { name: 'Get a practice tip' }).click();
 		await expect(moveCoaching.getByText('Practice this position')).toBeVisible();
-		await moveCoaching.getByText('Move evidence', { exact: true }).click();
-		await expect(
-			moveCoaching.getByText(/After 4\. Ne2, Stockfish’s evaluation goes from/)
-		).toBeVisible();
 		await capture(reopened, 'game-review', reopened.getByRole('region', { name: 'Move coaching' }));
 
 		await navigate(reopened, 'Coach');

@@ -6,7 +6,6 @@
 	import BoardEvaluationBar from './BoardEvaluationBar.svelte';
 	import ChessBoard from './ChessBoard.svelte';
 	import EvaluationChart from './EvaluationChart.svelte';
-	import GameCoaching from './GameCoaching.svelte';
 	import MoveCoaching from './MoveCoaching.svelte';
 	import ReviewMoveList from './ReviewMoveList.svelte';
 	import Button from './ui/Button.svelte';
@@ -24,7 +23,6 @@
 	);
 	let selection = $state<{ ply: number; before: boolean } | null>(null);
 	let flipped = $state(false);
-	let showMoveEvidence = $state(false);
 
 	const recorded = $derived(game.state.status === 'success' ? game.state.data : null);
 	const report = $derived(analysis.state.status === 'success' ? analysis.state.data : null);
@@ -197,50 +195,9 @@
 									ply={coachingMove.ply}
 									rating={coachingMove.rating}
 									profile={profileHash}
-									bind:evidenceOpen={showMoveEvidence}
-								>
-									{#snippet evidence()}
-										<h4 class="sr-only">Move evidence · {notation(coachingMove)}</h4>
-
-										<dl class="mt-2 grid grid-cols-3 gap-2 text-xs tabular-nums">
-											<div>
-												<dt class="text-muted">Before</dt>
-												<dd class="font-semibold">
-													{evaluation(
-														coachingMove.eval_before_cp_white,
-														coachingMove.mate_before_white,
-														coachingMove.mate_before_winner
-													)}
-												</dd>
-											</div>
-											<div>
-												<dt class="text-muted">After</dt>
-												<dd class="font-semibold">
-													{evaluation(
-														coachingMove.eval_after_cp_white,
-														coachingMove.mate_after_white,
-														coachingMove.mate_after_winner
-													)}
-												</dd>
-											</div>
-											<div>
-												<dt class="text-muted">Mover loss</dt>
-												<dd class="font-semibold">
-													{coachingMove.loss_cp === null
-														? 'Unavailable in cp'
-														: `${coachingMove.loss_cp} cp`}
-												</dd>
-											</div>
-										</dl>
-									{/snippet}
-								</MoveCoaching>
+								/>
 							{/key}
 						{/if}
-					{/if}
-					{#if profileHash}
-						{#key profileHash}
-							<GameCoaching game={id} profile={profileHash} onSelect={(ply) => show(ply, true)} />
-						{/key}
 					{/if}
 
 					<details class="space-y-2 rounded-lg border border-line px-3 py-2">
