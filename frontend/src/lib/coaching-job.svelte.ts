@@ -4,7 +4,8 @@ import { apiErrorMessage } from '#lib/api/errors.js';
 
 export function coachingJob(
 	read: (signal: AbortSignal) => Promise<CoachingResponse>,
-	generate: (signal: AbortSignal) => Promise<CoachingResponse>
+	generate: (signal: AbortSignal) => Promise<CoachingResponse>,
+	auto = false
 ) {
 	let result = $state<CoachingResponse | null>(null);
 	let loading = $state(true);
@@ -55,10 +56,11 @@ export function coachingJob(
 		} finally {
 			if (!lifetime.signal.aborted) loading = false;
 		}
+		if (auto && result?.status === 'not_generated') await submit();
 	}
 
 	async function submit() {
-		if (submitting || active || loading || statusError) return;
+		if (lifetime.signal.aborted || submitting || active || loading || statusError) return;
 		submitting = true;
 		polls = 0;
 		try {

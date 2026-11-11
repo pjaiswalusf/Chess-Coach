@@ -15,16 +15,9 @@ from chess_coach.infrastructure.persistence.models import MoveAnalysis, Position
 from chess_coach.infrastructure.persistence.query_repository import QueryRepository
 
 PATH = "/api/v1/games/1/moves/1/explanation"
-VALID = json.dumps(
-    {
-        "status": "explained",
-        "summary": "The engine prefers the alternative.",
-        "what_went_wrong": "The move gives a weaker evaluated position.",
-        "why_best_move_works": "The alternative has the preferred evaluation.",
-        "lesson": "Compare candidate moves before deciding.",
-        "practice_tip": "Review the supplied engine lines.",
-    }
-)
+GAME_PATH = "/api/v1/games/1/coaching"
+VALID = json.dumps({"status": "explained", "focus": "reply"})
+UNSUPPORTED = json.dumps({"status": "explained", "focus": "mate"})
 
 
 class FakeModel:
@@ -71,6 +64,13 @@ def test_vertical_slice_cache_duplicate_and_offline(coaching):
     result = client.get(f"/api/v1/coaching-jobs/{identity}").json()
     assert result["status"] == "done" and result["coach"]["summary"]
     assert result["evidence"] == first.json()["evidence"]
+    assert result["move_breakdown"] == first.json()["move_breakdown"]
+    assert result["move_breakdown"]["played"]["san"].startswith("1. e4 ")
+    assert (
+        result["move_breakdown"]["played"]["key_fact"]
+        in result["coach"]["what_went_wrong"]
+    )
+    assert "[[" not in result["coach"]["why_best_move_works"]
     service.health = lambda: LLMHealth(
         status="server_unavailable",
         model="fixture",
@@ -92,15 +92,52 @@ def test_vertical_slice_cache_duplicate_and_offline(coaching):
     assert model.calls == 1
 
 
+def test_game_coaching_is_read_only_until_requested_and_reuses_saved_results(coaching):
+    client, repo, service, model = coaching
+    initial = client.get(GAME_PATH).json()
+    assert initial["status"] == "not_generated"
+    assert repo.claim() is None
+    (moment,) = initial["evidence"]["moments"]
+    assert initial["game_review"][0]["played_fact"] == moment["played_fact"]
+    assert initial["game_review"][0]["practice_tip"] is None
+    queued = client.post(GAME_PATH)
+    assert queued.status_code == 202
+    job = queued.json()["job_id"]
+    assert client.post(GAME_PATH).json()["job_id"] == job
+    model.raw = json.dumps(
+        {
+            "status": "explained",
+            "choices": [{"ply": moment["ply"], "focus": moment["allowed_focuses"][0]}],
+        }
+    )
+    CoachingProcessor(service, model).process(repo.claim())
+    result = client.get(f"/api/v1/coaching-jobs/{job}").json()
+    assert result["status"] == "done"
+    assert result["game_review"][0]["practice_tip"]
+    assert result["game_review"][0]["move"] == moment["move"]
+    saved = client.get(GAME_PATH).json()
+    assert saved["cached"] and saved["game_review"] == result["game_review"]
+    assert repo.claim() is None and model.calls == 1
+
+
+def test_game_coaching_rejects_model_reference_to_another_ply(coaching):
+    client, repo, service, model = coaching
+    job = client.post(GAME_PATH).json()["job_id"]
+    model.raw = '{"status":"explained","choices":[{"ply":999,"focus":"reply"}]}'
+    CoachingProcessor(service, model).process(repo.claim())
+    result = client.get(f"/api/v1/coaching-jobs/{job}").json()
+    assert result["status"] == "failed"
+    assert result["error_code"] == "UNSUPPORTED_CLAIM"
+    assert result["game_review"][0]["played_fact"]
+
+
 @pytest.mark.parametrize(
     "raw,error",
     [
         ("not json", "INVALID_MODEL_OUTPUT"),
         ('{"status":"explained","score":99}', "INVALID_MODEL_OUTPUT"),
         (
-            VALID.replace(
-                "The engine prefers the alternative.", "You lose 43% of games."
-            ),
+            UNSUPPORTED,
             "UNSUPPORTED_CLAIM",
         ),
     ],
@@ -135,7 +172,7 @@ def test_restart_and_failed_request_retry(coaching):
 def test_abstention_no_retry(coaching):
     client, repo, service, model = coaching
     job = client.post(PATH).json()["job_id"]
-    model.raw = '{"status":"insufficient_evidence","summary":"The available evidence is insufficient."}'
+    model.raw = '{"status":"insufficient_evidence","focus":null}'
     CoachingProcessor(service, model).process(repo.claim())
     assert repo.get(job).status == "insufficient_evidence" and model.calls == 1
 
@@ -213,25 +250,15 @@ def test_history_low_sample_and_get_read_only(coaching):
     assert model.calls == 0
 
 
-@pytest.mark.parametrize(
-    "claim,error",
-    [
-        ("Your king is checkmated.", "FACT_CONTRADICTION"),
-        ("You made eleven mistakes.", "UNSUPPORTED_CLAIM"),
-        ("You lost twenty games.", "UNSUPPORTED_CLAIM"),
-    ],
-)
-def test_known_contradiction_rejected_and_corrupt_cache_regenerates(
-    coaching, claim, error
-):
+def test_unsupported_focus_rejected_and_corrupt_cache_regenerates(coaching):
     from chess_coach.infrastructure.persistence.models import CoachingOutput
 
     client, repo, service, model = coaching
     job = client.post(PATH).json()["job_id"]
-    model.raw = VALID.replace("The engine prefers the alternative.", claim)
+    model.raw = UNSUPPORTED
     CoachingProcessor(service, model).process(repo.claim())
     assert repo.get(job).status == "failed"
-    assert repo.get(job).error_code == error
+    assert repo.get(job).error_code == "UNSUPPORTED_CLAIM"
     client.post(PATH)
     model.raw = VALID
     CoachingProcessor(service, model).process(repo.claim())
@@ -305,7 +332,11 @@ def test_prompt_evidence_excludes_imported_prose(coaching):
         key not in captured[0]
         for key in ("raw_pgn", "opening_name", "white_username", "comments")
     )
-    assert captured[0]["fen_before"] and captured[0]["best_line_uci"]
+    assert captured[0] == {
+        "played_line_observation": "quiet move",
+        "alternative_observation": "quiet move",
+        "allowed_focuses": ["reply"],
+    }
 
 
 def test_prompt_version_change_misses_existing_success(coaching, monkeypatch):
@@ -386,9 +417,7 @@ def test_combined_worker_releases_stockfish_before_processing_coaching(
     [
         ("SECRET_TEST_PROMPT_456", "MODEL_SCHEMA_INVALID", 100),
         (
-            VALID.replace(
-                "The engine prefers the alternative.", "You lose 43% of games."
-            ),
+            UNSUPPORTED,
             "MODEL_FACTUAL_VALIDATION_FAILED",
             0,
         ),

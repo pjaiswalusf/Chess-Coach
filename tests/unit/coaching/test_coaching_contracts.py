@@ -1,5 +1,3 @@
-import json
-
 import chess
 import httpx
 import pytest
@@ -10,10 +8,12 @@ from chess_coach.application.errors import OperationError
 from chess_coach.config import Settings
 from chess_coach.domain.coaching_models import (
     EngineScore,
+    HistoricalExplanation,
     MoveCoachingEvidence,
-    MoveExplanation,
+    MovePractice,
 )
 from chess_coach.infrastructure.llm.health import check_health
+from chess_coach.infrastructure.llm.validation import validate_text
 
 
 @pytest.fixture
@@ -113,26 +113,36 @@ def test_mate_zero():
     assert EngineScore(mate_white=0, mate_winner=False).mate_white == 0
 
 
-def test_output_and_detectable_claims(evidence):
-    valid = {
-        "status": "explained",
-        "summary": "The engine prefers the alternative.",
-        "what_went_wrong": "The played move gives a weaker evaluated position.",
-        "why_best_move_works": "The alternative retains the engine preference.",
-        "lesson": "Compare candidate moves before deciding.",
-        "practice_tip": "Review the supplied lines.",
-    }
-    assert validated_output(json.dumps(valid), evidence).status == "explained"
-    for update in (
-        {"lesson": ""},
-        {"summary": 1},
-        {"score": 20},
-        {"summary": " "},
-        {"summary": "x" * 401},
+def test_move_model_can_only_select_supported_practice(evidence):
+    assert (
+        validated_output('{"status":"explained","focus":"reply"}', evidence).status
+        == "explained"
+    )
+    assert (
+        validated_output(
+            '{"status":"insufficient_evidence","focus":null}', evidence
+        ).status
+        == "insufficient_evidence"
+    )
+    with pytest.raises(OperationError, match="outside the saved observations"):
+        validated_output('{"status":"explained","focus":"mate"}', evidence)
+    for payload in (
+        {"status": "explained", "focus": None},
+        {
+            "status": "explained",
+            "focus": "reply",
+            "summary": "Your king is checkmated.",
+        },
+        {"status": "explained", "focus": "invented"},
+        {"status": "insufficient_evidence", "focus": "reply"},
     ):
         with pytest.raises(ValidationError):
-            MoveExplanation.model_validate(valid | update)
-    for text in (
+            MovePractice.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
         "You lose 43% of games.",
         "Play Nf3.",
         "This wins three pawns.",
@@ -141,16 +151,13 @@ def test_output_and_detectable_claims(evidence):
         "Your rating will rise a thousand points.",
         "You miss a tactic a dozen times.",
         "<script>alert()</script>",
-    ):
-        with pytest.raises(OperationError, match="prohibited"):
-            validated_output(json.dumps(valid | {"summary": text}), evidence)
-    assert (
-        validated_output(
-            '{"status":"insufficient_evidence","summary":"More evidence is needed."}',
-            evidence,
-        ).status
-        == "insufficient_evidence"
-    )
+    ],
+)
+def test_historical_text_still_rejects_detectable_claims(text):
+    with pytest.raises(OperationError, match="prohibited"):
+        validate_text(
+            HistoricalExplanation(status="insufficient_evidence", summary=text)
+        )
 
 
 @pytest.mark.parametrize(
@@ -215,28 +222,10 @@ def test_explanation_cannot_claim_an_alternative_to_the_same_best_move(evidence)
             "best_line_uci": ("e2e4", "e7e5"),
         }
     )
-    raw = json.dumps(
-        {
-            "status": "explained",
-            "summary": "The engine prefers the alternative continuation.",
-            "what_went_wrong": "The played continuation receives a less favorable engine evaluation.",
-            "why_best_move_works": "The alternative retains a better evaluation.",
-            "lesson": "Compare candidate continuations.",
-            "practice_tip": "Review the supplied lines.",
-        }
-    )
-    with pytest.raises(OperationError, match="same move"):
-        validated_output(raw, same)
+    with pytest.raises(OperationError, match="outside the saved observations"):
+        validated_output('{"status":"explained","focus":"reply"}', same)
     assert (
-        validated_output(
-            json.dumps(
-                {
-                    "status": "insufficient_evidence",
-                    "summary": "No supported mistake to explain.",
-                }
-            ),
-            same,
-        ).status
+        validated_output('{"status":"insufficient_evidence","focus":null}', same).status
         == "insufficient_evidence"
     )
 

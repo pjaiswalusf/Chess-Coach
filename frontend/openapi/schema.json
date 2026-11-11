@@ -534,9 +534,20 @@
               },
               {
                 "$ref": "#/components/schemas/HistoricalEvidence"
+              },
+              {
+                "$ref": "#/components/schemas/GameCoachingEvidence"
               }
             ],
             "title": "Evidence"
+          },
+          "game_review": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/GameReviewMoment"
+            },
+            "title": "Game Review",
+            "type": "array"
           },
           "job_id": {
             "anyOf": [
@@ -570,6 +581,16 @@
               }
             ],
             "title": "Model Digest"
+          },
+          "move_breakdown": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MoveBreakdown"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "status": {
             "title": "Status",
@@ -1083,6 +1104,46 @@
         "title": "GameAnalysisResponse",
         "type": "object"
       },
+      "GameCoachingEvidence": {
+        "additionalProperties": false,
+        "properties": {
+          "game_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Game Id",
+            "type": "integer"
+          },
+          "moments": {
+            "items": {
+              "$ref": "#/components/schemas/GameMoment"
+            },
+            "maxItems": 3,
+            "title": "Moments",
+            "type": "array"
+          },
+          "profile_hash": {
+            "title": "Profile Hash",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "game-coaching-evidence-v1",
+            "default": "game-coaching-evidence-v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "source_hash": {
+            "title": "Source Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "game_id",
+          "profile_hash",
+          "source_hash",
+          "moments"
+        ],
+        "title": "GameCoachingEvidence",
+        "type": "object"
+      },
       "GameDetail": {
         "properties": {
           "analysis_status": {
@@ -1337,6 +1398,58 @@
         "title": "GameItem",
         "type": "object"
       },
+      "GameMoment": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed_focuses": {
+            "items": {
+              "enum": [
+                "reply",
+                "material",
+                "check",
+                "mate",
+                "promotion",
+                "castling"
+              ],
+              "type": "string"
+            },
+            "title": "Allowed Focuses",
+            "type": "array"
+          },
+          "alternative_fact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alternative Fact"
+          },
+          "move": {
+            "title": "Move",
+            "type": "string"
+          },
+          "played_fact": {
+            "title": "Played Fact",
+            "type": "string"
+          },
+          "ply": {
+            "exclusiveMinimum": 0.0,
+            "title": "Ply",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ply",
+          "move",
+          "played_fact",
+          "allowed_focuses"
+        ],
+        "title": "GameMoment",
+        "type": "object"
+      },
       "GamePage": {
         "properties": {
           "items": {
@@ -1391,6 +1504,53 @@
         ],
         "title": "GameResult",
         "type": "string"
+      },
+      "GameReviewMoment": {
+        "additionalProperties": false,
+        "properties": {
+          "alternative_fact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alternative Fact"
+          },
+          "move": {
+            "title": "Move",
+            "type": "string"
+          },
+          "played_fact": {
+            "title": "Played Fact",
+            "type": "string"
+          },
+          "ply": {
+            "title": "Ply",
+            "type": "integer"
+          },
+          "practice_tip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Practice Tip"
+          }
+        },
+        "required": [
+          "ply",
+          "move",
+          "played_fact",
+          "alternative_fact"
+        ],
+        "title": "GameReviewMoment",
+        "type": "object"
       },
       "HealthResponse": {
         "properties": {
@@ -1730,6 +1890,40 @@
         "title": "MotifResponse",
         "type": "object"
       },
+      "MoveBreakdown": {
+        "additionalProperties": false,
+        "properties": {
+          "alternative": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MoveLine"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "assessment": {
+            "title": "Assessment",
+            "type": "string"
+          },
+          "played": {
+            "$ref": "#/components/schemas/MoveLine"
+          },
+          "remark": {
+            "default": "",
+            "title": "Remark",
+            "type": "string"
+          }
+        },
+        "required": [
+          "assessment",
+          "played",
+          "alternative"
+        ],
+        "title": "MoveBreakdown",
+        "type": "object"
+      },
       "MoveCoachingEvidence": {
         "additionalProperties": false,
         "properties": {
@@ -1948,6 +2142,30 @@
           "summary"
         ],
         "title": "MoveExplanation",
+        "type": "object"
+      },
+      "MoveLine": {
+        "additionalProperties": false,
+        "properties": {
+          "cue": {
+            "title": "Cue",
+            "type": "string"
+          },
+          "key_fact": {
+            "title": "Key Fact",
+            "type": "string"
+          },
+          "san": {
+            "title": "San",
+            "type": "string"
+          }
+        },
+        "required": [
+          "san",
+          "key_fact",
+          "cue"
+        ],
+        "title": "MoveLine",
         "type": "object"
       },
       "MoveMetrics": {
@@ -2740,6 +2958,13 @@
             "title": "Pv Json",
             "type": "array"
           },
+          "pv_san": {
+            "title": "Pv San",
+            "type": "string"
+          },
+          "rating": {
+            "$ref": "#/components/schemas/ReviewRating"
+          },
           "severity": {
             "anyOf": [
               {
@@ -2770,10 +2995,28 @@
           "loss_cp",
           "pv_json",
           "fen_after",
+          "pv_san",
+          "rating",
           "severity"
         ],
         "title": "ReviewMove",
         "type": "object"
+      },
+      "ReviewRating": {
+        "enum": [
+          "brilliant",
+          "great",
+          "best",
+          "book",
+          "good",
+          "inaccuracy",
+          "mistake",
+          "miss",
+          "blunder",
+          "unrated"
+        ],
+        "title": "ReviewRating",
+        "type": "string"
       },
       "RunGame": {
         "properties": {
@@ -6576,6 +6819,246 @@
         "summary": "Read stored engine evidence without starting analysis",
         "tags": [
           "games and player"
+        ]
+      }
+    },
+    "/api/v1/games/{game_id}/coaching": {
+      "get": {
+        "operationId": "get_game_coaching",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "game_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Game Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "profile_hash",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profile Hash"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoachingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Game Coaching",
+        "tags": [
+          "coaching"
+        ]
+      },
+      "post": {
+        "operationId": "request_game_coaching",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "game_id",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Game Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "profile_hash",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Profile Hash"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoachingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Game Coaching",
+        "tags": [
+          "coaching"
         ]
       }
     },

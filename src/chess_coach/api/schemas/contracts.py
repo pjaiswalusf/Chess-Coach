@@ -16,6 +16,7 @@ from chess_coach.analytics.contracts import (
     Summary,
     Weakness,
 )
+from chess_coach.analytics.review import ReviewRating
 from chess_coach.api.schemas.analysis import MoveResponse
 from chess_coach.domain.game_records import GameResult, PlayerColor
 from chess_coach.domain.sync import normalize_username
@@ -125,6 +126,8 @@ class GameDetail(GameItem):
 
 class ReviewMove(MoveResponse):
     fen_after: str
+    pv_san: str
+    rating: ReviewRating
     severity: Severity | None
 
 

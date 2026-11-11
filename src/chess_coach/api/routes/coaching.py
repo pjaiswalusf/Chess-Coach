@@ -62,6 +62,30 @@ def job(job_id: Annotated[int, Path(gt=0)], service: Service) -> CoachingRespons
     return service.job(job_id)
 
 
+@router.get(
+    "/games/{game_id}/coaching",
+    response_model=CoachingResponse,
+    operation_id="get_game_coaching",
+)
+@router.post(
+    "/games/{game_id}/coaching",
+    response_model=CoachingResponse,
+    operation_id="request_game_coaching",
+)
+def game_coaching(
+    game_id: GameId,
+    request: Request,
+    service: Service,
+    response: Response,
+    profile_hash: Profile = None,
+) -> CoachingResponse:
+    result = service.game(
+        game_id, generate=request.method == "POST", profile=profile_hash
+    )
+    response.status_code = 202 if result.status in {"queued", "running"} else 200
+    return result
+
+
 @router.get("/games/{game_id}/moves/{ply}/motif", response_model=MotifResponse)
 def get_motif(
     game_id: GameId, ply: Ply, service: Service, profile_hash: Profile = None

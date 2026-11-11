@@ -8,9 +8,14 @@ from pydantic import BaseModel
 
 from chess_coach.application.errors import OperationError
 from chess_coach.config import Settings
+from chess_coach.domain.coaching_models import GamePractice, MovePractice
 from chess_coach.domain.motif_models import MotifPrediction
 from chess_coach.infrastructure.llm.motif_classifier import MOTIF_SYSTEM_PROMPT
-from chess_coach.infrastructure.llm.prompts import SYSTEM_PROMPT
+from chess_coach.infrastructure.llm.prompts import (
+    GAME_SYSTEM_PROMPT,
+    MOVE_SYSTEM_PROMPT,
+    SYSTEM_PROMPT,
+)
 
 
 def generation_settings(settings: Settings) -> dict[str, object]:
@@ -34,9 +39,18 @@ class OllamaCoach:
         # model receives only the compact current-position evidence it explains.
         payload = json.loads(evidence_json)
         if isinstance(payload, dict):
-            payload = {k: v for k, v in payload.items() if k not in {
-                "initial_fen", "history_uci", "source_hash", "profile_hash", "report_hash"
-            }}
+            payload = {
+                k: v
+                for k, v in payload.items()
+                if k
+                not in {
+                    "initial_fen",
+                    "history_uci",
+                    "source_hash",
+                    "profile_hash",
+                    "report_hash",
+                }
+            }
         evidence_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         if len(evidence_json.encode()) > 10_000:
             raise OperationError(
@@ -44,6 +58,15 @@ class OllamaCoach:
                 "The coaching evidence exceeds the local context limit.",
             )
         self.metrics = {}
+        prompt = (
+            MOTIF_SYSTEM_PROMPT
+            if schema is MotifPrediction
+            else MOVE_SYSTEM_PROMPT
+            if schema is MovePractice
+            else GAME_SYSTEM_PROMPT
+            if schema is GamePractice
+            else SYSTEM_PROMPT
+        )
         try:
             # Explicit client ownership prevents connection leaks across jobs.
             client = Client(
@@ -58,9 +81,7 @@ class OllamaCoach:
                     messages=[
                         {
                             "role": "system",
-                            "content": MOTIF_SYSTEM_PROMPT
-                            if schema is MotifPrediction
-                            else SYSTEM_PROMPT,
+                            "content": prompt,
                         },
                         {"role": "user", "content": evidence_json},
                     ],

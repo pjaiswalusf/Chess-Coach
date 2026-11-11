@@ -192,9 +192,13 @@ def test_analysis_evidence_and_analytics_match_existing_service(analyzed):
     assert result["initial_fen"] == board.fen()
     for move in result["moves"]:
         assert move["fen_before"] == board.fen()
+        assert move["pv_san"] == board.variation_san(
+            [chess.Move.from_uci(uci) for uci in move["pv_json"]]
+        )
         board.push_san(move["played_move_san"])
         assert move["fen_after"] == board.fen()
         assert move["severity"] == "normal"
+        assert move["rating"] == "book"
     assert client.get("/api/v1/games").json()["items"][0]["critical_errors"] == 0
     assert [m["eval_before_cp_white"] for m in result["moves"]] == [0, 20, 40, 60]
     assert [m["loss_cp"] for m in result["moves"]] == [0, 20, 0, 20]

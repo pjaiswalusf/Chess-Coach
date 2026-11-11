@@ -7,6 +7,7 @@
 	import type { LayoutProps } from './$types';
 
 	let { children }: LayoutProps = $props();
+	const reviewing = $derived(page.route.id === '/games/[id=gameId]');
 
 	const navigation = [
 		{ label: 'Dashboard', href: '/' },
@@ -29,7 +30,10 @@
 >
 
 <div
-	class="mx-auto grid min-h-screen max-w-7xl grid-rows-[auto_1fr] bg-canvas text-ink md:grid-cols-[12rem_minmax(0,1fr)] md:grid-rows-1"
+	class={[
+		'mx-auto grid min-h-screen grid-rows-[auto_1fr] bg-canvas text-ink md:grid-cols-[12rem_minmax(0,1fr)] md:grid-rows-1',
+		reviewing ? 'max-w-screen-2xl' : 'max-w-7xl'
+	]}
 >
 	<div class="border-b border-line bg-sidebar p-4 md:border-r md:border-b-0 md:p-6">
 		<p class="mb-3 text-lg font-bold tracking-tight text-accent md:mb-6">Chess Coach</p>
@@ -56,7 +60,11 @@
 				<HealthStatus />
 			</header>
 		{/if}
-		<main id="main-content" tabindex="-1" class="mx-auto max-w-5xl space-y-6 p-4 md:p-8">
+		<main
+			id="main-content"
+			tabindex="-1"
+			class={['mx-auto space-y-6 p-4 md:p-8', !reviewing && 'max-w-5xl']}
+		>
 			{@render children()}
 		</main>
 	</div>

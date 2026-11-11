@@ -14,6 +14,18 @@ async function readCoaching(path: string, init: RequestInit): Promise<CoachingRe
 	if (
 		!isRecord(data) ||
 		typeof data.status !== 'string' ||
+		(data.game_review !== undefined &&
+			(!Array.isArray(data.game_review) ||
+				data.game_review.some(
+					(moment) =>
+						!isRecord(moment) ||
+						!Number.isSafeInteger(moment.ply) ||
+						moment.ply < 1 ||
+						typeof moment.move !== 'string' ||
+						typeof moment.played_fact !== 'string' ||
+						(moment.alternative_fact !== null && typeof moment.alternative_fact !== 'string') ||
+						(moment.practice_tip != null && typeof moment.practice_tip !== 'string')
+				))) ||
 		(data.coach != null && (!isRecord(data.coach) || typeof data.coach.summary !== 'string'))
 	) {
 		throw invalidResponse();
@@ -33,6 +45,11 @@ export async function getLLMHealth(signal: AbortSignal) {
 }
 
 export const coachingApi = {
+	game: (game: number, profile: string, signal: AbortSignal, generate = false) =>
+		readCoaching(`/api/v1/games/${game}/coaching?profile_hash=${encodeURIComponent(profile)}`, {
+			method: generate ? 'POST' : 'GET',
+			signal
+		}),
 	history: (window: Window, profile: string, signal: AbortSignal, expectedHash?: string) =>
 		readCoaching(
 			`/api/v1/coaching/history?window=${window}&profile_hash=${encodeURIComponent(profile)}${expectedHash ? '&expected_report_hash=' + encodeURIComponent(expectedHash) : ''}`,

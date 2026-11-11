@@ -6,7 +6,7 @@ from ollama import ResponseError
 
 from chess_coach.application.errors import OperationError
 from chess_coach.config import Settings
-from chess_coach.domain.coaching_models import MoveExplanation
+from chess_coach.domain.coaching_models import MovePractice
 from chess_coach.infrastructure.llm.client import OllamaCoach
 
 
@@ -28,10 +28,10 @@ def test_adapter_errors_and_cleanup(monkeypatch, failure, code):
 
         def chat(self, **kwargs):
             assert kwargs["stream"] is False
-            assert kwargs["format"] == MoveExplanation.model_json_schema()
+            assert kwargs["format"] == MovePractice.model_json_schema()
             raise failure
 
     monkeypatch.setattr("chess_coach.infrastructure.llm.client.Client", Client)
     with pytest.raises(OperationError) as error:
-        OllamaCoach(Settings(_env_file=None)).generate("{}", MoveExplanation)
+        OllamaCoach(Settings(_env_file=None)).generate("{}", MovePractice)
     assert error.value.code == code and closed == [True]

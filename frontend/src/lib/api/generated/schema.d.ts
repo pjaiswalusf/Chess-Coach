@@ -261,6 +261,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/games/{game_id}/coaching": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Game Coaching */
+        get: operations["get_game_coaching"];
+        put?: never;
+        /** Game Coaching */
+        post: operations["request_game_coaching"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/games/{game_id}/moves/{ply}/explanation": {
         parameters: {
             query?: never;
@@ -782,13 +800,19 @@ export interface components {
             /** Error Code */
             error_code?: string | null;
             /** Evidence */
-            evidence: components["schemas"]["MoveCoachingEvidence"] | components["schemas"]["HistoricalEvidence"];
+            evidence: components["schemas"]["MoveCoachingEvidence"] | components["schemas"]["HistoricalEvidence"] | components["schemas"]["GameCoachingEvidence"];
+            /**
+             * Game Review
+             * @default []
+             */
+            game_review: components["schemas"]["GameReviewMoment"][];
             /** Job Id */
             job_id?: number | null;
             /** Message */
             message?: string | null;
             /** Model Digest */
             model_digest?: string | null;
+            move_breakdown?: components["schemas"]["MoveBreakdown"] | null;
             /** Status */
             status: string;
         };
@@ -943,6 +967,23 @@ export interface components {
              */
             status: "pending" | "running" | "completed" | "failed" | "incompatible";
         };
+        /** GameCoachingEvidence */
+        GameCoachingEvidence: {
+            /** Game Id */
+            game_id: number;
+            /** Moments */
+            moments: components["schemas"]["GameMoment"][];
+            /** Profile Hash */
+            profile_hash: string;
+            /**
+             * Schema Version
+             * @default game-coaching-evidence-v1
+             * @constant
+             */
+            schema_version: "game-coaching-evidence-v1";
+            /** Source Hash */
+            source_hash: string;
+        };
         /** GameDetail */
         GameDetail: {
             /**
@@ -1016,6 +1057,19 @@ export interface components {
             /** Time Class */
             time_class: string | null;
         };
+        /** GameMoment */
+        GameMoment: {
+            /** Allowed Focuses */
+            allowed_focuses: ("reply" | "material" | "check" | "mate" | "promotion" | "castling")[];
+            /** Alternative Fact */
+            alternative_fact?: string | null;
+            /** Move */
+            move: string;
+            /** Played Fact */
+            played_fact: string;
+            /** Ply */
+            ply: number;
+        };
         /** GamePage */
         GamePage: {
             /** Items */
@@ -1037,6 +1091,19 @@ export interface components {
          * @enum {string}
          */
         GameResult: "win" | "loss" | "draw" | "unknown";
+        /** GameReviewMoment */
+        GameReviewMoment: {
+            /** Alternative Fact */
+            alternative_fact: string | null;
+            /** Move */
+            move: string;
+            /** Played Fact */
+            played_fact: string;
+            /** Ply */
+            ply: number;
+            /** Practice Tip */
+            practice_tip?: string | null;
+        };
         /** HealthResponse */
         HealthResponse: {
             /**
@@ -1171,6 +1238,18 @@ export interface components {
              */
             taxonomy_version: string;
         };
+        /** MoveBreakdown */
+        MoveBreakdown: {
+            alternative: components["schemas"]["MoveLine"] | null;
+            /** Assessment */
+            assessment: string;
+            played: components["schemas"]["MoveLine"];
+            /**
+             * Remark
+             * @default
+             */
+            remark: string;
+        };
         /** MoveCoachingEvidence */
         MoveCoachingEvidence: {
             after: components["schemas"]["EngineScore"];
@@ -1256,6 +1335,15 @@ export interface components {
              * @default
              */
             why_best_move_works: string;
+        };
+        /** MoveLine */
+        MoveLine: {
+            /** Cue */
+            cue: string;
+            /** Key Fact */
+            key_fact: string;
+            /** San */
+            san: string;
         };
         /** MoveMetrics */
         MoveMetrics: {
@@ -1519,8 +1607,16 @@ export interface components {
             profile_hash: string;
             /** Pv Json */
             pv_json: string[];
+            /** Pv San */
+            pv_san: string;
+            rating: components["schemas"]["ReviewRating"];
             severity: components["schemas"]["Severity"] | null;
         };
+        /**
+         * ReviewRating
+         * @enum {string}
+         */
+        ReviewRating: "brilliant" | "great" | "best" | "book" | "good" | "inaccuracy" | "mistake" | "miss" | "blunder" | "unrated";
         /** RunGame */
         RunGame: {
             /** Attempt Count */
@@ -3463,6 +3559,180 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GameAnalysisResponse"];
+                };
+            };
+            /** @description Invalid local Host header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Untrusted browser origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflicting operation or configuration */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Local dependency unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_game_coaching: {
+        parameters: {
+            query?: {
+                profile_hash?: string | null;
+            };
+            header?: never;
+            path: {
+                game_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachingResponse"];
+                };
+            };
+            /** @description Invalid local Host header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Untrusted browser origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflicting operation or configuration */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Local dependency unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    request_game_coaching: {
+        parameters: {
+            query?: {
+                profile_hash?: string | null;
+            };
+            header?: never;
+            path: {
+                game_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachingResponse"];
                 };
             };
             /** @description Invalid local Host header */

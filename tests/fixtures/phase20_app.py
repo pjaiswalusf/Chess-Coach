@@ -25,7 +25,7 @@ from chess_coach.application.parse_imported_games import ParseImportedGames
 from chess_coach.application.sync_games import SyncGamesService
 from chess_coach.application.system import DependencyStatus
 from chess_coach.config import Settings, get_settings
-from chess_coach.domain.coaching_models import LLMHealth, MoveExplanation
+from chess_coach.domain.coaching_models import GamePractice, LLMHealth, MovePractice
 from chess_coach.infrastructure.analysis_lock import worker_guard
 from chess_coach.infrastructure.chesscom.client import BASE_URL, ChessComClient
 from chess_coach.infrastructure.persistence.analysis_repository import (
@@ -122,16 +122,21 @@ class WorkflowModel:
         self.metrics = {}
 
     def generate(self, evidence_json, schema):
-        if schema is MoveExplanation:
-            return MoveExplanation(
-                status="explained",
-                summary="Compare the played move with the forcing alternative.",
-                what_went_wrong="The recorded advantage dropped after the played move.",
-                why_best_move_works="The fixture line keeps more pressure on the king.",
-                lesson="Review forcing candidates before committing to a move.",
-                practice_tip="List your checks and captures before choosing a candidate.",
-            ).model_dump_json()
+        if schema is MovePractice:
+            return MovePractice(status="explained", focus="reply").model_dump_json()
         evidence = json.loads(evidence_json)
+        if schema is GamePractice:
+            return json.dumps(
+                {
+                    "status": "explained",
+                    "choices": [
+                        {
+                            "ply": evidence[0]["ply"],
+                            "focus": evidence[0]["allowed_focuses"][0],
+                        }
+                    ],
+                }
+            )
         return json.dumps(
             {
                 "status": "explained",

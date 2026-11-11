@@ -46,6 +46,8 @@ const first: ReviewMove = {
 	mate_after_winner: null,
 	loss_cp: 0,
 	severity: 'normal',
+	rating: 'best',
+	pv_san: '38. a8=Q',
 	pv_json: ['a7a8q']
 };
 export const gameAnalysis: GameAnalysis = {
@@ -67,9 +69,11 @@ export const gameAnalysis: GameAnalysis = {
 			fen_after: 'Q7/8/6k1/8/8/8/8/7K w - - 1 39',
 			best_move_uci: 'h7g7',
 			pv_json: ['h7g7'],
+			pv_san: '38... Kg7',
 			eval_before_cp_white: 20,
 			eval_after_cp_white: 210,
 			loss_cp: 190,
+			rating: 'blunder',
 			severity: 'critical'
 		}
 	]
@@ -123,6 +127,18 @@ export const noMoveCoaching = {
 	status: 'not_generated',
 	job_id: null,
 	coach: null,
+	move_breakdown: {
+		remark: 'The king repositions to g6. But there’s a stronger continuation to consider.',
+		assessment: 'After 38... Kg6, Stockfish’s evaluation goes from +0.20 to +2.10.',
+		played: {
+			san: '38...Kg6 39. Qg2+',
+			key_fact: '39. Qg2+ gives check, so the opponent has to answer it.'
+		},
+		alternative: {
+			san: '38...Kg7',
+			key_fact: '38... Kg7 moves the king from h7 to g7.'
+		}
+	},
 	evidence: { game_id: 17, ply: 2, profile_hash: profile }
 };
 export const noHistoricalCoaching = {
