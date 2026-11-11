@@ -79,6 +79,11 @@ test('keeps engine evidence and evaluation available when Ollama is down', async
 	const remarks = page.getByRole('region', { name: 'Move coaching' });
 	await expect(remarks.getByRole('heading', { name: 'Coach’s remarks' })).toBeVisible();
 	await expect(
+		remarks.getByText(
+			'The king repositions to g6. But there’s a stronger continuation to consider.'
+		)
+	).toBeVisible();
+	await expect(
 		remarks.getByText('39. Qg2+ gives check, so the opponent has to answer it.')
 	).toBeVisible();
 	await expect(remarks.getByText('190 cp', { exact: true })).toBeHidden();
@@ -94,6 +99,26 @@ test('keeps engine evidence and evaluation available when Ollama is down', async
 	await expect(page.getByRole('img', { name: /Stockfish evaluations/ })).toBeVisible();
 	await page.reload();
 	await expect(page.getByText('Before 38... Kg6 · Ply 2')).toBeVisible();
+});
+
+test('labels later engine moves when the backend has no selected-move remark', async ({ page }) => {
+	const { assessment, played } = noMoveCoaching.move_breakdown;
+	await page.route('**/api/v1/games/17/moves/2/explanation?*', (route) =>
+		route.fulfill({
+			json: { ...noMoveCoaching, move_breakdown: { assessment, played, alternative: null } }
+		})
+	);
+
+	await page.goto('/games/17?ply=2');
+	const remarks = page.getByRole('region', { name: 'Move coaching' });
+	await expect(
+		remarks.getByText('No remark about this move is available from the backend.')
+	).toBeVisible();
+	await expect(
+		remarks.getByText(`Possible continuation after this move ${played.key_fact}`, {
+			exact: true
+		})
+	).toBeVisible();
 });
 
 test('prepares game coaching automatically and reuses it when the review reopens', async ({
@@ -265,4 +290,23 @@ test('shows a safe missing-game state and a route 404 for invalid IDs', async ({
 	const response = await page.goto('/games/not-a-number');
 	expect(response?.status()).toBe(404);
 	await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible();
+});
+
+test('shows coach remarks immediately at the starting position and after navigation', async ({
+	page
+}) => {
+	await page.goto('/games/17');
+	const remarks = page.getByRole('region', { name: 'Move coaching' });
+	await expect(remarks.getByRole('heading', { name: 'Coach’s remarks' })).toBeVisible();
+	await expect(
+		remarks.getByText(
+			'The king repositions to g6. But there’s a stronger continuation to consider.'
+		)
+	).toBeVisible();
+	await expect(remarks.getByText('Move evidence', { exact: true })).toBeVisible();
+	await expect(remarks.getByText('38...Kg6 39. Qg2+', { exact: true })).toBeHidden();
+	await page.getByRole('button', { name: 'Next move', exact: true }).click();
+	await expect(remarks.getByRole('heading', { name: 'Coach’s remarks' })).toBeVisible();
+	await page.getByRole('button', { name: 'First position', exact: true }).click();
+	await expect(remarks.getByRole('heading', { name: 'Coach’s remarks' })).toBeVisible();
 });

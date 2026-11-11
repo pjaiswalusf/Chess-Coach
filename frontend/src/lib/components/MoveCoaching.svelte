@@ -27,22 +27,32 @@
 <section
 	aria-label="Move coaching"
 	class={evidence
-		? 'space-y-2.5 rounded-xl border border-line bg-panel p-3 text-sm'
+		? 'space-y-3 rounded-2xl bg-stone-50 p-4 text-sm leading-relaxed text-stone-900 shadow-sm sm:p-5'
 		: 'space-y-3 rounded-xl border border-positive-line bg-positive-surface p-5'}
 >
-	<h3 class={evidence ? 'font-semibold' : 'text-lg font-semibold'}>
+	<h3 class={evidence ? 'text-lg font-bold' : 'text-lg font-semibold'}>
 		{evidence ? 'Coach’s remarks' : `Coaching for ply ${ply}`}
 	</h3>
 	{#if result?.move_breakdown}
 		{@const breakdown = result.move_breakdown}
 		{#if evidence}
-			<p>{breakdown.played.key_fact}</p>
+			{#if breakdown.remark}
+				<p>{breakdown.remark}</p>
+			{:else}
+				<p>No remark about this move is available from the backend.</p>
+			{/if}
+			{#if breakdown.alternative || !breakdown.remark}
+				<p>
+					<strong class="block">Possible continuation after this move</strong>
+					{breakdown.played.key_fact}
+				</p>
+			{/if}
 			{#if breakdown.alternative}
 				<p>
 					<strong class="block">Stockfish’s alternative</strong>
 					{breakdown.alternative.key_fact}
 				</p>
-			{:else}
+			{:else if !breakdown.remark}
 				<p class="text-muted">Stockfish also chose this move.</p>
 			{/if}
 		{:else}

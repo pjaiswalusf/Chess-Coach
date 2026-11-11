@@ -3,6 +3,7 @@
 import chess
 
 from chess_coach.analytics.feature_config import PIECE_VALUES
+from chess_coach.analytics.move_remarks import move_remark
 from chess_coach.domain.coaching_models import (
     EngineScore,
     MoveBreakdown,
@@ -146,6 +147,7 @@ def build_move_breakdown(evidence: MoveCoachingEvidence) -> MoveBreakdown:
     )
     return MoveBreakdown(
         assessment=assessment,
+        remark=move_remark(evidence),
         played=_line(
             board,
             (evidence.played_move_uci, *evidence.played_refutation_uci),

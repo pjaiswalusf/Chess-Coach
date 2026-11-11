@@ -59,6 +59,7 @@
 	);
 	const profileHash = $derived(report?.profile_hash);
 	const engineLine = $derived(selected ?? moves[0]);
+	const coachingMove = $derived(selected ?? moves[0]);
 	const topColor = $derived(orientation === 'white' ? 'black' : 'white');
 	const navigation = $derived([
 		{ label: 'First position', icon: 'M18 5l-7 7 7 7M6 5v14', ply: 0, disabled: !selected },
@@ -174,45 +175,47 @@
 					<Button onclick={() => (flipped = !flipped)}>Flip board</Button>
 				</header>
 				<div class="space-y-4 px-4 py-4">
-					{#if selected}
-						{@const mark = moveRatings[selected.rating]}
+					{#if coachingMove}
+						{@const mark = moveRatings[coachingMove.rating]}
 						<div class="rounded-xl bg-panel p-3">
 							<div class="flex items-center gap-2">
-								<ReviewRatingIcon rating={selected.rating} />
-								<h3 class="font-bold">{notation(selected)} · {mark.label}</h3>
+								<ReviewRatingIcon rating={coachingMove.rating} />
+								<h3 class="font-bold">{notation(coachingMove)} · {mark.label}</h3>
 							</div>
 							<div class="mt-2 flex flex-wrap items-center justify-between gap-1.5">
 								<p class="text-xs text-muted" aria-live="polite">
-									{before ? 'Before' : 'After'}
-									{notation(selected)} · Ply {selected.ply}
+									{!selected || before ? 'Before' : 'After'}
+									{notation(coachingMove)} · Ply {coachingMove.ply}
 								</p>
 								<button
 									type="button"
-									onclick={() => show(selected.ply, !before)}
+									onclick={() => show(coachingMove.ply, selected ? !before : false)}
 									class="rounded px-1 py-1 text-xs font-semibold underline underline-offset-2 hover:bg-raised focus-visible:outline-2"
-									>{before ? 'Show position after move' : 'Show position before move'}</button
+									>{!selected || before
+										? 'Show position after move'
+										: 'Show position before move'}</button
 								>
 							</div>
 						</div>
 						{#if profileHash}
-							{#key `${selected.ply}:${profileHash}`}
+							{#key `${coachingMove.ply}:${profileHash}`}
 								<MoveCoaching
 									game={id}
-									ply={selected.ply}
+									ply={coachingMove.ply}
 									profile={profileHash}
 									bind:evidenceOpen={showMoveEvidence}
 								>
 									{#snippet evidence()}
-										<h4 class="sr-only">Move evidence · {notation(selected)}</h4>
+										<h4 class="sr-only">Move evidence · {notation(coachingMove)}</h4>
 
 										<dl class="mt-2 grid grid-cols-3 gap-2 text-xs tabular-nums">
 											<div>
 												<dt class="text-muted">Before</dt>
 												<dd class="font-semibold">
 													{evaluation(
-														selected.eval_before_cp_white,
-														selected.mate_before_white,
-														selected.mate_before_winner
+														coachingMove.eval_before_cp_white,
+														coachingMove.mate_before_white,
+														coachingMove.mate_before_winner
 													)}
 												</dd>
 											</div>
@@ -220,18 +223,18 @@
 												<dt class="text-muted">After</dt>
 												<dd class="font-semibold">
 													{evaluation(
-														selected.eval_after_cp_white,
-														selected.mate_after_white,
-														selected.mate_after_winner
+														coachingMove.eval_after_cp_white,
+														coachingMove.mate_after_white,
+														coachingMove.mate_after_winner
 													)}
 												</dd>
 											</div>
 											<div>
 												<dt class="text-muted">Mover loss</dt>
 												<dd class="font-semibold">
-													{selected.loss_cp === null
+													{coachingMove.loss_cp === null
 														? 'Unavailable in cp'
-														: `${selected.loss_cp} cp`}
+														: `${coachingMove.loss_cp} cp`}
 												</dd>
 											</div>
 										</dl>

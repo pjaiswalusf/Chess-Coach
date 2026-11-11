@@ -122,6 +122,7 @@ class MoveLine(EvidenceModel):
 
 
 class MoveBreakdown(EvidenceModel):
+    remark: str = ""
     assessment: str
     played: MoveLine
     alternative: MoveLine | None

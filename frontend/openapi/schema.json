@@ -1909,6 +1909,11 @@
           },
           "played": {
             "$ref": "#/components/schemas/MoveLine"
+          },
+          "remark": {
+            "default": "",
+            "title": "Remark",
+            "type": "string"
           }
         },
         "required": [

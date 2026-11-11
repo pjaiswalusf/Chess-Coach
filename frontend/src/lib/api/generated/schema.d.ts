@@ -1244,6 +1244,11 @@ export interface components {
             /** Assessment */
             assessment: string;
             played: components["schemas"]["MoveLine"];
+            /**
+             * Remark
+             * @default
+             */
+            remark: string;
         };
         /** MoveCoachingEvidence */
         MoveCoachingEvidence: {

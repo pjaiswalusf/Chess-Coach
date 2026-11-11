@@ -128,6 +128,7 @@ export const noMoveCoaching = {
 	job_id: null,
 	coach: null,
 	move_breakdown: {
+		remark: 'The king repositions to g6. But there’s a stronger continuation to consider.',
 		assessment: 'After 38... Kg6, Stockfish’s evaluation goes from +0.20 to +2.10.',
 		played: {
 			san: '38...Kg6 39. Qg2+',
