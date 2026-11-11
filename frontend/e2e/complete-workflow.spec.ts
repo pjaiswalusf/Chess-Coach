@@ -150,7 +150,9 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 		await expect(engineLine.getByText('4. Qh5', { exact: true })).toHaveAttribute('title', 'f3h5');
 		await expect(reopened.getByRole('img', { name: /Stockfish evaluations/ })).toBeVisible();
 		const moveCoaching = reopened.getByRole('region', { name: 'Move coaching' });
-		await expect(moveCoaching.getByRole('heading', { name: 'Coach’s remarks' })).toBeVisible();
+		await expect(
+			moveCoaching.getByRole('heading', { name: /^(Blunder|Mistake|Miss)$/ })
+		).toBeVisible();
 		await reopened.getByRole('button', { name: 'Get a practice tip' }).click();
 		await expect(moveCoaching.getByText('Practice this position')).toBeVisible();
 		await moveCoaching.getByText('Move evidence', { exact: true }).click();

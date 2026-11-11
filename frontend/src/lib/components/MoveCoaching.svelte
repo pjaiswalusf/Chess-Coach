@@ -1,6 +1,9 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { coachingApi, type CoachingResponse } from '#lib/api/coaching.js';
+	import type { ReviewRating } from '#lib/api/review.js';
+	import { moveRatings } from '#lib/utils/review-rating.js';
+	import ReviewRatingIcon from './ReviewRatingIcon.svelte';
 	import { coachingJob } from '#lib/coaching-job.svelte.js';
 	import Button from './ui/Button.svelte';
 
@@ -8,12 +11,14 @@
 		game,
 		ply,
 		profile,
+		rating,
 		evidence,
 		evidenceOpen = $bindable(false)
 	}: {
 		game: number;
 		ply: number;
 		profile: string;
+		rating?: ReviewRating;
 		evidence?: Snippet;
 		evidenceOpen?: boolean;
 	} = $props();
@@ -30,9 +35,20 @@
 		? 'space-y-3 rounded-2xl bg-stone-50 p-4 text-sm leading-relaxed text-stone-900 shadow-sm sm:p-5'
 		: 'space-y-3 rounded-xl border border-positive-line bg-positive-surface p-5'}
 >
-	<h3 class={evidence ? 'text-lg font-bold' : 'text-lg font-semibold'}>
-		{evidence ? 'Coach’s remarks' : `Coaching for ply ${ply}`}
-	</h3>
+	{#if rating}
+		{@const mark = moveRatings[rating]}
+		<h3
+			class={[
+				'inline-flex items-center gap-2 rounded-lg bg-stone-900 px-2.5 py-1.5 text-lg font-bold',
+				mark.tone
+			]}
+		>
+			<ReviewRatingIcon {rating} />
+			{mark.label}
+		</h3>
+	{:else}
+		<h3 class="text-lg font-semibold">Coaching for ply {ply}</h3>
+	{/if}
 	{#if result?.move_breakdown}
 		{@const breakdown = result.move_breakdown}
 		{#if evidence}

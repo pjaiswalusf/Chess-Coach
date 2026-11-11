@@ -77,7 +77,7 @@ test('keeps engine evidence and evaluation available when Ollama is down', async
 	await page.goto('/games/17?ply=2');
 	await expect(page.getByText('Before 38... Kg6 · Ply 2')).toBeVisible();
 	const remarks = page.getByRole('region', { name: 'Move coaching' });
-	await expect(remarks.getByRole('heading', { name: 'Coach’s remarks' })).toBeVisible();
+	await expect(remarks.getByRole('heading', { name: 'Blunder', exact: true })).toBeVisible();
 	await expect(
 		remarks.getByText(
 			'The king repositions to g6. But there’s a stronger continuation to consider.'
@@ -157,7 +157,7 @@ test('prepares game coaching automatically and reuses it when the review reopens
 	await expect(page.getByRole('region', { name: 'Engine best line' })).toBeHidden();
 	await coaching.getByRole('button', { name: 'Review 38... Kg6' }).click();
 	await expect(page.getByText('Before 38... Kg6 · Ply 2')).toBeVisible();
-	await expect(page.getByRole('heading', { name: 'Coach’s remarks' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Blunder', exact: true })).toBeVisible();
 	await expect(page.getByText('190 cp', { exact: true })).toBeHidden();
 	await page.reload();
 	await expect(coaching.getByText('Find a legal answer to the queen check.')).toBeVisible();
@@ -201,9 +201,7 @@ test('keeps the engine line and interactive graph beside the board on desktop', 
 	const blunder = sidebar.getByRole('button', { name: 'Kg6 Blunder' });
 	const best = sidebar.getByRole('button', { name: 'a8=Q Best' });
 	await expect(blunder).toHaveAttribute('aria-pressed', 'true');
-	await expect(
-		sidebar.getByRole('heading', { name: '38... Kg6 · Blunder', exact: true })
-	).toBeVisible();
+	await expect(sidebar.getByRole('heading', { name: 'Blunder', exact: true })).toBeVisible();
 	const plot = sidebar.getByRole('img', { name: /Stockfish evaluations/ });
 	const blunderColor = await blunder.evaluate((move) => getComputedStyle(move).color);
 	const bestColor = await best.evaluate((move) => getComputedStyle(move).color);
@@ -297,7 +295,7 @@ test('shows coach remarks immediately at the starting position and after navigat
 }) => {
 	await page.goto('/games/17');
 	const remarks = page.getByRole('region', { name: 'Move coaching' });
-	await expect(remarks.getByRole('heading', { name: 'Coach’s remarks' })).toBeVisible();
+	await expect(remarks.getByRole('heading', { name: 'Best', exact: true })).toBeVisible();
 	await expect(
 		remarks.getByText(
 			'The king repositions to g6. But there’s a stronger continuation to consider.'
@@ -306,7 +304,12 @@ test('shows coach remarks immediately at the starting position and after navigat
 	await expect(remarks.getByText('Move evidence', { exact: true })).toBeVisible();
 	await expect(remarks.getByText('38...Kg6 39. Qg2+', { exact: true })).toBeHidden();
 	await page.getByRole('button', { name: 'Next move', exact: true }).click();
-	await expect(remarks.getByRole('heading', { name: 'Coach’s remarks' })).toBeVisible();
+	await expect(remarks.getByRole('heading', { name: 'Best', exact: true })).toBeVisible();
+	await page.getByRole('button', { name: 'Next move', exact: true }).click();
+	const blunder = remarks.getByRole('heading', { name: 'Blunder', exact: true });
+	await expect(blunder).toBeVisible();
+	await expect(blunder).toHaveClass(/text-red-400/);
+	await expect(blunder.getByText('⁇', { exact: true })).toBeVisible();
 	await page.getByRole('button', { name: 'First position', exact: true }).click();
-	await expect(remarks.getByRole('heading', { name: 'Coach’s remarks' })).toBeVisible();
+	await expect(remarks.getByRole('heading', { name: 'Best', exact: true })).toBeVisible();
 });

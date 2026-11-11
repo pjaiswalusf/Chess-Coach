@@ -3,14 +3,12 @@
 	import { getGame, getGameAnalysis, type ReviewMove } from '#lib/api/review.js';
 	import { asyncRead } from '#lib/async-read.svelte.js';
 	import { formatDate, results } from '#lib/utils/display.js';
-	import { moveRatings } from '#lib/utils/review-rating.js';
 	import BoardEvaluationBar from './BoardEvaluationBar.svelte';
 	import ChessBoard from './ChessBoard.svelte';
 	import EvaluationChart from './EvaluationChart.svelte';
 	import GameCoaching from './GameCoaching.svelte';
 	import MoveCoaching from './MoveCoaching.svelte';
 	import ReviewMoveList from './ReviewMoveList.svelte';
-	import ReviewRatingIcon from './ReviewRatingIcon.svelte';
 	import Button from './ui/Button.svelte';
 	import Card from './ui/Card.svelte';
 	import ErrorMessage from './ui/ErrorMessage.svelte';
@@ -176,13 +174,8 @@
 				</header>
 				<div class="space-y-4 px-4 py-4">
 					{#if coachingMove}
-						{@const mark = moveRatings[coachingMove.rating]}
 						<div class="rounded-xl bg-panel p-3">
-							<div class="flex items-center gap-2">
-								<ReviewRatingIcon rating={coachingMove.rating} />
-								<h3 class="font-bold">{notation(coachingMove)} · {mark.label}</h3>
-							</div>
-							<div class="mt-2 flex flex-wrap items-center justify-between gap-1.5">
+							<div class="flex flex-wrap items-center justify-between gap-1.5">
 								<p class="text-xs text-muted" aria-live="polite">
 									{!selected || before ? 'Before' : 'After'}
 									{notation(coachingMove)} · Ply {coachingMove.ply}
@@ -202,6 +195,7 @@
 								<MoveCoaching
 									game={id}
 									ply={coachingMove.ply}
+									rating={coachingMove.rating}
 									profile={profileHash}
 									bind:evidenceOpen={showMoveEvidence}
 								>
