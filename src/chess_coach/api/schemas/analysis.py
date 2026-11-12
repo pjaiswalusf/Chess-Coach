@@ -1,7 +1,7 @@
 """Explicit public contracts for completed-game analysis."""
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -94,3 +94,32 @@ class MoveResponse(BaseModel):
     loss_cp: int | None
     pv_json: list[str]
     evidence_kind: str = "single_pass_estimate"
+
+
+class ReviewVariationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    profile_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
+    ply: int = Field(ge=0, strict=True)
+    line: list[Annotated[str, Field(pattern=r"^[a-h][1-8][a-h][1-8][qrbn]?$")]] = Field(
+        max_length=256
+    )
+    evaluate: bool = False
+
+
+class ReviewVariationEvaluation(BaseModel):
+    cp: int | None
+    mate: int | None
+    white_wins: bool | None
+    best_move: str | None
+    continuation: str
+    engine: str | None
+
+
+class ReviewVariationResponse(BaseModel):
+    fen: str
+    side_to_move: Literal["white", "black"]
+    legal_moves: list[str]
+    san: str | None
+    outcome: Literal["1-0", "0-1", "1/2-1/2"] | None
+    evaluation: ReviewVariationEvaluation | None

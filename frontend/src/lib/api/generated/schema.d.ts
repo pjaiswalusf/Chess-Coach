@@ -315,6 +315,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/games/{game_id}/review/variation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replay and optionally evaluate a variation of an analyzed completed game */
+        post: operations["review_variation_api_v1_games__game_id__review_variation_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/player": {
         parameters: {
             query?: never;
@@ -957,6 +974,8 @@ export interface components {
             game_id: number;
             /** Initial Fen */
             initial_fen: string | null;
+            /** Legal Moves By Ply */
+            legal_moves_by_ply: string[][];
             /** Moves */
             moves: components["schemas"]["ReviewMove"][];
             /** Profile Hash */
@@ -1617,6 +1636,52 @@ export interface components {
          * @enum {string}
          */
         ReviewRating: "brilliant" | "great" | "best" | "book" | "excellent" | "good" | "inaccuracy" | "mistake" | "miss" | "blunder";
+        /** ReviewVariationEvaluation */
+        ReviewVariationEvaluation: {
+            /** Best Move */
+            best_move: string | null;
+            /** Continuation */
+            continuation: string;
+            /** Cp */
+            cp: number | null;
+            /** Engine */
+            engine: string | null;
+            /** Mate */
+            mate: number | null;
+            /** White Wins */
+            white_wins: boolean | null;
+        };
+        /** ReviewVariationRequest */
+        ReviewVariationRequest: {
+            /**
+             * Evaluate
+             * @default false
+             */
+            evaluate: boolean;
+            /** Line */
+            line: string[];
+            /** Ply */
+            ply: number;
+            /** Profile Hash */
+            profile_hash: string;
+        };
+        /** ReviewVariationResponse */
+        ReviewVariationResponse: {
+            evaluation: components["schemas"]["ReviewVariationEvaluation"] | null;
+            /** Fen */
+            fen: string;
+            /** Legal Moves */
+            legal_moves: string[];
+            /** Outcome */
+            outcome: ("1-0" | "0-1" | "1/2-1/2") | null;
+            /** San */
+            san: string | null;
+            /**
+             * Side To Move
+             * @enum {string}
+             */
+            side_to_move: "white" | "black";
+        };
         /** RunGame */
         RunGame: {
             /** Attempt Count */
@@ -4085,6 +4150,96 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MotifResponse"];
+                };
+            };
+            /** @description Invalid local Host header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Untrusted browser origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflicting operation or configuration */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Local dependency unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    review_variation_api_v1_games__game_id__review_variation_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Persistent database integer ID */
+                game_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewVariationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewVariationResponse"];
                 };
             };
             /** @description Invalid local Host header */

@@ -1,4 +1,4 @@
-"""Local HTTP transport. Workers own all historical engine/import execution."""
+"""Local HTTP transport. Workers own historical batch analysis and imports."""
 
 import logging
 import re

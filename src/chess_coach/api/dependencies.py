@@ -8,6 +8,7 @@ from threading import Lock
 from time import monotonic
 from typing import Annotated
 
+import chess
 import httpx
 from fastapi import Depends
 from sqlalchemy import Engine
@@ -27,8 +28,10 @@ from chess_coach.application.system import (
     overall_status,
 )
 from chess_coach.application.training import TrainingService, practice_counts
+from chess_coach.application.variations import VariationService
 from chess_coach.config import Settings, get_settings
 from chess_coach.domain.coaching_models import LLMHealth
+from chess_coach.domain.engine_types import EngineResult
 from chess_coach.infrastructure.analysis_lock import worker_is_locked
 from chess_coach.infrastructure.chesscom.client import ChessComClient
 from chess_coach.infrastructure.persistence.analysis_repository import (
@@ -58,6 +61,7 @@ from chess_coach.infrastructure.system.probes import probe_ollama, probe_stockfi
 
 _probe_lock = Lock()
 _probe_cache: tuple[tuple[str, str, str], float, SystemStatus] | None = None
+_variation_search_lock = Lock()
 
 
 def get_system_status(
@@ -144,6 +148,44 @@ def get_job_service(
         queries.store,
         SyncRepository(queries.store.sessions, settings.database_path),
     )
+
+
+def get_variation_search(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> Callable[[chess.Board], EngineResult]:
+    from chess_coach.infrastructure.engine.stockfish_adapter import StockfishAdapter
+
+    def search(board: chess.Board) -> EngineResult:
+        if not _variation_search_lock.acquire(blocking=False):
+            raise OperationError(
+                "VARIATION_ENGINE_BUSY",
+                "Stockfish is evaluating another position. Retry shortly.",
+            )
+        try:
+            interactive = settings.model_copy(
+                update={
+                    "stockfish_threads": 1,
+                    "stockfish_hash_mb": min(settings.stockfish_hash_mb, 32),
+                    "stockfish_search_seconds": min(
+                        settings.stockfish_search_seconds, 0.35
+                    ),
+                }
+            )
+            with StockfishAdapter(interactive) as engine:
+                return engine.analyze(board)
+        finally:
+            _variation_search_lock.release()
+
+    return search
+
+
+def get_variation_service(
+    queries: Annotated[QueryService, Depends(get_query_service)],
+    search: Annotated[
+        Callable[[chess.Board], EngineResult], Depends(get_variation_search)
+    ],
+) -> VariationService:
+    return VariationService(queries.store, search)
 
 
 def get_system_report(

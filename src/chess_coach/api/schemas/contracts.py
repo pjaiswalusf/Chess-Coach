@@ -139,6 +139,7 @@ class GameAnalysisResponse(BaseModel):
     analysis_version: str | None
     initial_fen: str | None
     moves: list[ReviewMove]
+    legal_moves_by_ply: list[list[str]]
 
 
 class AnalyticsFilters(BaseModel):
