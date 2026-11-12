@@ -8,6 +8,8 @@
 	import EvaluationChart from './EvaluationChart.svelte';
 	import MoveCoaching from './MoveCoaching.svelte';
 	import ReviewMoveList from './ReviewMoveList.svelte';
+	import ReviewVariation from './ReviewVariation.svelte';
+	import { reviewVariation } from './review-variation.svelte.js';
 	import Button from './ui/Button.svelte';
 	import Card from './ui/Card.svelte';
 	import ErrorMessage from './ui/ErrorMessage.svelte';
@@ -46,6 +48,9 @@
 	const selected = $derived(moves.find((move) => move.ply === (selection?.ply ?? requestedPly)));
 	const before = $derived(selection?.before ?? requestedPly > 0);
 	const position = $derived(selected ? selected.ply - Number(before) : 0);
+	const fen = $derived(
+		selected ? (before ? selected.fen_before : selected.fen_after) : report?.initial_fen
+	);
 	const trackedColor = $derived(recorded?.player_color ?? 'white');
 	const orientation = $derived(
 		flipped ? (trackedColor === 'white' ? 'black' : 'white') : trackedColor
@@ -57,20 +62,61 @@
 	const engineLine = $derived(selected ?? moves[0]);
 	const coachingMove = $derived(selected ?? moves[0]);
 	const topColor = $derived(orientation === 'white' ? 'black' : 'white');
+	const variation = reviewVariation(
+		() => ({
+			id,
+			profile: profileHash,
+			ply: position,
+			legal: report?.legal_moves_by_ply?.[position] ?? [],
+			recordedMove: moves[position]?.played_move_uci
+		}),
+		() => show(position + 1)
+	);
+	const branchEvaluation = $derived(variation.current?.evaluation);
+	const boardScore = $derived(
+		variation.cursor === 0
+			? scores[position]
+			: branchEvaluation
+				? {
+						cp: branchEvaluation.cp,
+						mate: branchEvaluation.mate,
+						whiteWins: branchEvaluation.white_wins
+					}
+				: undefined
+	);
+	const promotionNames: Record<string, string> = {
+		q: 'Queen',
+		r: 'Rook',
+		b: 'Bishop',
+		n: 'Knight'
+	};
 	const navigation = $derived([
-		{ label: 'First position', icon: 'M18 5l-7 7 7 7M6 5v14', ply: 0, disabled: !selected },
-		{ label: 'Previous move', icon: 'M15 5l-7 7 7 7', ply: position - 1, disabled: position === 0 },
+		{
+			label: 'First position',
+			icon: 'M18 5l-7 7 7 7M6 5v14',
+			action: () => show(0),
+			disabled: !selected && !variation.active
+		},
+		{
+			label: 'Previous move',
+			icon: 'M15 5l-7 7 7 7',
+			action: () =>
+				variation.cursor > 0 ? variation.jump(variation.cursor - 1) : show(position - 1),
+			disabled: variation.cursor === 0 ? position === 0 : variation.moving
+		},
 		{
 			label: 'Next move',
 			icon: 'M9 5l7 7-7 7',
-			ply: position + 1,
-			disabled: position >= moves.length
+			action: () => (variation.active ? variation.jump(variation.cursor + 1) : show(position + 1)),
+			disabled: variation.active
+				? variation.moving || variation.cursor >= variation.nodes.length
+				: position >= moves.length
 		},
 		{
 			label: 'Final position',
 			icon: 'M6 5l7 7-7 7m12-14v14',
-			ply: moves.length,
-			disabled: position >= moves.length
+			action: () => show(moves.length),
+			disabled: !variation.active && position >= moves.length
 		}
 	]);
 	const notation = (move: ReviewMove) =>
@@ -83,7 +129,10 @@
 		return cp === null ? 'Unavailable' : `${cp > 0 ? '+' : ''}${cp} cp`;
 	}
 	function show(ply: number, before = false) {
-		if (ply >= 0 && ply <= moves.length) selection = { ply, before };
+		if (ply >= 0 && ply <= moves.length) {
+			variation.reset();
+			selection = { ply, before };
+		}
 	}
 </script>
 
@@ -123,7 +172,7 @@
 				>
 			</div>
 		</Card>
-	{:else if report.initial_fen !== null}
+	{:else if fen}
 		{#if !selection && requestedPly > 0 && !selected}
 			<p role="status">The linked ply is unavailable. Showing the starting position.</p>
 		{/if}
@@ -135,23 +184,41 @@
 				<div
 					class="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-2 sm:grid-cols-[2rem_minmax(0,1fr)] sm:gap-3"
 				>
-					<BoardEvaluationBar score={scores[position]} {orientation} />
+					<BoardEvaluationBar score={boardScore} {orientation} />
 					<ChessBoard
-						fen={selected
-							? before
-								? selected.fen_before
-								: selected.fen_after
-							: report.initial_fen}
+						fen={variation.current?.fen ?? fen}
 						{orientation}
-						lastMove={before ? null : selected?.played_move_uci}
-						lastMoveRating={before ? undefined : selected?.rating}
-						bestMove={before ? selected?.best_move_uci : null}
+						lastMove={variation.lastMove ?? (before ? null : selected?.played_move_uci)}
+						lastMoveRating={before || variation.cursor > 0 ? undefined : selected?.rating}
+						bestMove={variation.cursor === 0 && before ? selected?.best_move_uci : null}
 						review
+						selectSquare={variation.selectSquare}
+						selected={variation.from ? [variation.from] : []}
+						legalDestinations={variation.destinations}
+						draggableSquares={variation.sources}
+						onDragSource={variation.dragSource}
+						onDropMove={variation.chooseMove}
+						disabled={!variation.legal.length || variation.moving || !!variation.promotions.length}
 					/>
 				</div>
 				{@render player(orientation)}
 				<div class="mt-3 pl-9 sm:pl-11">
 					{@render moveNavigation()}
+					{#if variation.promotions.length}
+						<div role="group" aria-label="Choose promotion piece" class="mt-2 flex flex-wrap gap-2">
+							{#each variation.promotions as move (move)}
+								<Button disabled={variation.moving} onclick={() => variation.play(move)}>
+									{promotionNames[move[4]]}
+								</Button>
+							{/each}
+							<Button disabled={variation.moving} onclick={variation.cancelPromotion}
+								>Cancel promotion</Button
+							>
+						</div>
+					{/if}
+					{#if variation.moveError}
+						<p role="alert" class="mt-2 text-sm text-warning">{variation.moveError}</p>
+					{/if}
 				</div>
 			</section>
 
@@ -171,83 +238,95 @@
 					<Button onclick={() => (flipped = !flipped)}>Flip board</Button>
 				</header>
 				<div class="space-y-4 px-4 py-4">
-					{#if coachingMove}
-						<div class="rounded-xl bg-panel p-3">
-							<div class="flex flex-wrap items-center justify-between gap-1.5">
-								<p class="text-xs text-muted" aria-live="polite">
-									{!selected || before ? 'Before' : 'After'}
-									{notation(coachingMove)} · Ply {coachingMove.ply}
-								</p>
-								<button
-									type="button"
-									onclick={() => show(coachingMove.ply, selected ? !before : false)}
-									class="rounded px-1 py-1 text-xs font-semibold underline underline-offset-2 hover:bg-raised focus-visible:outline-2"
-									>{!selected || before
-										? 'Show position after move'
-										: 'Show position before move'}</button
-								>
-							</div>
-						</div>
-						{#if profileHash}
-							{#key `${coachingMove.ply}:${profileHash}`}
-								<MoveCoaching
-									game={id}
-									ply={coachingMove.ply}
-									rating={coachingMove.rating}
-									profile={profileHash}
-								/>
-							{/key}
-						{/if}
-					{/if}
-
-					<details class="space-y-2 rounded-lg border border-line px-3 py-2">
-						<summary class="cursor-pointer text-sm font-semibold">Engine best line</summary>
-						<section aria-label="Engine best line" class="space-y-2">
-							<div class="flex min-h-7 flex-wrap items-center justify-end gap-2">
-								{#if engineLine?.best_move_uci}
+					{#if variation.active}
+						<ReviewVariation
+							{variation}
+							rootScore={scores[position]}
+							rootBest={moves[position]?.best_move_uci ?? null}
+							rootContinuation={moves[position]?.pv_san ?? ''}
+						/>
+					{:else}
+						{#if coachingMove}
+							<div class="rounded-xl bg-panel p-3">
+								<div class="flex flex-wrap items-center justify-between gap-1.5">
+									<p class="text-xs text-muted" aria-live="polite">
+										{!selected || before ? 'Before' : 'After'}
+										{notation(coachingMove)} · Ply {coachingMove.ply}
+									</p>
 									<button
 										type="button"
-										onclick={() => show(engineLine.ply, true)}
-										aria-pressed={before && selected?.ply === engineLine.ply}
-										class="rounded-md border border-positive-line bg-positive-surface px-2.5 py-1 text-xs font-semibold text-accent hover:bg-raised focus-visible:outline-2 focus-visible:outline-accent"
-										>Show best move</button
+										onclick={() => show(coachingMove.ply, selected ? !before : false)}
+										class="rounded px-1 py-1 text-xs font-semibold underline underline-offset-2 hover:bg-raised focus-visible:outline-2"
+										>{!selected || before
+											? 'Show position after move'
+											: 'Show position before move'}</button
 									>
-								{/if}
+								</div>
 							</div>
-							<div
-								role="region"
-								aria-label="Engine continuation"
-								class="flex h-16 items-start gap-2 overflow-y-auto rounded-md bg-panel p-2.5 text-sm focus-visible:outline-2 focus-visible:outline-accent"
-							>
-								{#if engineLine?.pv_san}
-									<span
-										class="shrink-0 rounded bg-square-light px-1.5 py-0.5 text-xs font-bold text-square-ink tabular-nums"
-									>
-										{evaluation(
-											engineLine.eval_before_cp_white,
-											engineLine.mate_before_white,
-											engineLine.mate_before_winner
-										)}
-									</span>
-									<p
-										class="min-w-0 font-mono leading-relaxed wrap-anywhere"
-										title={engineLine.pv_json.join(' ')}
-									>
-										{engineLine.pv_san}
-									</p>
-								{:else}
-									<p class="text-muted">No engine line is available for this position.</p>
-								{/if}
-							</div>
-							<p class="min-h-4 text-xs text-muted">
-								{#if engineLine?.pv_san}
-									From before {notation(engineLine)} · White perspective
-								{/if}
-							</p>
-						</section>
-					</details>
+							{#if profileHash}
+								{#key `${coachingMove.ply}:${profileHash}`}
+									<MoveCoaching
+										game={id}
+										ply={coachingMove.ply}
+										rating={coachingMove.rating}
+										profile={profileHash}
+									/>
+								{/key}
+							{/if}
+						{/if}
 
-					<ReviewMoveList {moves} selected={selected?.ply} onSelect={show} />
+						<details class="space-y-2 rounded-lg border border-line px-3 py-2">
+							<summary class="cursor-pointer text-sm font-semibold">Engine best line</summary>
+							<section aria-label="Engine best line" class="space-y-2">
+								<div class="flex min-h-7 flex-wrap items-center justify-end gap-2">
+									{#if engineLine?.best_move_uci}
+										<button
+											type="button"
+											onclick={() => show(engineLine.ply, true)}
+											aria-pressed={before && selected?.ply === engineLine.ply}
+											class="rounded-md border border-positive-line bg-positive-surface px-2.5 py-1 text-xs font-semibold text-accent hover:bg-raised focus-visible:outline-2 focus-visible:outline-accent"
+											>Show best move</button
+										>
+									{/if}
+								</div>
+								<div
+									role="region"
+									aria-label="Engine continuation"
+									class="flex h-16 items-start gap-2 overflow-y-auto rounded-md bg-panel p-2.5 text-sm focus-visible:outline-2 focus-visible:outline-accent"
+								>
+									{#if engineLine?.pv_san}
+										<span
+											class="shrink-0 rounded bg-square-light px-1.5 py-0.5 text-xs font-bold text-square-ink tabular-nums"
+										>
+											{evaluation(
+												engineLine.eval_before_cp_white,
+												engineLine.mate_before_white,
+												engineLine.mate_before_winner
+											)}
+										</span>
+										<p
+											class="min-w-0 font-mono leading-relaxed wrap-anywhere"
+											title={engineLine.pv_json.join(' ')}
+										>
+											{engineLine.pv_san}
+										</p>
+									{:else}
+										<p class="text-muted">No engine line is available for this position.</p>
+									{/if}
+								</div>
+								<p class="min-h-4 text-xs text-muted">
+									{#if engineLine?.pv_san}
+										From before {notation(engineLine)} · White perspective
+									{/if}
+								</p>
+							</section>
+						</details>
+					{/if}
+					<ReviewMoveList
+						{moves}
+						selected={variation.active ? undefined : selected?.ply}
+						onSelect={show}
+					/>
 					<EvaluationChart {moves} {scores} {position} onSelect={show} />
 				</div>
 
@@ -288,7 +367,7 @@
 				aria-label={control.label}
 				title={control.label}
 				disabled={control.disabled}
-				onclick={() => show(control.ply)}
+				onclick={control.action}
 				class={[
 					'grid min-h-11 place-items-center rounded-lg border border-b-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-45',
 					control.label === 'Previous move' || control.label === 'Next move'

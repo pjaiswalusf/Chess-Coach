@@ -1062,6 +1062,16 @@
             ],
             "title": "Initial Fen"
           },
+          "legal_moves_by_ply": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Legal Moves By Ply",
+            "type": "array"
+          },
           "moves": {
             "items": {
               "$ref": "#/components/schemas/ReviewMove"
@@ -1099,7 +1109,8 @@
           "engine_version",
           "analysis_version",
           "initial_fen",
-          "moves"
+          "moves",
+          "legal_moves_by_ply"
         ],
         "title": "GameAnalysisResponse",
         "type": "object"
@@ -3008,15 +3019,194 @@
           "great",
           "best",
           "book",
+          "excellent",
           "good",
           "inaccuracy",
           "mistake",
           "miss",
-          "blunder",
-          "unrated"
+          "blunder"
         ],
         "title": "ReviewRating",
         "type": "string"
+      },
+      "ReviewVariationEvaluation": {
+        "properties": {
+          "best_move": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Move"
+          },
+          "continuation": {
+            "title": "Continuation",
+            "type": "string"
+          },
+          "cp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cp"
+          },
+          "engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine"
+          },
+          "mate": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mate"
+          },
+          "white_wins": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "White Wins"
+          }
+        },
+        "required": [
+          "cp",
+          "mate",
+          "white_wins",
+          "best_move",
+          "continuation",
+          "engine"
+        ],
+        "title": "ReviewVariationEvaluation",
+        "type": "object"
+      },
+      "ReviewVariationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "evaluate": {
+            "default": false,
+            "title": "Evaluate",
+            "type": "boolean"
+          },
+          "line": {
+            "items": {
+              "pattern": "^[a-h][1-8][a-h][1-8][qrbn]?$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "title": "Line",
+            "type": "array"
+          },
+          "ply": {
+            "minimum": 0.0,
+            "title": "Ply",
+            "type": "integer"
+          },
+          "profile_hash": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Profile Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_hash",
+          "ply",
+          "line"
+        ],
+        "title": "ReviewVariationRequest",
+        "type": "object"
+      },
+      "ReviewVariationResponse": {
+        "properties": {
+          "evaluation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewVariationEvaluation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fen": {
+            "title": "Fen",
+            "type": "string"
+          },
+          "legal_moves": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Legal Moves",
+            "type": "array"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "enum": [
+                  "1-0",
+                  "0-1",
+                  "1/2-1/2"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "san": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "San"
+          },
+          "side_to_move": {
+            "enum": [
+              "white",
+              "black"
+            ],
+            "title": "Side To Move",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fen",
+          "side_to_move",
+          "legal_moves",
+          "san",
+          "outcome",
+          "evaluation"
+        ],
+        "title": "ReviewVariationResponse",
+        "type": "object"
       },
       "RunGame": {
         "properties": {
@@ -7579,6 +7769,121 @@
         "summary": "Request Motif",
         "tags": [
           "coaching"
+        ]
+      }
+    },
+    "/api/v1/games/{game_id}/review/variation": {
+      "post": {
+        "operationId": "review_variation_api_v1_games__game_id__review_variation_post",
+        "parameters": [
+          {
+            "description": "Persistent database integer ID",
+            "in": "path",
+            "name": "game_id",
+            "required": true,
+            "schema": {
+              "description": "Persistent database integer ID",
+              "exclusiveMinimum": 0,
+              "title": "Game Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewVariationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewVariationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Replay and optionally evaluate a variation of an analyzed completed game",
+        "tags": [
+          "games and player"
         ]
       }
     },

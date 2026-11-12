@@ -14,6 +14,10 @@
 		review = false,
 		selectSquare,
 		selected = [],
+		legalDestinations = [],
+		draggableSquares = [],
+		onDragSource,
+		onDropMove,
 		disabled = false
 	}: {
 		fen: string;
@@ -24,6 +28,10 @@
 		review?: boolean;
 		selectSquare?: (square: string) => void;
 		selected?: string[];
+		legalDestinations?: string[];
+		draggableSquares?: string[];
+		onDragSource?: (square: string) => void;
+		onDropMove?: (from: string, to: string) => void;
 		disabled?: boolean;
 	} = $props();
 
@@ -46,6 +54,7 @@
 	const played = $derived(endpoints(lastMove));
 	const suggested = $derived(endpoints(bestMove));
 	const mark = $derived(lastMoveRating ? moveRatings[lastMoveRating] : null);
+	let dragSource: string | undefined;
 </script>
 
 {#if squares}
@@ -75,6 +84,9 @@
 				{@const isRatedDestination = !!mark && square.coordinate === played[1]}
 				{@const isSuggested = suggested.includes(square.coordinate)}
 				{@const isSelected = selected.includes(square.coordinate)}
+				{@const isDestination = legalDestinations.includes(square.coordinate)}
+				{@const description = `${square.label}${isPlayed ? ' · Played move' : ''}${isSuggested ? ' · Engine suggestion' : ''}${isRatedDestination ? ' · ' + mark?.label : ''}`}
+				{@const canDrag = !disabled && draggableSquares.includes(square.coordinate)}
 				{@const classes = [
 					'relative grid min-h-0 min-w-0 place-items-center',
 					isSelected
@@ -87,6 +99,42 @@
 									? 'bg-square-dark'
 									: 'bg-square-light'
 				]}
+				{#snippet contents()}
+					<span class="sr-only">{description}</span>
+					{#if isPlayed && mark}
+						<span
+							aria-hidden="true"
+							class={['pointer-events-none absolute inset-0 bg-current opacity-65', mark.tone]}
+						></span>
+					{/if}
+					{@render pieceImage(piece)}
+					{#if isRatedDestination && lastMoveRating}
+						<span
+							title={mark?.label}
+							class="absolute top-0.5 right-0.5 origin-top-right scale-75 leading-none sm:scale-100"
+						>
+							<ReviewRatingIcon rating={lastMoveRating} />
+						</span>
+					{/if}
+					{#if isDestination}
+						<span
+							aria-hidden="true"
+							class={[
+								'pointer-events-none absolute',
+								piece
+									? 'inset-0 rounded-full border-4 border-square-ink/50'
+									: 'size-1/3 rounded-full bg-square-ink/45'
+							]}
+						></span>
+					{/if}
+					{#if review}
+						{@render coordinates(
+							square.coordinate,
+							square.dark && !isPlayed && !isSuggested && !isSelected,
+							index
+						)}
+					{/if}
+				{/snippet}
 				{#if selectSquare}
 					<button
 						type="button"
@@ -96,56 +144,37 @@
 							'focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-square-ink enabled:cursor-pointer enabled:hover:brightness-110'
 						]}
 						data-square={square.coordinate}
-						aria-label={square.label}
+						title={square.label}
+						aria-label={isDestination ? `${description} · Legal destination` : description}
 						aria-pressed={isSelected}
+						draggable={canDrag}
 						onclick={() => selectSquare?.(square.coordinate)}
+						ondragstart={(event) => {
+							if (!canDrag || !event.dataTransfer) {
+								event.preventDefault();
+								return;
+							}
+							dragSource = square.coordinate;
+							event.dataTransfer.effectAllowed = 'move';
+							event.dataTransfer.setData('text/plain', square.coordinate);
+							onDragSource?.(square.coordinate);
+						}}
+						ondragend={() => (dragSource = undefined)}
+						ondragover={(event) => {
+							if (dragSource && !disabled && isDestination) event.preventDefault();
+						}}
+						ondrop={(event) => {
+							if (!dragSource || disabled || !isDestination) return;
+							event.preventDefault();
+							onDropMove?.(dragSource, square.coordinate);
+							dragSource = undefined;
+						}}
 					>
-						{@render pieceImage(piece)}
+						{@render contents()}
 					</button>
 				{:else}
 					<div class={classes} data-square={square.coordinate} title={square.label}>
-						<span class="sr-only"
-							>{square.label}{isPlayed ? ' · Played move' : ''}{isSuggested
-								? ' · Engine suggestion'
-								: ''}{isRatedDestination ? ' · ' + mark?.label : ''}</span
-						>
-						{#if isPlayed && mark}
-							<span
-								aria-hidden="true"
-								class={['pointer-events-none absolute inset-0 bg-current opacity-65', mark.tone]}
-							></span>
-						{/if}
-						{@render pieceImage(piece)}
-						{#if isRatedDestination && lastMoveRating}
-							<span
-								title={mark?.label}
-								class="absolute top-0.5 right-0.5 origin-top-right scale-75 leading-none sm:scale-100"
-							>
-								<ReviewRatingIcon rating={lastMoveRating} />
-							</span>
-						{/if}
-						{#if review}
-							{@const coordinateColor =
-								square.dark && !isPlayed && !isSuggested ? 'text-square-light' : 'text-square-ink'}
-							{#if index % 8 === 0}
-								<span
-									aria-hidden="true"
-									class={[
-										'pointer-events-none absolute top-0.5 left-1 text-[0.65rem] font-bold sm:text-xs',
-										coordinateColor
-									]}>{square.coordinate[1]}</span
-								>
-							{/if}
-							{#if index >= 56}
-								<span
-									aria-hidden="true"
-									class={[
-										'pointer-events-none absolute right-1 bottom-0.5 text-[0.65rem] font-bold sm:text-xs',
-										coordinateColor
-									]}>{square.coordinate[0]}</span
-								>
-							{/if}
-						{/if}
+						{@render contents()}
 					</div>
 				{/if}
 			{/each}
@@ -175,5 +204,27 @@
 			draggable="false"
 			class="pointer-events-none relative size-[94%] object-contain select-none"
 		/>
+	{/if}
+{/snippet}
+
+{#snippet coordinates(coordinate: string, dark: boolean, index: number)}
+	{@const color = dark ? 'text-square-light' : 'text-square-ink'}
+	{#if index % 8 === 0}
+		<span
+			aria-hidden="true"
+			class={[
+				'pointer-events-none absolute top-0.5 left-1 text-[0.65rem] font-bold sm:text-xs',
+				color
+			]}>{coordinate[1]}</span
+		>
+	{/if}
+	{#if index >= 56}
+		<span
+			aria-hidden="true"
+			class={[
+				'pointer-events-none absolute right-1 bottom-0.5 text-[0.65rem] font-bold sm:text-xs',
+				color
+			]}>{coordinate[0]}</span
+		>
 	{/if}
 {/snippet}

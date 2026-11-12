@@ -2,6 +2,8 @@
 
 from collections.abc import Callable
 
+import chess
+
 from chess_coach.analytics.contracts import AnalyticsReport, AnalyticsRequest
 from chess_coach.analytics.sample_policy import severity
 from chess_coach.analytics.service import AnalyticsService
@@ -68,7 +70,18 @@ class QueryService:
         for move in moves:
             loss = move["loss_cp"]
             move["severity"] = severity(loss if isinstance(loss, int) else None)
-        return game | {"moves": moves}
+        legal_moves_by_ply: list[list[str]] = []
+        if isinstance(initial_fen := game["initial_fen"], str):
+            board = chess.Board(initial_fen)
+            for index in range(len(moves) + 1):
+                legal_moves_by_ply.append(
+                    []
+                    if board.is_game_over(claim_draw=False)
+                    else [move.uci() for move in board.legal_moves]
+                )
+                if index < len(moves):
+                    board.push_uci(str(moves[index]["played_move_uci"]))
+        return game | {"moves": moves, "legal_moves_by_ply": legal_moves_by_ply}
 
     def report(
         self, window: str, color: str, time_class: str, profile: str | None

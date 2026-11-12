@@ -4,7 +4,11 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Path, Query
 
-from chess_coach.api.dependencies import get_query_service
+from chess_coach.api.dependencies import get_query_service, get_variation_service
+from chess_coach.api.schemas.analysis import (
+    ReviewVariationRequest,
+    ReviewVariationResponse,
+)
 from chess_coach.api.schemas.contracts import (
     GameAnalysisResponse,
     GameDetail,
@@ -14,6 +18,7 @@ from chess_coach.api.schemas.contracts import (
     TimeClass,
 )
 from chess_coach.application.queries import QueryService
+from chess_coach.application.variations import VariationPosition, VariationService
 
 router = APIRouter(prefix="/api/v1", tags=["games and player"])
 Service = Annotated[QueryService, Depends(get_query_service)]
@@ -81,3 +86,18 @@ def game_analysis(
     ] = None,
 ) -> dict[str, object]:
     return service.game_analysis(game_id, profile_hash)
+
+
+@router.post(
+    "/games/{game_id}/review/variation",
+    response_model=ReviewVariationResponse,
+    summary="Replay and optionally evaluate a variation of an analyzed completed game",
+)
+def review_variation(
+    game_id: PositiveID,
+    body: ReviewVariationRequest,
+    service: Annotated[VariationService, Depends(get_variation_service)],
+) -> VariationPosition:
+    return service.position(
+        game_id, body.profile_hash, body.ply, body.line, evaluate=body.evaluate
+    )

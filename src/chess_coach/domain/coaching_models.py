@@ -101,10 +101,9 @@ class MoveCoachingEvidence(EvidenceModel):
     @staticmethod
     def _check_pv_outcome(board: chess.Board, score: EngineScore) -> None:
         outcome = board.outcome(claim_draw=False)
-        if outcome and (
-            outcome.winner != score.mate_winner
-            or (outcome.winner is None and score.cp_white != 0)
-        ):
+        # The score estimates the root position. A centipawn estimate need
+        # not equal the exact score of a draw reached later in the line.
+        if outcome and outcome.winner != score.mate_winner:
             raise ValueError("Terminal variation contradicts the engine score")
 
     @staticmethod

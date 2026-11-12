@@ -445,8 +445,9 @@ def test_previous_errors_survive_recovery(setup_sync, sessions):
 def test_source_evidence_backfill_keeps_pgn_immutable(setup_sync, sessions):
     source, _store, service = setup_sync
     service.sync("testplayer")
+    source.not_modified = True
     with sessions.begin() as session:
-        first = session.scalar(select(Game).order_by(Game.id))
+        first = session.scalar(select(Game).order_by(Game.id.desc()))
         first_id, raw = first.id, first.raw_pgn
         assert first.source_evidence["white_result"] == "win"
         first.source_evidence = None

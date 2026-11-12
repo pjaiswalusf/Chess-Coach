@@ -8,7 +8,9 @@ from chess_coach.analytics.review import ReviewRating, rate_move
 @pytest.mark.parametrize(
     ("loss", "rating"),
     [
-        (None, ReviewRating.UNRATED),
+        (0, ReviewRating.EXCELLENT),
+        (10, ReviewRating.EXCELLENT),
+        (11, ReviewRating.GOOD),
         (29, ReviewRating.GOOD),
         (30, ReviewRating.INACCURACY),
         (79, ReviewRating.INACCURACY),
@@ -91,5 +93,33 @@ def test_miss_requires_a_different_move_that_loses_a_forced_mate():
             chess.WHITE,
             before_mate_winner=chess.WHITE,
         )
-        == ReviewRating.UNRATED
+        == ReviewRating.EXCELLENT
+    )
+
+
+@pytest.mark.parametrize(
+    ("before_winner", "after_winner", "rating"),
+    [
+        (None, chess.WHITE, ReviewRating.BLUNDER),
+        (chess.WHITE, chess.WHITE, ReviewRating.GOOD),
+        (chess.WHITE, None, ReviewRating.EXCELLENT),
+        (None, chess.BLACK, ReviewRating.EXCELLENT),
+    ],
+)
+def test_black_non_best_moves_are_rated_across_mate_transitions(
+    before_winner, after_winner, rating
+):
+    board = chess.Board()
+    board.push_san("e4")
+    assert (
+        rate_move(
+            board,
+            board.parse_san("e5"),
+            [board.parse_san("c5")],
+            None,
+            0 if after_winner is None else None,
+            after_winner,
+            before_mate_winner=before_winner,
+        )
+        == rating
     )

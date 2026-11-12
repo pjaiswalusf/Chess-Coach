@@ -57,6 +57,11 @@ export const gameAnalysis: GameAnalysis = {
 	initial_fen: initial,
 	engine_version: 'Fixture engine',
 	analysis_version: 'single-v1',
+	legal_moves_by_ply: [
+		['h1h2', 'h1g2', 'h1g1', 'a7a8q', 'a7a8r', 'a7a8b', 'a7a8n'],
+		['h7g7', 'h7h6', 'h7g6'],
+		['a8a7', 'a8g8', 'h1h2']
+	],
 	moves: [
 		first,
 		{

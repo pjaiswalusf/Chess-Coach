@@ -137,6 +137,22 @@ def test_terminal_draw_and_mate(setup_engine):
     engine.analyse.assert_not_called()
 
 
+def test_engine_line_stops_at_automatic_draw_without_changing_root_score(setup_engine):
+    adapter, engine, _ = setup_engine
+    board = chess.Board("4k3/8/8/8/8/8/4b3/4K3 w - - 0 1")
+    # Add material so the starting position is playable. Capturing the
+    # bishop then leaves the kings and a single knight.
+    board.set_piece_at(chess.A1, chess.Piece(chess.KNIGHT, chess.WHITE))
+    engine.analyse.return_value.update(
+        score=chess.engine.PovScore(chess.engine.Cp(-6), chess.WHITE),
+        pv=[chess.Move.from_uci(uci) for uci in ("e1e2", "e8d8")],
+    )
+    with adapter:
+        result = adapter.analyze(board)
+    assert result.pv_uci == ("e1e2",)
+    assert result.score_cp_white == -6
+
+
 def test_serialization(setup_engine):
     adapter, engine, _ = setup_engine
     entered, release, second = Event(), Event(), Event()
