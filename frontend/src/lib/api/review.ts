@@ -58,12 +58,12 @@ function validMove(move: ReviewMove, id: number, ply: number, profile: string, b
 			'great',
 			'best',
 			'book',
+			'excellent',
 			'good',
 			'inaccuracy',
 			'mistake',
 			'miss',
-			'blunder',
-			'unrated'
+			'blunder'
 		].includes(move.rating) &&
 		(move.loss_cp === null || (Number.isSafeInteger(move.loss_cp) && move.loss_cp >= 0)) &&
 		(move.severity === null ||

@@ -3008,12 +3008,12 @@
           "great",
           "best",
           "book",
+          "excellent",
           "good",
           "inaccuracy",
           "mistake",
           "miss",
-          "blunder",
-          "unrated"
+          "blunder"
         ],
         "title": "ReviewRating",
         "type": "string"

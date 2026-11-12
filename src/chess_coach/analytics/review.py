@@ -14,12 +14,12 @@ class ReviewRating(StrEnum):
     GREAT = "great"
     BEST = "best"
     BOOK = "book"
+    EXCELLENT = "excellent"
     GOOD = "good"
     INACCURACY = "inaccuracy"
     MISTAKE = "mistake"
     MISS = "miss"
     BLUNDER = "blunder"
-    UNRATED = "unrated"
 
 
 _OTHER_MOVES = {
@@ -27,7 +27,6 @@ _OTHER_MOVES = {
     Severity.SIGNIFICANT: ReviewRating.MISTAKE,
     Severity.MINOR: ReviewRating.INACCURACY,
     Severity.NORMAL: ReviewRating.GOOD,
-    None: ReviewRating.UNRATED,
 }
 
 
@@ -44,7 +43,7 @@ def rate_move(
 ) -> ReviewRating:
     """Rate a played move and engine line that have already been checked for legality."""
     if not line:
-        return ReviewRating.UNRATED
+        raise ValueError("A reviewed move requires a verified engine line")
     mover = before.turn
     if played != line[0] and before_mate_winner == mover and after_mate_winner != mover:
         return ReviewRating.MISS
@@ -52,6 +51,21 @@ def rate_move(
     if in_book and band == Severity.NORMAL:
         return ReviewRating.BOOK
     if played != line[0]:
+        if band is None:
+            # Mate evaluations have no centipawn loss. Compare the forced
+            # outcomes without assigning an artificial numeric score to mate.
+            if after_mate_winner == (not mover):
+                return (
+                    ReviewRating.GOOD
+                    if before_mate_winner == after_mate_winner
+                    else ReviewRating.BLUNDER
+                )
+            if after_mate_winner == mover or before_mate_winner == (not mover):
+                return ReviewRating.EXCELLENT
+            raise ValueError("A reviewed move requires centipawn or mate evidence")
+        # A near-best alternative gets its own label within the normal band.
+        if band == Severity.NORMAL and loss_cp is not None and loss_cp <= 10:
+            return ReviewRating.EXCELLENT
         return _OTHER_MOVES[band]
 
     after = before.copy(stack=False)

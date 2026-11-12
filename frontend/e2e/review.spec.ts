@@ -269,8 +269,8 @@ test('shows coach remarks immediately at the starting position and after navigat
 	await page.getByRole('button', { name: 'Next move', exact: true }).click();
 	const blunder = remarks.getByRole('heading', { name: 'Blunder', exact: true });
 	await expect(blunder).toBeVisible();
-	await expect(blunder).toHaveClass(/text-red-400/);
-	await expect(blunder.getByText('⁇', { exact: true })).toBeVisible();
+	await expect(blunder).toHaveClass(/#fa412d/);
+	await expect(blunder.getByText('??', { exact: true })).toBeVisible();
 	await page.getByRole('button', { name: 'First position', exact: true }).click();
 	await expect(remarks.getByRole('heading', { name: 'Best', exact: true })).toBeVisible();
 });

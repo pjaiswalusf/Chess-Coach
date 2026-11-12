@@ -1616,7 +1616,7 @@ export interface components {
          * ReviewRating
          * @enum {string}
          */
-        ReviewRating: "brilliant" | "great" | "best" | "book" | "good" | "inaccuracy" | "mistake" | "miss" | "blunder" | "unrated";
+        ReviewRating: "brilliant" | "great" | "best" | "book" | "excellent" | "good" | "inaccuracy" | "mistake" | "miss" | "blunder";
         /** RunGame */
         RunGame: {
             /** Attempt Count */
