@@ -26,8 +26,14 @@ _ERRORS = (chess.engine.EngineError, TimeoutError, OSError)
 
 
 class StockfishAdapter:
-    def __init__(self, settings: Settings | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        *,
+        protocol: type[EvidenceProtocol] = EvidenceProtocol,
+    ) -> None:
         self.settings = (settings or Settings()).model_copy(deep=True)
+        self._protocol = protocol
         self._engine: chess.engine.SimpleEngine | None = None
         self._lock = RLock()
         self._closing = False
@@ -49,7 +55,7 @@ class StockfishAdapter:
                 )
             try:
                 self._engine = chess.engine.SimpleEngine.popen(
-                    EvidenceProtocol,
+                    self._protocol,
                     path,
                     timeout=self.settings.stockfish_timeout_seconds,
                 )
@@ -120,6 +126,15 @@ class StockfishAdapter:
                 "Puzzle verification requires multiple legal choices"
             )
         return self._search(board, nodes=nodes, multipv=multipv)
+
+    def analyze_review_lines(self, board: chess.Board) -> list[EngineResult]:
+        if board.legal_moves.count() >= 2:
+            try:
+                return self._search(board, nodes=None, multipv=2)
+            except UnstablePuzzleEvidenceError:
+                # The short search can end before a comparable pair is available.
+                pass
+        return [self.analyze(board)]
 
     def _search(
         self,

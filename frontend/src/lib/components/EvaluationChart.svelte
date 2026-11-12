@@ -3,7 +3,12 @@
 	import { evaluationLabel, type PositionScore } from '#lib/utils/display.js';
 	import { moveRatings } from '#lib/utils/review-rating.js';
 
-	const swingThresholdCp = 80;
+	const swingThresholdCp = 200;
+	const maxSwingMarks = 6;
+	const plotWidth = 400;
+	const plotHeight = 108;
+	const markerInset = 5;
+	const traceClip = $props.id();
 
 	let {
 		moves = [],
@@ -19,12 +24,14 @@
 		onSelect: (ply: number) => void;
 	} = $props();
 	const length = $derived(variationMoves?.length ?? moves.length);
-	const scale = $derived(Math.max(100, ...scores.map(({ cp }) => Math.abs(cp ?? 0))));
-	const x = (ply: number) => 5 + (390 * ply) / Math.max(1, length);
+	const x = (ply: number) => (plotWidth * ply) / Math.max(1, length);
+	const markerX = (value: number) =>
+		Math.max(markerInset, Math.min(plotWidth - markerInset, value));
 	const points = $derived(
 		scores.map(({ cp, mate, whiteWins }, ply) => {
-			if (variationMoves && mate !== null) return { x: x(ply), y: whiteWins ? 7 : 101 };
-			return cp === null ? null : { x: x(ply), y: 54 - (45 * cp) / scale };
+			if (mate !== null && whiteWins !== null) return { x: x(ply), y: whiteWins ? 0 : plotHeight };
+			// Use the same display scale in every game and reserve the edges for mate.
+			return cp === null ? null : { x: x(ply), y: 54 - 45 * Math.tanh(cp / 500) };
 		})
 	);
 	const line = $derived(
@@ -36,27 +43,34 @@
 		points
 			.map((point, ply) => {
 				if (!point) return '';
-				const start = points[ply - 1] ? '' : `M${point.x} 108`;
-				const end = points[ply + 1] ? '' : `L${point.x} 108Z`;
+				const start = points[ply - 1] ? '' : `M${point.x} ${plotHeight}`;
+				const end = points[ply + 1] ? '' : `L${point.x} ${plotHeight}Z`;
 				return `${start}L${point.x} ${point.y}${end}`;
 			})
 			.join(' ')
 	);
-	const swingMarks = $derived(
-		moves.map((move) => {
-			const before = move.eval_before_cp_white;
-			const after = move.eval_after_cp_white;
-			const beforeMate = move.mate_before_winner;
-			const afterMate = move.mate_after_winner;
+	const swingMarks = $derived.by(() => {
+		const candidates = moves.flatMap((move, index) => {
+			const before = scores[index];
+			const after = scores[index + 1];
+			const from = points[index];
+			const to = points[index + 1];
+			if (!from || !to) return [];
 			const significant =
-				before !== null && after !== null
-					? Math.abs(after - before) >= swingThresholdCp
-					: (before !== null || beforeMate !== null) &&
-						(after !== null || afterMate !== null) &&
-						beforeMate !== afterMate;
-			return significant ? moveRatings[move.rating] : null;
-		})
-	);
+				before.cp !== null && after.cp !== null
+					? Math.abs(after.cp - before.cp) >= swingThresholdCp
+					: before.whiteWins !== after.whiteWins;
+			return significant
+				? [{ ply: index + 1, distance: Math.abs(to.y - from.y), mark: moveRatings[move.rating] }]
+				: [];
+		});
+		return new Map(
+			candidates
+				.sort((left, right) => right.distance - left.distance)
+				.slice(0, maxSwingMarks)
+				.map(({ ply, mark }) => [ply, mark])
+		);
+	});
 	const current = $derived(scores[position]);
 	const scoreLabel = $derived(
 		current ? evaluationLabel(current.cp, current.mate, current.whiteWins) : 'Unavailable'
@@ -88,12 +102,12 @@
 			</span>
 		{/if}
 	</div>
-	{#if scores.some(({ cp, mate }) => cp !== null || mate !== null)}
+	{#if points.some((point) => point !== null)}
 		<div
 			class="relative overflow-hidden rounded-lg border border-line bg-raised focus-within:ring-2 focus-within:ring-accent"
 		>
 			<svg
-				viewBox="0 0 400 108"
+				viewBox={`0 0 ${plotWidth} ${plotHeight}`}
 				preserveAspectRatio="none"
 				role="img"
 				aria-label={variationMoves
@@ -101,33 +115,49 @@
 					: 'Stockfish evaluations from the initial position to the final ply'}
 				class="h-27 w-full"
 			>
-				<path d={area} class="fill-neutral-100" />
-				<line x1="0" x2="400" y1="54" y2="54" class="stroke-neutral-500" stroke-dasharray="4 3" />
+				<defs>
+					<clipPath id={traceClip}>
+						<!-- Keep the white trace from painting a strip at the bottom during Black mate. -->
+						<rect width={plotWidth} height={plotHeight - 1} />
+					</clipPath>
+				</defs>
+				<path d={area} data-series="evaluation-fill" class="fill-neutral-100" />
+				<line
+					x1="0"
+					x2={plotWidth}
+					y1="54"
+					y2="54"
+					class="stroke-neutral-500"
+					stroke-dasharray="4 3"
+				/>
 				<path
 					d={line}
+					data-series="evaluation"
 					fill="none"
 					class="stroke-white"
+					clip-path={`url(#${traceClip})`}
 					stroke-width="1.5"
 					vector-effect="non-scaling-stroke"
 				/>
 				<line
-					x1={x(position)}
-					x2={x(position)}
+					x1={markerX(x(position))}
+					x2={markerX(x(position))}
 					y1="0"
-					y2="108"
-					class={['stroke-current', swingMarks[position - 1]?.tone ?? 'text-stone-300']}
+					y2={plotHeight}
+					class={['stroke-current', swingMarks.get(position)?.tone ?? 'text-stone-300']}
 					stroke-width="2"
 					vector-effect="non-scaling-stroke"
 				/>
-				{#each scores as score, ply (ply)}
+				{#each points as point, ply (ply)}
 					{@const move = moves[ply - 1]}
-					{@const mark = swingMarks[ply - 1]}
-					{@const y = score.mate !== null ? (score.whiteWins ? 7 : 101) : points[ply]?.y}
-					{#if y !== undefined && (variationMoves || mark || position === ply)}
+					{@const mark = swingMarks.get(ply)}
+					{@const isolated = !points[ply - 1] && !points[ply + 1]}
+					{#if point && (variationMoves || mark || position === ply || isolated)}
 						<circle
 							data-ply={ply}
-							cx={x(ply)}
-							cy={y}
+							data-swing={mark ? '' : undefined}
+							cx={markerX(point.x)}
+							cy={Math.max(markerInset, Math.min(plotHeight - markerInset, point.y))}
 							r={position === ply ? 4.5 : 2.75}
 							class={['fill-current stroke-neutral-900', mark?.tone ?? 'text-stone-300']}
 							stroke-width="0.8"
@@ -160,8 +190,9 @@
 		<p class="text-xs text-muted">
 			Above center favors White.
 			{#if !variationMoves}
-				Colored dots mark swings of {swingThresholdCp / 100} pawns or more, or a forced mate gained or
-				lost.
+				Up to {maxSwingMarks} colored dots mark the largest swings of at least {swingThresholdCp /
+					100}
+				pawns or a change in forced mate.
 			{/if}
 		</p>
 	{:else}

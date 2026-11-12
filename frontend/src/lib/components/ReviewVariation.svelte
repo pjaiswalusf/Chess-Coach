@@ -3,28 +3,18 @@
 	import type { PositionScore } from '#lib/utils/display.js';
 	import EvaluationChart from './EvaluationChart.svelte';
 	import type { reviewVariation } from './review-variation.svelte.js';
-	import Button from './ui/Button.svelte';
-	import ErrorMessage from './ui/ErrorMessage.svelte';
 
 	let {
 		variation,
-		rootScore,
-		rootBest,
-		rootContinuation
+		rootScore
 	}: {
 		variation: ReturnType<typeof reviewVariation>;
 		rootScore: PositionScore | undefined;
-		rootBest: string | null;
-		rootContinuation: string;
 	} = $props();
 
 	const emptyScore: PositionScore = { cp: null, mate: null, whiteWins: null };
 	const current = $derived(variation.current);
-	const evaluation = $derived(current?.evaluation);
-	const bestMove = $derived(variation.cursor === 0 ? rootBest : evaluation?.best_move);
-	const continuation = $derived(
-		variation.cursor === 0 ? rootContinuation : evaluation?.continuation
-	);
+
 	const names = $derived(variation.nodes.map((node) => node?.san ?? ''));
 	const scores = $derived([
 		rootScore ?? emptyScore,
@@ -62,26 +52,6 @@
 		{/each}
 	</div>
 
-	{#if current?.error}
-		<ErrorMessage
-			title="Evaluation unavailable."
-			message={current.error}
-			retry={variation.retryEvaluation}
-		/>
-	{:else if current && !evaluation}
-		<p role="status" class="text-sm text-muted">Stockfish is evaluating this position…</p>
-	{:else if bestMove && continuation}
-		<section aria-label="Variation engine line" class="space-y-2 rounded-lg bg-panel p-3">
-			<h4 class="text-sm font-semibold">Engine best line</h4>
-			<p class="font-mono text-sm wrap-anywhere">{continuation}</p>
-			<Button
-				disabled={variation.moving ||
-					!!variation.promotions.length ||
-					!variation.legal.includes(bestMove)}
-				onclick={() => bestMove && variation.play(bestMove)}>Play best move</Button
-			>
-		</section>
-	{/if}
 	<EvaluationChart
 		variationMoves={names}
 		{scores}

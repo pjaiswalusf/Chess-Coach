@@ -87,7 +87,6 @@ test('keeps engine evidence and evaluation available when Ollama is down', async
 	).toBeVisible();
 	await expect(remarks.getByText('190 cp', { exact: true })).toBeHidden();
 	await expect(remarks.getByText('38...Kg6 39. Qg2+', { exact: true })).toBeHidden();
-	await page.getByText('Engine best line', { exact: true }).click();
 	await expect(remarks.getByRole('button', { name: 'Get a practice tip' })).toHaveCount(0);
 	await expect(remarks.getByText('Start Ollama', { exact: false })).toHaveCount(0);
 	await expect(remarks.getByText('Possible continuation after this move')).toHaveCount(0);
@@ -151,10 +150,9 @@ test('keeps the engine line and interactive graph beside the board on desktop', 
 	await page.goto('/games/17');
 	const board = page.getByRole('group', { name: /Chessboard/ });
 	const sidebar = page.getByRole('complementary', { name: 'Game analysis' });
-	const engineLine = sidebar.getByRole('region', { name: 'Engine best line' });
+	const engineLine = sidebar.getByRole('region', { name: 'Engine lines' });
 	const graph = sidebar.getByRole('slider', { name: 'Jump to position on evaluation graph' });
-	await expect(engineLine).toBeHidden();
-	await sidebar.getByText('Engine best line', { exact: true }).click();
+	await expect(engineLine).toBeVisible();
 	await expect(engineLine.getByText('38. a8=Q', { exact: true })).toBeVisible();
 	const boardBox = (await board.boundingBox())!;
 	const panelBox = (await sidebar.boundingBox())!;
@@ -186,13 +184,15 @@ test('keeps the engine line and interactive graph beside the board on desktop', 
 	const blunderColor = await blunder.evaluate((move) => getComputedStyle(move).color);
 	const bestColor = await best.evaluate((move) => getComputedStyle(move).color);
 	expect(blunderColor).not.toBe(bestColor);
-	await expect(plot.locator('[data-ply="2"]')).toHaveCSS('fill', blunderColor);
+	await expect(plot.locator('[data-ply="2"]')).toBeVisible();
+	await expect(plot.locator('[data-ply="2"]')).not.toHaveCSS('fill', blunderColor);
+	await expect(plot.locator('[data-swing]')).toHaveCount(0);
 	await expect(plot.locator('[data-ply="1"]')).toHaveCount(0);
 	await expect(board.getByTitle('g6: Black king', { exact: true })).toBeVisible();
-	await expect(engineLine.getByText('38... Kg7', { exact: true })).toBeVisible();
+	await expect(engineLine.getByText('38... Kg7', { exact: true })).toHaveCount(0);
 
-	await engineLine.getByRole('button', { name: 'Show best move' }).click();
-	await expect(board.getByText('g7: empty · Engine suggestion', { exact: true })).toHaveCount(1);
+	await page.getByRole('button', { name: 'Previous move' }).click();
+	await expect(engineLine.getByText('38... Kg7', { exact: true })).toBeVisible();
 	await expect(graph).toHaveAttribute(
 		'aria-valuetext',
 		'After ply 1, a8=Q · Best · +0.20 (White perspective)'
@@ -207,28 +207,142 @@ test('keeps the engine line and interactive graph beside the board on desktop', 
 	);
 });
 
-test('keeps the engine line the same height as continuations get longer', async ({ page }) => {
-	const longLine =
-		'38...Kg7 39. Qc8 Kh7 40. Kh2 Kh6 41. Qe6+ Kg7 42. Qh6+ Kf7 43. Kg3 Ke8 44. Qf6 Kd7 45. Qd4+ Kc7 46. Qb4 Kc8 47. Qa5 Kb7 48. Qa7+ Kxa7';
+test('plots the recorded game through forced mate without stretching its score scale', async ({
+	page
+}) => {
+	await page.goto('/games/17');
+	const plot = page.getByRole('img', { name: /Stockfish evaluations from/ });
+	const start = plot.locator('[data-ply="0"]');
+	await expect(start).toBeVisible();
+	const startY = await start.getAttribute('cy');
+
+	const [first, second] = gameAnalysis.moves;
 	await page.route('**/api/v1/games/17/analysis*', (route) =>
 		route.fulfill({
 			json: {
 				...gameAnalysis,
-				moves: [gameAnalysis.moves[0], { ...gameAnalysis.moves[1], pv_san: longLine }]
+				moves: [
+					{ ...first, eval_after_cp_white: 1400 },
+					{
+						...second,
+						eval_before_cp_white: 1400,
+						eval_after_cp_white: null,
+						mate_after_white: 1,
+						mate_after_winner: true
+					}
+				]
+			}
+		})
+	);
+	await page.reload();
+	await expect(start).toHaveAttribute('cy', startY!);
+	const path = plot.locator('[data-series="evaluation"]');
+	await expect(path).toHaveAttribute('d', /^M0 \S+ L200 \S+ L400 0$/);
+	await expect(plot.locator('[data-series="evaluation-fill"]')).toHaveAttribute(
+		'd',
+		/^M0 108L0 \S+ L200 \S+ L400 0L400 108Z$/
+	);
+	await expect(start).toHaveAttribute('cx', '5');
+	await expect(plot.locator('[data-swing]')).toHaveCount(2);
+	await page.getByRole('button', { name: 'Final position' }).click();
+	await expect(plot.locator('[data-ply="2"]')).toHaveAttribute('cx', '395');
+	await expect(
+		page.getByRole('slider', { name: 'Jump to position on evaluation graph' })
+	).toHaveAttribute('aria-valuetext', /White mates in 1/);
+});
+
+test('shows no white area while Black has a forced mate', async ({ page }) => {
+	const [first, second] = gameAnalysis.moves;
+	await page.route('**/api/v1/games/17/analysis*', (route) =>
+		route.fulfill({
+			json: {
+				...gameAnalysis,
+				moves: [
+					{
+						...first,
+						eval_after_cp_white: null,
+						mate_after_white: -2,
+						mate_after_winner: false
+					},
+					{
+						...second,
+						eval_before_cp_white: null,
+						mate_before_white: -2,
+						mate_before_winner: false,
+						eval_after_cp_white: null,
+						mate_after_white: -1,
+						mate_after_winner: false
+					}
+				]
 			}
 		})
 	);
 	await page.goto('/games/17');
-	await page.getByText('Engine best line', { exact: true }).click();
-	const engineLine = page.getByRole('region', { name: 'Engine best line' });
-	const shortHeight = (await engineLine.boundingBox())!.height;
-	await page.getByRole('button', { name: 'Final position' }).click();
-	const continuation = engineLine.getByRole('region', { name: 'Engine continuation' });
-	await expect(continuation).toContainText(longLine);
-	expect((await engineLine.boundingBox())!.height).toBe(shortHeight);
-	expect(await continuation.evaluate((element) => element.scrollHeight)).toBeGreaterThan(
-		await continuation.evaluate((element) => element.clientHeight)
+	const plot = page.getByRole('img', { name: /Stockfish evaluations from/ });
+	await expect(plot.locator('[data-series="evaluation-fill"]')).toHaveAttribute(
+		'd',
+		/L200 108 L400 108L400 108Z$/
 	);
+	await page.getByRole('button', { name: 'Next move', exact: true }).click();
+	await expect(plot.locator('[data-ply="1"]')).toHaveAttribute('cy', '103');
+	await expect(
+		page.getByRole('slider', { name: 'Jump to position on evaluation graph' })
+	).toHaveAttribute('aria-valuetext', /Black mates in 2/);
+});
+
+test('shows two compact ranked engine lines for the displayed position', async ({ page }) => {
+	const longLine =
+		'38... Kg7 39. Qc8 Kh7 40. Kh2 Kh6 41. Qe6+ Kg7 42. Qh6+ Kf7 43. Kg3 Ke8 44. Qf6 Kd7 45. Qd4+ Kc7 46. Qb4 Kc8 47. Qa5 Kb7 48. Qa7+ Kxa7';
+	await page.setViewportSize({ width: 375, height: 750 });
+	await page.route('**/api/v1/games/17/review/variation', (route) => {
+		const { ply, line } = route.request().postDataJSON();
+		expect(line).toEqual([]);
+		const root = ply === 0;
+		return route.fulfill({
+			json: {
+				fen: root ? gameAnalysis.initial_fen : gameAnalysis.moves[0].fen_after,
+				side_to_move: root ? 'white' : 'black',
+				san: null,
+				outcome: null,
+				legal_moves: gameAnalysis.legal_moves_by_ply[ply],
+				evaluation: {
+					cp: 82,
+					mate: null,
+					white_wins: null,
+					best_move: root ? 'a7a8q' : 'h7g7',
+					continuation: root ? '38. a8=Q' : longLine,
+					engine: 'Fixture Stockfish',
+					alternatives: [
+						{
+							cp: root ? 20 : 150,
+							mate: null,
+							white_wins: null,
+							best_move: root ? 'a7a8r' : 'h7g6',
+							continuation: root ? '38. a8=R' : '38... Kg6'
+						}
+					]
+				}
+			}
+		});
+	});
+	await page.goto('/games/17');
+	const engineLines = page.getByRole('region', { name: 'Engine lines' });
+	const first = engineLines.getByRole('group', { name: 'Best continuation' });
+	const second = engineLines.getByRole('group', { name: 'Second continuation' });
+	await expect(first).toHaveText('38. a8=Q');
+	await expect(second).toHaveText('38. a8=R');
+	const height = (await engineLines.boundingBox())!.height;
+	await page.getByRole('button', { name: 'Next move', exact: true }).click();
+	await expect(first).toHaveText(longLine);
+	await expect(second).toHaveText('38... Kg6');
+	expect((await engineLines.boundingBox())!.height).toBe(height);
+	expect(await first.evaluate((row) => row.scrollWidth)).toBeGreaterThan(
+		await first.evaluate((row) => row.clientWidth)
+	);
+	await engineLines.getByRole('button', { name: 'Play second engine move' }).click();
+	await expect(
+		page.getByRole('group', { name: /Chessboard/ }).getByTitle('g6: Black king')
+	).toBeVisible();
 });
 
 test('keeps pending game metadata visible and refuses invalid FEN', async ({ page }) => {
@@ -309,6 +423,8 @@ test('plays a variation from the review board and traces each position independe
 
 	await page.route('**/api/v1/games/17/review/variation', async (route) => {
 		const request = route.request().postDataJSON();
+		if (!request.line.length)
+			return route.fulfill({ status: 503, json: { message: 'Engine unavailable.' } });
 		expect(request.ply).toBe(1);
 		expect(request.profile_hash).toBe(gameAnalysis.profile_hash);
 		const length = request.line.length;
@@ -348,7 +464,8 @@ test('plays a variation from the review board and traces each position independe
 							white_wins: null,
 							best_move: position.legal_moves[0],
 							continuation: length === 1 ? '39. Qa7+' : '39... Kh6',
-							engine: 'Fixture Stockfish'
+							engine: 'Fixture Stockfish',
+							alternatives: []
 						}
 					: null
 			}
@@ -368,7 +485,9 @@ test('plays a variation from the review board and traces each position independe
 	await expect(square('a7')).toHaveAccessibleName(/a7: White queen/);
 	await expect(bar).toHaveAccessibleName('Position evaluation unavailable');
 	releaseFirstEvaluation();
-	await expect(page.getByRole('alert')).toContainText('Check Stockfish');
+	await expect(
+		page.getByRole('region', { name: 'Engine lines' }).getByText('Check Stockfish and retry.')
+	).toBeVisible();
 	await expect(bar).toHaveAccessibleName('Position evaluation unavailable');
 	await page.getByRole('button', { name: 'Retry' }).click();
 	await expect(bar).toHaveAccessibleName('Position evaluation: +1.50 (White perspective)');
@@ -402,6 +521,8 @@ test('plays a variation from the review board and traces each position independe
 test('offers underpromotion when exploring a custom starting position', async ({ page }) => {
 	await page.route('**/api/v1/games/17/review/variation', async (route) => {
 		const { ply, line } = route.request().postDataJSON();
+		if (!line.length)
+			return route.fulfill({ status: 503, json: { message: 'Engine unavailable.' } });
 		expect(ply).toBe(0);
 		expect(line).toEqual(['a7a8n']);
 		return route.fulfill({
@@ -417,7 +538,8 @@ test('offers underpromotion when exploring a custom starting position', async ({
 					white_wins: null,
 					best_move: null,
 					continuation: '',
-					engine: null
+					engine: null,
+					alternatives: []
 				}
 			}
 		});
@@ -428,4 +550,45 @@ test('offers underpromotion when exploring a custom starting position', async ({
 	await page.getByRole('button', { name: 'Knight' }).click();
 	await expect(page.getByRole('button', { name: /a8: White knight/ })).toBeVisible();
 	await expect(page.getByText('Variation ended · 1/2-1/2')).toBeVisible();
+});
+
+test('plays an engine move when an older backend omits the second line', async ({ page }) => {
+	await page.route('**/api/v1/games/17/review/variation', (route) => {
+		const { ply, line, evaluate } = route.request().postDataJSON();
+		expect(ply).toBe(1);
+		if (line.length) expect(line).toEqual(['h7g7']);
+		return route.fulfill({
+			json: {
+				fen: line.length ? 'Q7/6k1/8/8/8/8/8/7K w - - 1 39' : gameAnalysis.moves[0].fen_after,
+				side_to_move: line.length ? 'white' : 'black',
+				legal_moves: line.length ? ['a8a7', 'a8g8'] : gameAnalysis.legal_moves_by_ply[ply],
+				san: line.length ? 'Kg7' : null,
+				outcome: null,
+				evaluation: evaluate
+					? {
+							cp: line.length ? 54 : 20,
+							mate: null,
+							white_wins: null,
+							best_move: line.length ? 'a8a7' : 'h7g7',
+							continuation: line.length ? '39. Qa7+' : '38... Kg7',
+							engine: 'Fixture Stockfish'
+						}
+					: null
+			}
+		});
+	});
+
+	await page.goto('/games/17?ply=2');
+	const engineLines = page.getByRole('region', { name: 'Engine lines' });
+	await expect(
+		engineLines.getByText('Restart Chess Coach to load both engine lines.')
+	).toBeVisible();
+	await engineLines.getByRole('button', { name: 'Play best move' }).click();
+	await expect(
+		page.getByRole('group', { name: /Chessboard/ }).getByTitle('g7: Black king')
+	).toBeVisible();
+	await expect(engineLines.getByText('39. Qa7+', { exact: true })).toBeVisible();
+	await expect(engineLines.getByText('The backend returned an unexpected response.')).toHaveCount(
+		0
+	);
 });

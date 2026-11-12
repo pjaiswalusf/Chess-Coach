@@ -1583,6 +1583,19 @@ export interface components {
          * @enum {string}
          */
         ReportStatus: "COMPLETE" | "PARTIAL" | "INSUFFICIENT_DATA" | "DATA_ERROR" | "NO_GAMES";
+        /** ReviewEngineLine */
+        ReviewEngineLine: {
+            /** Best Move */
+            best_move: string | null;
+            /** Continuation */
+            continuation: string;
+            /** Cp */
+            cp: number | null;
+            /** Mate */
+            mate: number | null;
+            /** White Wins */
+            white_wins: boolean | null;
+        };
         /** ReviewMove */
         ReviewMove: {
             /** Best Move Uci */
@@ -1638,6 +1651,8 @@ export interface components {
         ReviewRating: "brilliant" | "great" | "best" | "book" | "excellent" | "good" | "inaccuracy" | "mistake" | "miss" | "blunder";
         /** ReviewVariationEvaluation */
         ReviewVariationEvaluation: {
+            /** Alternatives */
+            alternatives: components["schemas"]["ReviewEngineLine"][];
             /** Best Move */
             best_move: string | null;
             /** Continuation */

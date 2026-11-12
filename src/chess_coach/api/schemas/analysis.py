@@ -107,13 +107,17 @@ class ReviewVariationRequest(BaseModel):
     evaluate: bool = False
 
 
-class ReviewVariationEvaluation(BaseModel):
+class ReviewEngineLine(BaseModel):
     cp: int | None
     mate: int | None
     white_wins: bool | None
     best_move: str | None
     continuation: str
+
+
+class ReviewVariationEvaluation(ReviewEngineLine):
     engine: str | None
+    alternatives: list[ReviewEngineLine]
 
 
 class ReviewVariationResponse(BaseModel):

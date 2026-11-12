@@ -7,8 +7,13 @@ export type ReviewMove = Schemas['ReviewMove'];
 export type ReviewRating = Schemas['ReviewRating'];
 export type GameAnalysis = Schemas['GameAnalysisResponse'];
 export type GameDetail = Schemas['GameDetail'];
-export type VariationPosition = Schemas['ReviewVariationResponse'];
-export type VariationEvaluation = Schemas['ReviewVariationEvaluation'];
+export type ReviewEngineLine = Schemas['ReviewEngineLine'];
+export type VariationEvaluation = Omit<Schemas['ReviewVariationEvaluation'], 'alternatives'> & {
+	alternatives?: ReviewEngineLine[];
+};
+export type VariationPosition = Omit<Schemas['ReviewVariationResponse'], 'evaluation'> & {
+	evaluation: VariationEvaluation | null;
+};
 
 export const isProfile = (value: unknown): value is string =>
 	typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
@@ -141,7 +146,20 @@ export async function getVariationPosition(
 		(evaluation.cp === null && evaluation.mate === null) ||
 		typeof evaluation.continuation !== 'string' ||
 		(evaluation.engine !== null && typeof evaluation.engine !== 'string') ||
-		(evaluation.best_move !== null && !data.legal_moves.includes(evaluation.best_move))
+		(evaluation.best_move !== null && !data.legal_moves.includes(evaluation.best_move)) ||
+		(evaluation.alternatives !== undefined &&
+			(!Array.isArray(evaluation.alternatives) ||
+				evaluation.alternatives.length > 1 ||
+				evaluation.alternatives.some(
+					(line) =>
+						!isRecord(line) ||
+						!score(line.cp, line.mate, line.white_wins) ||
+						(line.cp === null && line.mate === null) ||
+						typeof line.continuation !== 'string' ||
+						line.best_move === null ||
+						line.best_move === evaluation.best_move ||
+						!data.legal_moves.includes(line.best_move)
+				)))
 	)
 		throw invalidResponse();
 	return data;

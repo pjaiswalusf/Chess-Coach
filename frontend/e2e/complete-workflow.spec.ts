@@ -145,9 +145,8 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 		await expect(reopened.getByRole('group', { name: /Chessboard/ })).toBeVisible();
 		await reopened.getByRole('button', { name: '4. Ne2 — Critical error' }).click();
 		await expect(reopened.getByText('Before 4. Ne2 · Ply 7')).toBeVisible();
-		await reopened.getByText('Engine best line', { exact: true }).click();
-		const engineLine = reopened.getByRole('region', { name: 'Engine best line' });
-		await expect(engineLine.getByText('4. Qh5', { exact: true })).toHaveAttribute('title', 'f3h5');
+		const engineLines = reopened.getByRole('region', { name: 'Engine lines' });
+		await expect(engineLines.getByRole('group', { name: 'Best continuation' })).toBeVisible();
 		await expect(reopened.getByRole('img', { name: /Stockfish evaluations/ })).toBeVisible();
 		const moveCoaching = reopened.getByRole('region', { name: 'Move coaching' });
 		await expect(

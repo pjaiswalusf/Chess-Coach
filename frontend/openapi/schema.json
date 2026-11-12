@@ -2831,6 +2831,67 @@
         "title": "ReportStatus",
         "type": "string"
       },
+      "ReviewEngineLine": {
+        "properties": {
+          "best_move": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Move"
+          },
+          "continuation": {
+            "title": "Continuation",
+            "type": "string"
+          },
+          "cp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cp"
+          },
+          "mate": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mate"
+          },
+          "white_wins": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "White Wins"
+          }
+        },
+        "required": [
+          "cp",
+          "mate",
+          "white_wins",
+          "best_move",
+          "continuation"
+        ],
+        "title": "ReviewEngineLine",
+        "type": "object"
+      },
       "ReviewMove": {
         "properties": {
           "best_move_uci": {
@@ -3031,6 +3092,13 @@
       },
       "ReviewVariationEvaluation": {
         "properties": {
+          "alternatives": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewEngineLine"
+            },
+            "title": "Alternatives",
+            "type": "array"
+          },
           "best_move": {
             "anyOf": [
               {
@@ -3097,7 +3165,8 @@
           "white_wins",
           "best_move",
           "continuation",
-          "engine"
+          "engine",
+          "alternatives"
         ],
         "title": "ReviewVariationEvaluation",
         "type": "object"

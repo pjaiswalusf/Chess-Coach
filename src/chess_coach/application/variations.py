@@ -16,13 +16,18 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class VariationEvaluation:
+class EngineLine:
     cp: int | None
     mate: int | None
     white_wins: bool | None
     best_move: str | None
     continuation: str
+
+
+@dataclass(frozen=True)
+class VariationEvaluation(EngineLine):
     engine: str | None
+    alternatives: list[EngineLine]
 
 
 @dataclass(frozen=True)
@@ -37,7 +42,9 @@ class VariationPosition:
 
 class VariationService:
     def __init__(
-        self, store: QueryRepository, search: Callable[[chess.Board], EngineResult]
+        self,
+        store: QueryRepository,
+        search: Callable[[chess.Board], list[EngineResult]],
     ) -> None:
         self.store, self.search = store, search
 
@@ -92,20 +99,35 @@ class VariationService:
                 None,
                 "",
                 None,
+                [],
             )
         elif evaluate:
             try:
-                result = self.search(board)
-                validate_result(board, result, result.engine_name)
+                results = self.search(board)
+                if not 1 <= len(results) <= 2 or len(
+                    {result.best_move_uci for result in results}
+                ) != len(results):
+                    raise ValueError("Invalid ranked review lines")
+                result, *alternatives = results
+                for candidate in results:
+                    validate_result(board, candidate, result.engine_name)
                 evaluation = VariationEvaluation(
                     result.score_cp_white,
                     result.mate_white,
                     result.mate_winner,
                     result.best_move_uci,
-                    board.variation_san(
-                        [chess.Move.from_uci(uci) for uci in result.pv_uci]
-                    ),
+                    _continuation(board, result),
                     result.engine_name,
+                    [
+                        EngineLine(
+                            candidate.score_cp_white,
+                            candidate.mate_white,
+                            candidate.mate_winner,
+                            candidate.best_move_uci,
+                            _continuation(board, candidate),
+                        )
+                        for candidate in alternatives
+                    ],
                 )
             except OperationError:
                 raise
@@ -126,3 +148,7 @@ class VariationService:
             outcome.result() if outcome else None,
             evaluation,
         )
+
+
+def _continuation(board: chess.Board, result: EngineResult) -> str:
+    return board.variation_san([chess.Move.from_uci(uci) for uci in result.pv_uci])

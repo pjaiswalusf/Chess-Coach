@@ -152,10 +152,11 @@ def get_job_service(
 
 def get_variation_search(
     settings: Annotated[Settings, Depends(get_settings)],
-) -> Callable[[chess.Board], EngineResult]:
+) -> Callable[[chess.Board], list[EngineResult]]:
+    from chess_coach.infrastructure.engine.protocol import ReviewEvidenceProtocol
     from chess_coach.infrastructure.engine.stockfish_adapter import StockfishAdapter
 
-    def search(board: chess.Board) -> EngineResult:
+    def search(board: chess.Board) -> list[EngineResult]:
         if not _variation_search_lock.acquire(blocking=False):
             raise OperationError(
                 "VARIATION_ENGINE_BUSY",
@@ -171,8 +172,10 @@ def get_variation_search(
                     ),
                 }
             )
-            with StockfishAdapter(interactive) as engine:
-                return engine.analyze(board)
+            with StockfishAdapter(
+                interactive, protocol=ReviewEvidenceProtocol
+            ) as engine:
+                return engine.analyze_review_lines(board)
         finally:
             _variation_search_lock.release()
 
@@ -182,7 +185,7 @@ def get_variation_search(
 def get_variation_service(
     queries: Annotated[QueryService, Depends(get_query_service)],
     search: Annotated[
-        Callable[[chess.Board], EngineResult], Depends(get_variation_search)
+        Callable[[chess.Board], list[EngineResult]], Depends(get_variation_search)
     ],
 ) -> VariationService:
     return VariationService(queries.store, search)

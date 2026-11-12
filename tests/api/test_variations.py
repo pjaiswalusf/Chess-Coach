@@ -14,9 +14,12 @@ def test_variation_replays_recorded_history_and_keeps_review_unchanged(analyzed)
     def search(board):
         history.extend(move.uci() for move in board.move_stack)
         best = "b8c6"
-        return EngineResult(
-            board.fen(), "fixture", 42, None, None, best, (best,), 5, 100
-        )
+        return [
+            EngineResult(board.fen(), "fixture", 42, None, None, best, (best,), 5, 100),
+            EngineResult(
+                board.fen(), "fixture", 65, None, None, "g8f6", ("g8f6",), 5, 100
+            ),
+        ]
 
     app.dependency_overrides[get_variation_search] = lambda: search
     body = {"profile_hash": profile.hash, "ply": 2, "line": ["f1c4"]}
@@ -43,6 +46,15 @@ def test_variation_replays_recorded_history_and_keeps_review_unchanged(analyzed)
             "best_move": "b8c6",
             "continuation": "2...Nc6",
             "engine": "fixture",
+            "alternatives": [
+                {
+                    "cp": 65,
+                    "mate": None,
+                    "white_wins": None,
+                    "best_move": "g8f6",
+                    "continuation": "2...Nf6",
+                }
+            ],
         }
     }
     assert client.get("/api/v1/games/1/analysis").json() == before
@@ -86,5 +98,6 @@ def test_variation_repetition_and_engine_failure_are_independent(analyzed):
     assert fivefold.json()["outcome"] == "1/2-1/2"
     assert fivefold.json()["legal_moves"] == []
     assert fivefold.json()["evaluation"]["cp"] == 0
+    assert fivefold.json()["evaluation"]["alternatives"] == []
     past_draw = client.post(PATH, json=body | {"line": cycle * 4 + ["e2e4"]})
     assert past_draw.status_code == 422
