@@ -52,25 +52,17 @@
 			{:else}
 				<p>No remark about this move is available from the backend.</p>
 			{/if}
-			{#if breakdown.alternative || !breakdown.remark}
-				<p>
-					<strong class="block">Possible continuation after this move</strong>
-					{breakdown.played.key_fact}
-				</p>
-			{/if}
-			{#if breakdown.alternative}
-				<p>
-					<strong class="block">Stockfish’s alternative</strong>
-					{breakdown.alternative.key_fact}
-				</p>
-			{:else if !breakdown.remark}
-				<p class="text-muted">Stockfish also chose this move.</p>
-			{/if}
 		{:else}
 			{@render moveBreakdown(breakdown)}
 		{/if}
 	{/if}
-	{#if job.loading}<p role="status">Loading saved explanation…</p>
+	{#if job.loading}
+		<p role="status">{rating ? 'Loading move commentary…' : 'Loading saved explanation…'}</p>
+	{:else if rating}
+		{#if job.error && !result?.move_breakdown}
+			<p role="alert">Move commentary unavailable: {job.error}</p>
+			<Button onclick={job.refresh}>Retry</Button>
+		{/if}
 	{:else}
 		{#if job.error}<p role="alert">Coaching unavailable: {job.error}</p>{/if}
 		{#if result?.status === 'done' && result.coach}
@@ -97,9 +89,7 @@
 			<p role="status">Generating… {result?.message ?? 'Waiting for the local coaching worker.'}</p>
 		{:else if result?.status === 'failed'}
 			<p role="alert">{result.message} ({result.error_code})</p>
-		{:else if !job.error && !rating && !result?.move_breakdown}<p>
-				No explanation generated yet.
-			</p>{/if}
+		{:else if !job.error && !result?.move_breakdown}<p>No explanation generated yet.</p>{/if}
 		{#if result?.status !== 'done' && result?.status !== 'insufficient_evidence'}
 			<Button
 				primary
@@ -107,7 +97,7 @@
 				disabled={job.active || job.statusError}
 				loading={job.submitting}
 			>
-				{job.submitting ? 'Requesting…' : rating ? 'Get a practice tip' : 'Explain this move'}
+				{job.submitting ? 'Requesting…' : 'Explain this move'}
 			</Button>
 		{/if}
 		{#if job.statusError}<Button onclick={job.refresh}>Refresh coaching status</Button>{/if}

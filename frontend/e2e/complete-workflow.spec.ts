@@ -153,8 +153,7 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 		await expect(
 			moveCoaching.getByRole('heading', { name: /^(Blunder|Mistake|Miss)$/ })
 		).toBeVisible();
-		await reopened.getByRole('button', { name: 'Get a practice tip' }).click();
-		await expect(moveCoaching.getByText('Practice this position')).toBeVisible();
+		await expect(moveCoaching.getByRole('button', { name: 'Get a practice tip' })).toHaveCount(0);
 		await capture(reopened, 'game-review', reopened.getByRole('region', { name: 'Move coaching' }));
 
 		await navigate(reopened, 'Coach');

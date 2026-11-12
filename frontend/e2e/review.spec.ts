@@ -11,12 +11,7 @@ test.beforeEach(async ({ page }) => {
 		route.fulfill({ json: { status: 'insufficient_evidence', game_review: [] } })
 	);
 	await page.route('**/api/v1/games/17/moves/*/explanation?*', (route) =>
-		route.request().method() === 'POST'
-			? route.fulfill({
-					status: 503,
-					json: { code: 'OLLAMA_UNAVAILABLE', message: 'Start Ollama and retry.' }
-				})
-			: route.fulfill({ json: noMoveCoaching })
+		route.fulfill({ json: noMoveCoaching })
 	);
 });
 
@@ -71,6 +66,16 @@ test('reviews a custom start, a promotion, and the final Black move on a narrow 
 });
 
 test('keeps engine evidence and evaluation available when Ollama is down', async ({ page }) => {
+	await page.route('**/api/v1/games/17/moves/2/explanation?*', (route) =>
+		route.fulfill({
+			json: {
+				...noMoveCoaching,
+				status: 'failed',
+				error_code: 'OLLAMA_UNAVAILABLE',
+				message: 'Start Ollama and retry.'
+			}
+		})
+	);
 	await page.goto('/games/17?ply=2');
 	await expect(page.getByText('Before 38... Kg6 · Ply 2')).toBeVisible();
 	const remarks = page.getByRole('region', { name: 'Move coaching' });
@@ -80,25 +85,26 @@ test('keeps engine evidence and evaluation available when Ollama is down', async
 			'The king repositions to g6. But there’s a stronger continuation to consider.'
 		)
 	).toBeVisible();
-	await expect(
-		remarks.getByText('39. Qg2+ gives check, so the opponent has to answer it.')
-	).toBeVisible();
 	await expect(remarks.getByText('190 cp', { exact: true })).toBeHidden();
 	await expect(remarks.getByText('38...Kg6 39. Qg2+', { exact: true })).toBeHidden();
 	await page.getByText('Engine best line', { exact: true }).click();
-	await page.getByRole('button', { name: 'Get a practice tip' }).click();
-	await expect(page.getByRole('alert')).toContainText('Start Ollama');
-	await expect(
-		page.getByText('39. Qg2+ gives check, so the opponent has to answer it.')
-	).toBeVisible();
-	await expect(page.getByText('38... Kg7 moves the king from h7 to g7.')).toBeVisible();
+	await expect(remarks.getByRole('button', { name: 'Get a practice tip' })).toHaveCount(0);
+	await expect(remarks.getByText('Start Ollama', { exact: false })).toHaveCount(0);
+	await expect(remarks.getByText('Possible continuation after this move')).toHaveCount(0);
+	await expect(remarks.getByText('Stockfish’s alternative')).toHaveCount(0);
+	await expect(remarks.getByText(noMoveCoaching.move_breakdown.played.key_fact)).toHaveCount(0);
+	await expect(remarks.getByText(noMoveCoaching.move_breakdown.alternative.key_fact)).toHaveCount(
+		0
+	);
 	await expect(page.getByText('38... Kg7', { exact: true })).toBeVisible();
 	await expect(page.getByRole('img', { name: /Stockfish evaluations/ })).toBeVisible();
 	await page.reload();
 	await expect(page.getByText('Before 38... Kg6 · Ply 2')).toBeVisible();
 });
 
-test('labels later engine moves when the backend has no selected-move remark', async ({ page }) => {
+test('shows an empty remark state when the backend has no selected-move remark', async ({
+	page
+}) => {
 	const { assessment, played } = noMoveCoaching.move_breakdown;
 	await page.route('**/api/v1/games/17/moves/2/explanation?*', (route) =>
 		route.fulfill({
@@ -111,17 +117,30 @@ test('labels later engine moves when the backend has no selected-move remark', a
 	await expect(
 		remarks.getByText('No remark about this move is available from the backend.')
 	).toBeVisible();
-	await expect(
-		remarks.getByText(`Possible continuation after this move ${played.key_fact}`, {
-			exact: true
-		})
-	).toBeVisible();
+	await expect(remarks.getByText(played.key_fact)).toHaveCount(0);
 });
 
-test('keeps the selected-move card without the Game coaching block', async ({ page }) => {
+test('keeps move commentary while hiding a saved practice tip', async ({ page }) => {
+	await page.route('**/api/v1/games/17/moves/2/explanation?*', (route) =>
+		route.fulfill({
+			json: {
+				...noMoveCoaching,
+				status: 'done',
+				coach: {
+					summary: 'Review this move.',
+					what_went_wrong: 'The king stepped into a check.',
+					lesson: 'Look for checks.',
+					practice_tip: 'Practice responding to checks.'
+				}
+			}
+		})
+	);
 	await page.goto('/games/17?ply=2');
 	const sidebar = page.getByRole('complementary', { name: 'Game analysis' });
 	await expect(sidebar.getByRole('heading', { name: 'Blunder', exact: true })).toBeVisible();
+	await expect(sidebar.getByText(noMoveCoaching.move_breakdown.remark)).toBeVisible();
+	await expect(sidebar.getByText('Practice this position')).toHaveCount(0);
+	await expect(sidebar.getByText('Practice responding to checks.')).toHaveCount(0);
 	await expect(sidebar.getByRole('region', { name: 'Game coaching' })).toHaveCount(0);
 });
 
