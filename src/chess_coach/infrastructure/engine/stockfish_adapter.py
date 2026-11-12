@@ -210,17 +210,22 @@ class StockfishAdapter:
         if (cp is None) == (mate is None):
             raise EngineAnalysisError("Engine returned an invalid score")
         replay = position.copy(stack=True)
+        moves: list[str] = []
         for move in pv:
+            # Stockfish can keep listing legal board moves after an automatic
+            # draw. The verified continuation ends at the terminal position.
+            if replay.is_game_over(claim_draw=False):
+                break
             if not isinstance(move, chess.Move) or move not in replay.legal_moves:
                 raise EngineAnalysisError(
                     "Engine returned an illegal principal variation"
                 )
             replay.push(move)
+            moves.append(move.uci())
         for key in ("depth", "nodes"):
             value = info.get(key)
             if value is not None and (type(value) is not int or value < 0):
                 raise EngineAnalysisError("Engine returned invalid search metadata")
-        moves = tuple(move.uci() for move in pv)
         winner = (score.white() > chess.engine.Cp(0)) if mate is not None else None
         return EngineResult(
             position.fen(),
@@ -229,7 +234,7 @@ class StockfishAdapter:
             mate,
             winner,
             moves[0],
-            moves,
+            tuple(moves),
             info.get("depth"),
             info.get("nodes"),
         )

@@ -155,8 +155,12 @@ class SyncGamesService:
                     result = None
                     before = deepcopy(report)
                     try:
+                        # A forced rescan needs the archive body to recover
+                        # missing metadata, even if the upstream copy is unchanged.
                         result = self.provider.get_month_games(
-                            username, archive, checkpoints.get(archive)
+                            username,
+                            archive,
+                            None if force else checkpoints.get(archive),
                         )
                         report.games_received += result.received
                         report.games_skipped_unsupported += sum(
