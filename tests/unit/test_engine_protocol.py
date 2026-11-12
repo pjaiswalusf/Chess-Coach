@@ -7,6 +7,7 @@ import pytest
 
 from chess_coach.infrastructure.engine.protocol import (
     EvidenceProtocol,
+    ReviewEvidenceProtocol,
     UnstableMultiPVError,
 )
 
@@ -78,8 +79,17 @@ def test_interrupted_stream_does_not_return_partial_success():
     asyncio.run(run())
 
 
-@pytest.mark.parametrize("final_move", ["e2e4", "d2d4"])
-def test_multipv_keeps_only_complete_unbounded_iterations(final_move):
+@pytest.mark.parametrize(
+    ("protocol_class", "final_move", "valid"),
+    [
+        (EvidenceProtocol, "e2e4", True),
+        (EvidenceProtocol, "d2d4", False),
+        (ReviewEvidenceProtocol, "d2d4", True),
+    ],
+)
+def test_multipv_keeps_only_complete_unbounded_iterations(
+    protocol_class, final_move, valid
+):
     async def run():
         stream = chess.engine.AnalysisResult()
         for depth, rank, move, bound in [
@@ -103,9 +113,9 @@ def test_multipv_keeps_only_complete_unbounded_iterations(final_move):
         stream.set_finished(
             chess.engine.BestMove(chess.Move.from_uci(final_move), None)
         )
-        protocol = EvidenceProtocol()
+        protocol = protocol_class()
         protocol.analysis = AsyncMock(return_value=stream)
-        if final_move != "e2e4":
+        if not valid:
             with pytest.raises(UnstableMultiPVError):
                 await protocol.analyse(
                     chess.Board(), chess.engine.Limit(nodes=100), multipv=2

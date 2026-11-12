@@ -155,11 +155,13 @@ test('imports and analyzes completed games, then follows measured coaching evide
 	await expect(page).toHaveURL('/games/17');
 	await page.getByRole('button', { name: '38... Kg6 — Critical error' }).click();
 	await expect(page.getByText('Before 38... Kg6 · Ply 2')).toBeVisible();
-	await page.getByText('Engine best line', { exact: true }).click();
-	await expect(page.getByText('38... Kg7', { exact: true })).toHaveAttribute('title', 'h7g7');
+	await expect(page.getByText('38... Kg7', { exact: true })).toBeVisible();
 	await nav.getByRole('link', { name: 'Coach' }).click();
 	await expect(page.getByText('12 critical errors in 120 opportunities')).toBeVisible();
 	await page.getByRole('link', { name: 'Game 17, ply 2' }).click();
 	await expect(page.getByText('Before 38... Kg6 · Ply 2')).toBeVisible();
-	expect(postPaths).toEqual(['/api/v1/sync-runs', '/api/v1/analysis-runs']);
+	expect(postPaths.filter((path) => !path.endsWith('/review/variation'))).toEqual([
+		'/api/v1/sync-runs',
+		'/api/v1/analysis-runs'
+	]);
 });

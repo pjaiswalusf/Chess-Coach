@@ -12,6 +12,8 @@ class UnstableMultiPVError(chess.engine.EngineError):
 
 
 class EvidenceProtocol(chess.engine.UciProtocol):
+    require_final_rank_match = True
+
     @overload
     async def analyse(
         self,
@@ -135,8 +137,16 @@ class EvidenceProtocol(chess.engine.UciProtocol):
                 if current.keys() == expected:
                     latest = [current[i] for i in range(1, multipv + 1)]
         best = await analysis.wait()
-        if not latest or best.move != latest[0]["pv"][0]:
+        if not latest or (
+            self.require_final_rank_match and best.move != latest[0]["pv"][0]
+        ):
             raise UnstableMultiPVError(
                 "No complete unbounded MultiPV iteration matches the final best move"
             )
         return latest
+
+
+class ReviewEvidenceProtocol(EvidenceProtocol):
+    """Use the last complete ranking for short interactive searches."""
+
+    require_final_rank_match = False

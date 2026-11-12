@@ -1,5 +1,5 @@
 import { onDestroy } from 'svelte';
-import { SvelteMap } from 'svelte/reactivity';
+import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { apiErrorMessage } from '#lib/api/errors.js';
 import { getVariationPosition, type VariationPosition } from '#lib/api/review.js';
 
@@ -15,6 +15,9 @@ type LinePosition = VariationPosition & { error?: string };
 export function reviewVariation(anchor: () => Anchor, advanceRecorded: () => void) {
 	const maxPlies = 256;
 	const positions = new SvelteMap<string, LinePosition>();
+	const roots = new SvelteMap<string, LinePosition>();
+	const rootErrors = new SvelteMap<string, string>();
+	const pendingRoots = new SvelteSet<string>();
 	const lifetime = new AbortController();
 	let session = new AbortController();
 	onDestroy(() => {
@@ -40,6 +43,19 @@ export function reviewVariation(anchor: () => Anchor, advanceRecorded: () => voi
 	const destinations = $derived(
 		from ? legal.filter((move) => move.startsWith(from)).map((move) => move.slice(2, 4)) : []
 	);
+	const rootKey = $derived.by(() => {
+		const { id, profile, ply } = anchor();
+		return `${id}:${profile}:${ply}`;
+	});
+
+	$effect(() => {
+		const at = anchor();
+		const key = rootKey;
+		if (cursor !== 0 || !at.profile || !at.legal.length) return;
+		// Skip brief stops while scrubbing the recorded game.
+		const timer = setTimeout(() => loadRoot(at, key), 120);
+		return () => clearTimeout(timer);
+	});
 
 	function request(at: Anchor, moves: string[], evaluate: boolean, signal: AbortSignal) {
 		if (!at.profile) throw new Error('The recorded analysis profile is unavailable.');
@@ -48,6 +64,26 @@ export function reviewVariation(anchor: () => Anchor, advanceRecorded: () => voi
 			{ profile_hash: at.profile, ply: at.ply, line: moves, evaluate },
 			signal
 		);
+	}
+
+	function loadRoot(at: Anchor, key: string) {
+		if (pendingRoots.has(key) || roots.get(key)?.evaluation) return;
+		pendingRoots.add(key);
+		rootErrors.delete(key);
+		searches = searches.then(async () => {
+			try {
+				if (!lifetime.signal.aborted && rootKey === key && cursor === 0) {
+					const result = await request(at, [], true, lifetime.signal);
+					if (!lifetime.signal.aborted) roots.set(key, result);
+				}
+			} catch (error) {
+				if (!lifetime.signal.aborted) {
+					rootErrors.set(key, apiErrorMessage(error, 'Could not load engine lines.'));
+				}
+			} finally {
+				pendingRoots.delete(key);
+			}
+		});
 	}
 
 	function evaluate(moves: string[]) {
@@ -128,6 +164,12 @@ export function reviewVariation(anchor: () => Anchor, advanceRecorded: () => voi
 		get current() {
 			return current;
 		},
+		get rootEvaluation() {
+			return roots.get(rootKey)?.evaluation;
+		},
+		get rootError() {
+			return rootErrors.get(rootKey);
+		},
 		get atLimit() {
 			return cursor === maxPlies;
 		},
@@ -171,7 +213,8 @@ export function reviewVariation(anchor: () => Anchor, advanceRecorded: () => voi
 			if (!moving && index >= 0 && index <= line.length) setCursor(index);
 		},
 		retryEvaluation() {
-			evaluate(prefix);
+			if (cursor === 0) loadRoot(anchor(), rootKey);
+			else evaluate(prefix);
 		},
 		reset() {
 			session.abort();

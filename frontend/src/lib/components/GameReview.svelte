@@ -1,12 +1,18 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { getGame, getGameAnalysis, type ReviewMove } from '#lib/api/review.js';
+	import {
+		getGame,
+		getGameAnalysis,
+		type ReviewEngineLine,
+		type ReviewMove
+	} from '#lib/api/review.js';
 	import { asyncRead } from '#lib/async-read.svelte.js';
 	import { formatDate, results } from '#lib/utils/display.js';
 	import BoardEvaluationBar from './BoardEvaluationBar.svelte';
 	import ChessBoard from './ChessBoard.svelte';
 	import EvaluationChart from './EvaluationChart.svelte';
 	import MoveCoaching from './MoveCoaching.svelte';
+	import ReviewEngineLines from './ReviewEngineLines.svelte';
 	import ReviewMoveList from './ReviewMoveList.svelte';
 	import ReviewVariation from './ReviewVariation.svelte';
 	import { reviewVariation } from './review-variation.svelte.js';
@@ -59,7 +65,6 @@
 		moves.filter((move) => move.severity === 'critical' && move.mover === trackedColor)
 	);
 	const profileHash = $derived(report?.profile_hash);
-	const engineLine = $derived(selected ?? moves[0]);
 	const coachingMove = $derived(selected ?? moves[0]);
 	const topColor = $derived(orientation === 'white' ? 'black' : 'white');
 	const variation = reviewVariation(
@@ -73,6 +78,28 @@
 		() => show(position + 1)
 	);
 	const branchEvaluation = $derived(variation.current?.evaluation);
+	const displayedEvaluation = $derived(
+		variation.cursor === 0 ? variation.rootEvaluation : branchEvaluation
+	);
+	const lines = $derived.by((): ReviewEngineLine[] => {
+		if (displayedEvaluation?.best_move)
+			return [displayedEvaluation, ...(displayedEvaluation.alternatives ?? [])];
+		const stored = moves[position];
+		if (variation.cursor !== 0 || !stored?.pv_san) return [];
+		return [
+			{
+				cp: stored.eval_before_cp_white,
+				mate: stored.mate_before_white,
+				white_wins: stored.mate_before_winner,
+				best_move: stored.best_move_uci,
+				continuation: stored.pv_san
+			}
+		];
+	});
+	const lineError = $derived(
+		variation.cursor === 0 ? variation.rootError : variation.current?.error
+	);
+
 	const boardScore = $derived(
 		variation.cursor === 0
 			? scores[position]
@@ -121,13 +148,6 @@
 	]);
 	const notation = (move: ReviewMove) =>
 		`${move.move_number}${move.mover === 'black' ? '...' : '.'} ${move.played_move_san}`;
-	function evaluation(cp: number | null, mate: number | null, whiteWins: boolean | null) {
-		if (mate !== null && whiteWins !== null) {
-			const winner = whiteWins ? 'White' : 'Black';
-			return mate === 0 ? `Checkmate · ${winner} wins` : `${winner} mates in ${Math.abs(mate)}`;
-		}
-		return cp === null ? 'Unavailable' : `${cp > 0 ? '+' : ''}${cp} cp`;
-	}
 	function show(ply: number, before = false) {
 		if (ply >= 0 && ply <= moves.length) {
 			variation.reset();
@@ -238,13 +258,20 @@
 					<Button onclick={() => (flipped = !flipped)}>Flip board</Button>
 				</header>
 				<div class="space-y-4 px-4 py-4">
+					<ReviewEngineLines
+						{lines}
+						loading={!!variation.legal.length && !displayedEvaluation && !lineError}
+						legacyBackend={!!displayedEvaluation &&
+							displayedEvaluation.alternatives === undefined &&
+							variation.legal.length > 1}
+						error={lineError}
+						legal={variation.legal}
+						disabled={variation.moving || !!variation.promotions.length}
+						onPlay={variation.play}
+						onRetry={variation.retryEvaluation}
+					/>
 					{#if variation.active}
-						<ReviewVariation
-							{variation}
-							rootScore={scores[position]}
-							rootBest={moves[position]?.best_move_uci ?? null}
-							rootContinuation={moves[position]?.pv_san ?? ''}
-						/>
+						<ReviewVariation {variation} rootScore={scores[position]} />
 					{:else}
 						{#if coachingMove}
 							<div class="rounded-xl bg-panel p-3">
@@ -274,53 +301,6 @@
 								{/key}
 							{/if}
 						{/if}
-
-						<details class="space-y-2 rounded-lg border border-line px-3 py-2">
-							<summary class="cursor-pointer text-sm font-semibold">Engine best line</summary>
-							<section aria-label="Engine best line" class="space-y-2">
-								<div class="flex min-h-7 flex-wrap items-center justify-end gap-2">
-									{#if engineLine?.best_move_uci}
-										<button
-											type="button"
-											onclick={() => show(engineLine.ply, true)}
-											aria-pressed={before && selected?.ply === engineLine.ply}
-											class="rounded-md border border-positive-line bg-positive-surface px-2.5 py-1 text-xs font-semibold text-accent hover:bg-raised focus-visible:outline-2 focus-visible:outline-accent"
-											>Show best move</button
-										>
-									{/if}
-								</div>
-								<div
-									role="region"
-									aria-label="Engine continuation"
-									class="flex h-16 items-start gap-2 overflow-y-auto rounded-md bg-panel p-2.5 text-sm focus-visible:outline-2 focus-visible:outline-accent"
-								>
-									{#if engineLine?.pv_san}
-										<span
-											class="shrink-0 rounded bg-square-light px-1.5 py-0.5 text-xs font-bold text-square-ink tabular-nums"
-										>
-											{evaluation(
-												engineLine.eval_before_cp_white,
-												engineLine.mate_before_white,
-												engineLine.mate_before_winner
-											)}
-										</span>
-										<p
-											class="min-w-0 font-mono leading-relaxed wrap-anywhere"
-											title={engineLine.pv_json.join(' ')}
-										>
-											{engineLine.pv_san}
-										</p>
-									{:else}
-										<p class="text-muted">No engine line is available for this position.</p>
-									{/if}
-								</div>
-								<p class="min-h-4 text-xs text-muted">
-									{#if engineLine?.pv_san}
-										From before {notation(engineLine)} · White perspective
-									{/if}
-								</p>
-							</section>
-						</details>
 					{/if}
 					<ReviewMoveList
 						{moves}
