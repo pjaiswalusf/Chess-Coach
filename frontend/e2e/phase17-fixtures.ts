@@ -133,11 +133,11 @@ export const noMoveCoaching = {
 	job_id: null,
 	coach: null,
 	move_breakdown: {
-		remark: 'The king repositions to g6. But there’s a stronger continuation to consider.',
+		remark: 'After Kg6, Qa6+ gives check. Play Kg7 instead.',
 		assessment: 'After 38... Kg6, Stockfish’s evaluation goes from +0.20 to +2.10.',
 		played: {
-			san: '38...Kg6 39. Qg2+',
-			key_fact: '39. Qg2+ gives check, so the opponent has to answer it.'
+			san: '38...Kg6 39. Qa6+',
+			key_fact: '39. Qa6+ gives check, so the opponent has to answer it.'
 		},
 		alternative: {
 			san: '38...Kg7',

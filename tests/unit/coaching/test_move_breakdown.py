@@ -40,6 +40,9 @@ def test_breakdown_explains_the_queen_capture_and_missed_mate():
     assert breakdown.alternative is not None
     assert breakdown.alternative.san == "4. Qxf7#"
     assert breakdown.alternative.key_fact == "4. Qxf7# delivers checkmate."
+    assert breakdown.remark == (
+        "Qh6 misses a forced mate, and gxh6 takes the queen. Play Qxf7# to force mate."
+    )
     assert "mate in 1 for White to -8.83" in breakdown.assessment
     practice = validated_output(
         '{"status":"insufficient_evidence","focus":null}', evidence
@@ -96,7 +99,7 @@ def test_opening_remarks_explain_space_and_bishop_diagonal():
     remark = build_move_breakdown(opening_evidence((), "e2e4")).remark
     assert "space in the center" in remark
     assert "diagonal for the bishop on f1" in remark
-    assert "Stockfish’s top move" in remark
+    assert "Stockfish" not in remark
 
 
 def test_knight_development_explains_the_actual_pawn_attack():
@@ -127,3 +130,79 @@ def test_en_passant_remark_names_the_captured_pawns_actual_square():
     ).remark
     assert "Capturing the pawn on d5." in remark
     assert "pawn on d6" not in remark
+
+
+def test_inaccuracy_names_the_pawn_threat_and_the_better_moves_counterthreat():
+    fen = "7k/2q3p1/8/8/5N2/8/8/K7 w - - 0 1"
+    evidence = MoveCoachingEvidence.model_validate(
+        opening_evidence((), "e2e4").model_dump()
+        | {
+            "initial_fen": fen,
+            "fen_before": fen,
+            "history_before_start_unknown": True,
+            "played_move_uci": "f4h5",
+            "best_move_uci": "f4d5",
+            "best_line_uci": ("f4d5",),
+            "played_refutation_uci": ("g7g6",),
+            "after": {"cp_white": -20},
+            "loss_cp": 40,
+        }
+    )
+    assert build_move_breakdown(evidence).remark == (
+        "After Nh5, g6 attacks the knight on h5. Instead, Nd5 attacks the queen on c7."
+    )
+
+
+def test_quiet_inaccuracy_suggests_a_move_without_inventing_a_tactic():
+    evidence = MoveCoachingEvidence.model_validate(
+        opening_evidence((), "a2a3").model_dump()
+        | {
+            "best_move_uci": "e2e4",
+            "best_line_uci": ("e2e4", "e7e5"),
+            "played_refutation_uci": ("a7a6",),
+            "after": {"cp_white": -20},
+            "loss_cp": 40,
+        }
+    )
+    assert build_move_breakdown(evidence).remark == (
+        "The saved continuation shows no clear tactical reason. Play e4 instead."
+    )
+
+
+def test_blunder_names_the_attack_that_leads_to_the_piece_loss():
+    fen = "7k/2q3p1/8/8/5N2/8/8/K7 w - - 0 1"
+    evidence = MoveCoachingEvidence.model_validate(
+        opening_evidence((), "e2e4").model_dump()
+        | {
+            "initial_fen": fen,
+            "fen_before": fen,
+            "history_before_start_unknown": True,
+            "played_move_uci": "f4h5",
+            "best_move_uci": "f4d5",
+            "best_line_uci": ("f4d5",),
+            "played_refutation_uci": ("g7g6", "a1a2", "g6h5"),
+            "after": {"cp_white": -290},
+            "loss_cp": 310,
+        }
+    )
+    assert build_move_breakdown(evidence).remark == (
+        "After Nh5, g6 attacks the knight on h5, then gxh5 takes the knight. "
+        "Instead, Nd5 attacks the queen on c7."
+    )
+
+
+def test_an_even_recapture_is_not_presented_as_a_material_punishment():
+    history = ("e2e4", "d7d5")
+    evidence = MoveCoachingEvidence.model_validate(
+        opening_evidence(history, "e4d5").model_dump()
+        | {
+            "best_move_uci": "g1f3",
+            "best_line_uci": ("g1f3",),
+            "played_refutation_uci": ("d8d5",),
+            "after": {"cp_white": -20},
+            "loss_cp": 40,
+        }
+    )
+    assert build_move_breakdown(evidence).remark == (
+        "After exd5, Qxd5 attacks the pawn on g2. Play Nf3 instead."
+    )
