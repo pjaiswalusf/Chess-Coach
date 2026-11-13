@@ -11,7 +11,17 @@ test.beforeEach(async ({ page }) => {
 		route.fulfill({ json: { status: 'insufficient_evidence', game_review: [] } })
 	);
 	await page.route('**/api/v1/games/17/moves/*/explanation?*', (route) =>
-		route.fulfill({ json: noMoveCoaching })
+		route.fulfill({
+			json: route.request().url().includes('/moves/2/explanation')
+				? noMoveCoaching
+				: {
+						...noMoveCoaching,
+						move_breakdown: {
+							...noMoveCoaching.move_breakdown,
+							remark: 'The pawn reaches the back rank and becomes a queen.'
+						}
+					}
+		})
 	);
 });
 
@@ -80,13 +90,11 @@ test('keeps engine evidence and evaluation available when Ollama is down', async
 	await expect(page.getByText('Before 38... Kg6 · Ply 2')).toBeVisible();
 	const remarks = page.getByRole('region', { name: 'Move coaching' });
 	await expect(remarks.getByRole('heading', { name: 'Blunder', exact: true })).toBeVisible();
-	await expect(
-		remarks.getByText(
-			'The king repositions to g6. But there’s a stronger continuation to consider.'
-		)
-	).toBeVisible();
+	await expect(remarks.getByText('After g6, a6+ gives check. Play g7 instead.')).toBeVisible();
+	await expect(remarks.getByRole('img', { name: 'king' })).toHaveCount(2);
+	await expect(remarks.getByRole('img', { name: 'queen' })).toBeVisible();
 	await expect(remarks.getByText('190 cp', { exact: true })).toBeHidden();
-	await expect(remarks.getByText('38...Kg6 39. Qg2+', { exact: true })).toBeHidden();
+	await expect(remarks.getByText('38...Kg6 39. Qa6+', { exact: true })).toBeHidden();
 	await expect(remarks.getByRole('button', { name: 'Get a practice tip' })).toHaveCount(0);
 	await expect(remarks.getByText('Start Ollama', { exact: false })).toHaveCount(0);
 	await expect(remarks.getByText('Possible continuation after this move')).toHaveCount(0);
@@ -95,7 +103,7 @@ test('keeps engine evidence and evaluation available when Ollama is down', async
 	await expect(remarks.getByText(noMoveCoaching.move_breakdown.alternative.key_fact)).toHaveCount(
 		0
 	);
-	await expect(page.getByText('38... Kg7', { exact: true })).toBeVisible();
+	await expect(page.getByTitle('38... Kg7', { exact: true })).toBeVisible();
 	await expect(page.getByRole('img', { name: /Stockfish evaluations/ })).toBeVisible();
 	await page.reload();
 	await expect(page.getByText('Before 38... Kg6 · Ply 2')).toBeVisible();
@@ -137,7 +145,7 @@ test('keeps move commentary while hiding a saved practice tip', async ({ page })
 	await page.goto('/games/17?ply=2');
 	const sidebar = page.getByRole('complementary', { name: 'Game analysis' });
 	await expect(sidebar.getByRole('heading', { name: 'Blunder', exact: true })).toBeVisible();
-	await expect(sidebar.getByText(noMoveCoaching.move_breakdown.remark)).toBeVisible();
+	await expect(sidebar.getByText('After g6, a6+ gives check. Play g7 instead.')).toBeVisible();
 	await expect(sidebar.getByText('Practice this position')).toHaveCount(0);
 	await expect(sidebar.getByText('Practice responding to checks.')).toHaveCount(0);
 	await expect(sidebar.getByRole('region', { name: 'Game coaching' })).toHaveCount(0);
@@ -153,7 +161,7 @@ test('keeps the engine line and interactive graph beside the board on desktop', 
 	const engineLine = sidebar.getByRole('region', { name: 'Engine lines' });
 	const graph = sidebar.getByRole('slider', { name: 'Jump to position on evaluation graph' });
 	await expect(engineLine).toBeVisible();
-	await expect(engineLine.getByText('38. a8=Q', { exact: true })).toBeVisible();
+	await expect(engineLine.getByTitle('38. a8=Q', { exact: true })).toBeVisible();
 	const boardBox = (await board.boundingBox())!;
 	const panelBox = (await sidebar.boundingBox())!;
 	expect(panelBox.x).toBeGreaterThan(boardBox.x + boardBox.width);
@@ -183,16 +191,21 @@ test('keeps the engine line and interactive graph beside the board on desktop', 
 	const plot = sidebar.getByRole('img', { name: /Stockfish evaluations/ });
 	const blunderColor = await blunder.evaluate((move) => getComputedStyle(move).color);
 	const bestColor = await best.evaluate((move) => getComputedStyle(move).color);
+	const king = blunder.getByRole('img', { name: 'king' });
+	const queen = best.getByRole('img', { name: 'queen' });
+	await expect(king).toHaveCSS('mask-image', /\/bK\.svg/);
+	await expect(king).toHaveCSS('background-color', blunderColor);
+	await expect(queen).toHaveCSS('background-color', bestColor);
 	expect(blunderColor).not.toBe(bestColor);
 	await expect(plot.locator('[data-ply="2"]')).toBeVisible();
 	await expect(plot.locator('[data-ply="2"]')).not.toHaveCSS('fill', blunderColor);
 	await expect(plot.locator('[data-swing]')).toHaveCount(0);
 	await expect(plot.locator('[data-ply="1"]')).toHaveCount(0);
 	await expect(board.getByTitle('g6: Black king', { exact: true })).toBeVisible();
-	await expect(engineLine.getByText('38... Kg7', { exact: true })).toHaveCount(0);
+	await expect(engineLine.getByTitle('38... Kg7', { exact: true })).toHaveCount(0);
 
 	await page.getByRole('button', { name: 'Previous move' }).click();
-	await expect(engineLine.getByText('38... Kg7', { exact: true })).toBeVisible();
+	await expect(engineLine.getByTitle('38... Kg7', { exact: true })).toBeVisible();
 	await expect(graph).toHaveAttribute(
 		'aria-valuetext',
 		'After ply 1, a8=Q · Best · +0.20 (White perspective)'
@@ -329,12 +342,17 @@ test('shows two compact ranked engine lines for the displayed position', async (
 	const engineLines = page.getByRole('region', { name: 'Engine lines' });
 	const first = engineLines.getByRole('group', { name: 'Best continuation' });
 	const second = engineLines.getByRole('group', { name: 'Second continuation' });
-	await expect(first).toHaveText('38. a8=Q');
-	await expect(second).toHaveText('38. a8=R');
+	await expect(first).toHaveAttribute('title', '38. a8=Q');
+	await expect(first.getByRole('img', { name: 'queen' })).toBeVisible();
+	await expect(second.getByRole('img', { name: 'rook' })).toBeVisible();
 	const height = (await engineLines.boundingBox())!.height;
 	await page.getByRole('button', { name: 'Next move', exact: true }).click();
-	await expect(first).toHaveText(longLine);
-	await expect(second).toHaveText('38... Kg6');
+	await expect(first).toHaveAttribute('title', longLine);
+	await expect(second).toHaveText('38... g6');
+	await expect(second.getByRole('img', { name: 'king' })).toHaveAttribute('src', /\/bK\.svg$/);
+	await expect(first.getByRole('img').nth(0)).toHaveAttribute('src', /\/bK\.svg$/);
+	await expect(first.getByRole('img').nth(1)).toHaveAttribute('src', /\/wQ\.svg$/);
+	await expect(first.getByRole('img').nth(2)).toHaveAttribute('src', /\/bK\.svg$/);
 	expect((await engineLines.boundingBox())!.height).toBe(height);
 	expect(await first.evaluate((row) => row.scrollWidth)).toBeGreaterThan(
 		await first.evaluate((row) => row.clientWidth)
@@ -397,21 +415,49 @@ test('shows coach remarks immediately at the starting position and after navigat
 	const remarks = page.getByRole('region', { name: 'Move coaching' });
 	await expect(remarks.getByRole('heading', { name: 'Best', exact: true })).toBeVisible();
 	await expect(
-		remarks.getByText(
-			'The king repositions to g6. But there’s a stronger continuation to consider.'
-		)
+		remarks.getByText('The pawn reaches the back rank and becomes a queen.')
 	).toBeVisible();
 	await expect(remarks.getByText('Move evidence', { exact: true })).toHaveCount(0);
-	await expect(remarks.getByText('38...Kg6 39. Qg2+', { exact: true })).toBeHidden();
+	await expect(remarks.getByText('38...Kg6 39. Qa6+', { exact: true })).toBeHidden();
 	await page.getByRole('button', { name: 'Next move', exact: true }).click();
 	await expect(remarks.getByRole('heading', { name: 'Best', exact: true })).toBeVisible();
 	await page.getByRole('button', { name: 'Next move', exact: true }).click();
 	const blunder = remarks.getByRole('heading', { name: 'Blunder', exact: true });
 	await expect(blunder).toBeVisible();
+	await expect(remarks.getByText('After g6, a6+ gives check. Play g7 instead.')).toBeVisible();
 	await expect(blunder).toHaveClass(/#fa412d/);
 	await expect(blunder.getByText('??', { exact: true })).toBeVisible();
 	await page.getByRole('button', { name: 'First position', exact: true }).click();
 	await expect(remarks.getByRole('heading', { name: 'Best', exact: true })).toBeVisible();
+});
+
+test('uses piece symbols in coaching while preserving pawn moves and SAN details', async ({
+	page
+}) => {
+	await page.route('**/api/v1/games/17/moves/2/explanation?*', (route) =>
+		route.fulfill({
+			json: {
+				...noMoveCoaching,
+				move_breakdown: {
+					...noMoveCoaching.move_breakdown,
+					remark: 'After exd5, Nfxe2+ gives check. Play Be2 or Qe2. The line ends with a8=R#.'
+				}
+			}
+		})
+	);
+	await page.goto('/games/17?ply=2');
+	const remarks = page.getByRole('region', { name: 'Move coaching' });
+	await expect(
+		remarks.getByText('After exd5, fxe2+ gives check. Play e2 or e2. The line ends with a8=#.')
+	).toBeVisible();
+	await expect(remarks.getByRole('img')).toHaveCount(4);
+	const knight = remarks.getByRole('img', { name: 'knight' });
+	await expect(knight).toBeVisible();
+	expect(
+		await knight.evaluate(
+			(icon) => icon.getBoundingClientRect().height / parseFloat(getComputedStyle(icon).fontSize)
+		)
+	).toBeGreaterThan(1.3);
 });
 
 test('plays a variation from the review board and traces each position independently', async ({
@@ -587,7 +633,7 @@ test('plays an engine move when an older backend omits the second line', async (
 	await expect(
 		page.getByRole('group', { name: /Chessboard/ }).getByTitle('g7: Black king')
 	).toBeVisible();
-	await expect(engineLines.getByText('39. Qa7+', { exact: true })).toBeVisible();
+	await expect(engineLines.getByTitle('39. Qa7+', { exact: true })).toBeVisible();
 	await expect(engineLines.getByText('The backend returned an unexpected response.')).toHaveCount(
 		0
 	);

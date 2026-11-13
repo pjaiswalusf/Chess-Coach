@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { ReviewEngineLine } from '#lib/api/review.js';
 	import { evaluationLabel } from '#lib/utils/display.js';
+	import ChessNotation from './ChessNotation.svelte';
 
 	let {
 		lines,
@@ -48,10 +49,10 @@
 					role="group"
 					aria-label={index === 0 ? 'Best continuation' : 'Second continuation'}
 					tabindex="0"
-					class="min-w-0 [scrollbar-width:none] overflow-x-auto font-mono whitespace-nowrap focus-visible:outline-1 focus-visible:outline-accent"
+					class="min-w-0 [scrollbar-width:none] overflow-x-auto font-mono leading-5 whitespace-nowrap focus-visible:outline-1 focus-visible:outline-accent"
 					title={line.continuation}
 				>
-					{line.continuation}
+					<ChessNotation text={line.continuation} variation />
 				</div>
 				{#if line.best_move && legal.includes(line.best_move)}
 					<button

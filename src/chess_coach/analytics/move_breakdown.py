@@ -135,14 +135,13 @@ def build_move_breakdown(evidence: MoveCoachingEvidence) -> MoveBreakdown:
     mover = board.turn
     same = evidence.played_move_uci == evidence.best_move_uci
     played = chess.Move.from_uci(evidence.played_move_uci)
-    best = chess.Move.from_uci(evidence.best_move_uci)
     assessment = (
-        f"{_label(board, played)} is Stockfish’s top choice."
+        f"After {_label(board, played)}, the evaluation is "
+        f"{_score(evidence.after)} (White perspective)."
         if same
         else (
             f"After {_label(board, played)}, Stockfish’s evaluation goes from "
-            f"{_score(evidence.before)} to {_score(evidence.after)} (White perspective). "
-            f"Its top move from the original position was {_label(board, best)}."
+            f"{_score(evidence.before)} to {_score(evidence.after)} (White perspective)."
         )
     )
     return MoveBreakdown(

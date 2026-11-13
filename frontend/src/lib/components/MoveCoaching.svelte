@@ -2,6 +2,7 @@
 	import { coachingApi, type CoachingResponse } from '#lib/api/coaching.js';
 	import type { ReviewRating } from '#lib/api/review.js';
 	import { moveRatings } from '#lib/utils/review-rating.js';
+	import ChessNotation from './ChessNotation.svelte';
 	import ReviewRatingIcon from './ReviewRatingIcon.svelte';
 	import { coachingJob } from '#lib/coaching-job.svelte.js';
 	import Button from './ui/Button.svelte';
@@ -48,7 +49,7 @@
 		{@const breakdown = result.move_breakdown}
 		{#if rating}
 			{#if breakdown.remark}
-				<p>{breakdown.remark}</p>
+				<p><ChessNotation text={breakdown.remark} /></p>
 			{:else}
 				<p>No remark about this move is available from the backend.</p>
 			{/if}
@@ -106,21 +107,25 @@
 
 {#snippet moveBreakdown(breakdown: NonNullable<CoachingResponse['move_breakdown']>)}
 	<div class="space-y-2.5">
-		<p class="font-semibold">{breakdown.assessment}</p>
+		<p class="font-semibold"><ChessNotation text={breakdown.assessment} /></p>
 		<dl class="grid gap-2.5">
 			<div>
 				<dt class="text-xs font-bold uppercase">Played line</dt>
 				<dd class="mt-0.5">
-					<p class="font-mono text-sm wrap-anywhere">{breakdown.played.san}</p>
-					<p class="mt-1">{breakdown.played.key_fact}</p>
+					<p class="font-mono text-sm wrap-anywhere">
+						<ChessNotation text={breakdown.played.san} variation />
+					</p>
+					<p class="mt-1"><ChessNotation text={breakdown.played.key_fact} /></p>
 				</dd>
 			</div>
 			{#if breakdown.alternative}
 				<div>
 					<dt class="text-xs font-bold uppercase">Stockfish’s alternative</dt>
 					<dd class="mt-0.5">
-						<p class="font-mono text-sm wrap-anywhere">{breakdown.alternative.san}</p>
-						<p class="mt-1">{breakdown.alternative.key_fact}</p>
+						<p class="font-mono text-sm wrap-anywhere">
+							<ChessNotation text={breakdown.alternative.san} variation />
+						</p>
+						<p class="mt-1"><ChessNotation text={breakdown.alternative.key_fact} /></p>
 					</dd>
 				</div>
 			{/if}

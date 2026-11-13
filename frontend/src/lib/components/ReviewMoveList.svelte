@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { ReviewMove } from '#lib/api/review.js';
 	import { moveRatings } from '#lib/utils/review-rating.js';
+	import ChessNotation from './ChessNotation.svelte';
 	import ReviewRatingIcon from './ReviewRatingIcon.svelte';
 
 	let {
@@ -73,6 +74,7 @@
 		<button
 			type="button"
 			data-ply={move.ply}
+			aria-label={`${move.played_move_san} ${mark.label}`}
 			aria-pressed={selected === move.ply}
 			title={mark.label}
 			onclick={() => onSelect(move.ply)}
@@ -82,8 +84,9 @@
 			]}
 		>
 			<ReviewRatingIcon rating={move.rating} />
-			{move.played_move_san}
-			<span class="sr-only">{mark.label}</span>
+			<span>
+				<ChessNotation text={move.played_move_san} rated />
+			</span>
 		</button>
 	{/if}
 {/snippet}
