@@ -4,7 +4,7 @@ import logging
 from collections.abc import Callable
 from threading import Event
 from time import perf_counter
-from typing import Protocol
+from typing import Literal, Protocol
 
 import chess
 from structlog.contextvars import bound_contextvars
@@ -13,7 +13,7 @@ from chess_coach.application.parse_imported_games import ParseInput, _source_res
 from chess_coach.config import Settings
 from chess_coach.domain.analysis import AnalysisProfile
 from chess_coach.domain.engine_types import EngineResult
-from chess_coach.domain.game_records import PGNParseError
+from chess_coach.domain.game_records import ParsedGame, PGNParseError
 from chess_coach.infrastructure.engine.exceptions import (
     EngineAnalysisError,
     EngineUnavailableError,
@@ -143,114 +143,10 @@ class AnalysisProcessor:
             if self.store.get(run_id).cancel_requested:
                 break
             game_id = member.game_id
-            game_started = perf_counter()
             try:
-                game, username = self.store.begin_game(run_id, game_id)
-                parse_started = perf_counter()
-                expected, final_fen = _source_result(
-                    ParseInput(
-                        game.id,
-                        game.raw_pgn,
-                        username,
-                        game.platform,
-                        game.white_username,
-                        game.black_username,
-                        game.source_evidence,
-                    )
-                )
-                parsed = parse_game(
-                    game.raw_pgn,
-                    username,
-                    max_bytes=self.settings.pgn_max_bytes,
-                    source_final_fen=final_fen,
-                )
-                if expected is not None and parsed.source_result != expected:
-                    raise ValueError("INVALID_GAME: source result mismatch")
-                if (
-                    parsed.white_username.casefold(),
-                    parsed.black_username.casefold(),
-                ) != (game.white_username.casefold(), game.black_username.casefold()):
-                    raise ValueError("INVALID_GAME: player mismatch")
-                logger.debug(
-                    "analysis_timing",
-                    extra={
-                        "run_id": run_id,
-                        "game_id": game_id,
-                        "operation": "reconstruction",
-                        "duration_ms": elapsed_ms(parse_started),
-                    },
-                )
-                board = chess.Board(parsed.initial_fen)
-                positions: list[int] = []
-                cache_seconds = 0.0
-                for i in range(parsed.total_plies + 1):
-                    if self.stop.is_set():
-                        return "RUN_INTERRUPTED"
-                    if self.store.get(run_id).cancel_requested:
-                        return None
-                    cache_started = perf_counter()
-                    row = self.store.cached(
-                        board, parsed.history_before_start_unknown, profile
-                    )
-                    cache_seconds += perf_counter() - cache_started
-                    hit = row is not None
-                    self.store.record_lookup(run_id, hit=hit)
-                    logger.debug(
-                        "cache_hit" if hit else "cache_miss",
-                        extra={"game_id": game_id, "cache_type": "engine_position"},
-                    )
-                    if row is not None:
-                        positions.append(row.id)
-                    else:
-                        seconds = 0.0
-                        outcome = board.outcome(claim_draw=False)
-                        if outcome is not None:
-                            result = EngineResult(
-                                board.fen(),
-                                profile.engine,
-                                0 if outcome.winner is None else None,
-                                0 if outcome.winner is not None else None,
-                                outcome.winner,
-                                None,
-                                (),
-                                0,
-                                0,
-                            )
-                        else:
-                            result, seconds = self._search(run_id, board, profile)
-                        positions.append(
-                            self.store.save_position(
-                                run_id,
-                                board,
-                                parsed.history_before_start_unknown,
-                                profile,
-                                result,
-                                seconds,
-                            )
-                        )
-                    self.checkpoint("position", i)
-                    if i < parsed.total_plies:
-                        board.push_uci(parsed.moves[i].uci)
-                logger.debug(
-                    "analysis_timing",
-                    extra={
-                        "run_id": run_id,
-                        "game_id": game_id,
-                        "operation": "cache_lookup",
-                        "duration_ms": round(cache_seconds * 1000),
-                    },
-                )
-                self.store.finalize(run_id, game_id, parsed, profile, positions)
-                logger.info(
-                    "game_completed",
-                    extra={
-                        "run_id": run_id,
-                        "game_id": game_id,
-                        "operation": "game_analysis",
-                        "duration_ms": elapsed_ms(game_started),
-                    },
-                )
-                self.checkpoint("game", game_id)
+                interruption = self._analyze_game(run_id, game_id, profile)
+                if interruption is not None:
+                    return "RUN_INTERRUPTED" if interruption == "stopped" else None
             except EngineAnalysisError, EngineUnavailableError:
                 logger.exception(
                     "engine_failure", extra={"run_id": run_id, "game_id": game_id}
@@ -269,6 +165,122 @@ class AnalysisProcessor:
                 )
                 self.store.fail_game(run_id, game_id, code)
         return None
+
+    def _analyze_game(
+        self, run_id: int, game_id: int, profile: AnalysisProfile
+    ) -> Literal["stopped", "cancelled"] | None:
+        game_started = perf_counter()
+        game, username = self.store.begin_game(run_id, game_id)
+        parse_started = perf_counter()
+        expected, final_fen = _source_result(
+            ParseInput(
+                game.id,
+                game.raw_pgn,
+                username,
+                game.platform,
+                game.white_username,
+                game.black_username,
+                game.source_evidence,
+            )
+        )
+        parsed = parse_game(
+            game.raw_pgn,
+            username,
+            max_bytes=self.settings.pgn_max_bytes,
+            source_final_fen=final_fen,
+        )
+        if expected is not None and parsed.source_result != expected:
+            raise ValueError("INVALID_GAME: source result mismatch")
+        if (
+            parsed.white_username.casefold(),
+            parsed.black_username.casefold(),
+        ) != (game.white_username.casefold(), game.black_username.casefold()):
+            raise ValueError("INVALID_GAME: player mismatch")
+        logger.debug(
+            "analysis_timing",
+            extra={
+                "run_id": run_id,
+                "game_id": game_id,
+                "operation": "reconstruction",
+                "duration_ms": elapsed_ms(parse_started),
+            },
+        )
+        board = chess.Board(parsed.initial_fen)
+        positions: list[int] = []
+        cache_seconds = 0.0
+        for i in range(parsed.total_plies + 1):
+            if self.stop.is_set():
+                return "stopped"
+            if self.store.get(run_id).cancel_requested:
+                return "cancelled"
+            position_id, lookup_seconds = self._analyze_position(
+                run_id, game_id, board, parsed, profile
+            )
+            positions.append(position_id)
+            cache_seconds += lookup_seconds
+            self.checkpoint("position", i)
+            if i < parsed.total_plies:
+                board.push_uci(parsed.moves[i].uci)
+        logger.debug(
+            "analysis_timing",
+            extra={
+                "run_id": run_id,
+                "game_id": game_id,
+                "operation": "cache_lookup",
+                "duration_ms": round(cache_seconds * 1000),
+            },
+        )
+        self.store.finalize(run_id, game_id, parsed, profile, positions)
+        logger.info(
+            "game_completed",
+            extra={
+                "run_id": run_id,
+                "game_id": game_id,
+                "operation": "game_analysis",
+                "duration_ms": elapsed_ms(game_started),
+            },
+        )
+        self.checkpoint("game", game_id)
+        return None
+
+    def _analyze_position(
+        self,
+        run_id: int,
+        game_id: int,
+        board: chess.Board,
+        parsed: ParsedGame,
+        profile: AnalysisProfile,
+    ) -> tuple[int, float]:
+        cache_started = perf_counter()
+        row = self.store.cached(board, parsed.history_before_start_unknown, profile)
+        cache_seconds = perf_counter() - cache_started
+        hit = row is not None
+        self.store.record_lookup(run_id, hit=hit)
+        logger.debug(
+            "cache_hit" if hit else "cache_miss",
+            extra={"game_id": game_id, "cache_type": "engine_position"},
+        )
+        if row is not None:
+            return row.id, cache_seconds
+        seconds = 0.0
+        outcome = board.outcome(claim_draw=False)
+        if outcome is not None:
+            result = EngineResult(
+                board.fen(),
+                profile.engine,
+                0 if outcome.winner is None else None,
+                0 if outcome.winner is not None else None,
+                outcome.winner,
+                None,
+                (),
+                0,
+                0,
+            )
+        else:
+            result, seconds = self._search(run_id, board, profile)
+        return self.store.save_position(
+            run_id, board, parsed.history_before_start_unknown, profile, result, seconds
+        ), cache_seconds
 
     def _search(
         self, run_id: int, board: chess.Board, profile: AnalysisProfile

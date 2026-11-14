@@ -9,6 +9,7 @@ from pathlib import Path
 
 import uvicorn
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session, sessionmaker
 
 from chess_coach.application.errors import OperationError
 from chess_coach.application.parse_imported_games import ParseImportedGames
@@ -29,7 +30,7 @@ from chess_coach.infrastructure.pgn.parser import parse_game
 from chess_coach.observability.logging import configure_logging
 
 
-def main(argv: list[str] | None = None) -> None:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Local post-game chess coach")
     commands = parser.add_subparsers(dest="command")
     commands.add_parser("serve", help="Serve the local API (default)")
@@ -131,49 +132,196 @@ def main(argv: list[str] | None = None) -> None:
     )
     generate.add_argument("--after-move-id", type=int, default=0)
     generate.add_argument("--limit", type=int)
+    return parser
+
+
+def _run_doctor(args: argparse.Namespace) -> None:
+    from chess_coach.application.system import overall_status
+    from chess_coach.infrastructure.system.diagnostics import diagnose
+
+    configure_logging()
+    try:
+        checks = diagnose(Settings, deep=args.deep)
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "doctor_failed", extra={"error_code": "DIAGNOSTICS_FAILED"}
+        )
+        print("Diagnostics could not finish. Check backend logs and retry.")
+        raise SystemExit(2) from None
+    labels = {"pass": "PASS", "warn": "WARN", "fail": "FAIL", "skip": "SKIP"}
+    print("Chess Coach — Diagnostics")
+    for check in checks:
+        print(
+            f"{labels[check.status]:4}  {check.name.replace('_', ' ').capitalize()}: {check.message}"
+        )
+        if check.action:
+            print(f"      {check.action}")
+    overall = overall_status(checks)
+    print(f"Overall status: {overall.upper()}")
+    if overall != "unavailable":
+        print(
+            "Available: stored games, historical analysis, deterministic analytics, and stored training."
+        )
+        states = {check.name: check.status for check in checks}
+        if states.get("stockfish") == "pass":
+            print("Stockfish is ready. Start the analysis worker to run new analysis.")
+        else:
+            print("Unavailable: new Stockfish analysis.")
+        coaching_ready = states.get("ollama") == states.get("ollama_model") == "pass"
+        print(
+            f"{'Available' if coaching_ready else 'Unavailable'}: new LLM explanations."
+        )
+    if overall == "unavailable" or (args.strict and overall != "healthy"):
+        raise SystemExit(1)
+
+
+def _import_pgn(
+    args: argparse.Namespace, sessions: sessionmaker[Session], settings: Settings
+) -> None:
+    from chess_coach.application.import_pgn import import_files
+    from chess_coach.infrastructure.persistence.pgn_repository import (
+        PGNRepository,
+    )
+
+    imported = import_files(
+        PGNRepository(sessions),
+        args.files,
+        args.username,
+        args.played_at,
+        settings.pgn_max_bytes,
+    )
+    print(json.dumps(imported, indent=2))
+    if imported["rejected"]:
+        raise SystemExit(1)
+
+
+def _training(
+    args: argparse.Namespace, sessions: sessionmaker[Session], settings: Settings
+) -> None:
+    from chess_coach.application.generate_puzzles import (
+        generate_puzzles,
+        guard_idle,
+    )
+    from chess_coach.infrastructure.analysis_lock import worker_guard
+    from chess_coach.infrastructure.engine.stockfish_adapter import (
+        StockfishAdapter,
+    )
+    from chess_coach.infrastructure.persistence.training_repository import (
+        TrainingRepository,
+    )
+
+    with worker_guard(settings.database_path):
+        training_store = TrainingRepository(sessions)
+        guard_idle(training_store)
+        verification_settings = settings.model_copy(
+            update={"stockfish_threads": settings.training_stockfish_threads}
+        )
+        training_report = generate_puzzles(
+            training_store,
+            StockfishAdapter(verification_settings),
+            verification_settings,
+            args.player_id,
+            args.profile,
+            args.after_move_id,
+            args.limit,
+        )
+    print(json.dumps(asdict(training_report), indent=2))
+    if training_report.errors:
+        raise SystemExit(1)
+
+
+def _analytics_health(
+    args: argparse.Namespace, sessions: sessionmaker[Session]
+) -> None:
+    from chess_coach.analytics.contracts import AnalyticsRequest, ReportStatus
+    from chess_coach.analytics.service import AnalyticsService
+    from chess_coach.infrastructure.persistence.analytics_repository import (
+        AnalyticsRepository,
+    )
+
+    report_analytics = AnalyticsService(AnalyticsRepository(sessions)).build_report(
+        AnalyticsRequest.model_validate(
+            {
+                "player_id": args.player_id,
+                "profile_hash": args.profile,
+                "window": args.window,
+                "start_date": args.start,
+                "end_date": args.end,
+            }
+        )
+    )
+    print(report_analytics.model_dump_json(indent=2))
+    if report_analytics.status == ReportStatus.DATA_ERROR:
+        raise SystemExit(1)
+
+
+def _extract_features(
+    args: argparse.Namespace, sessions: sessionmaker[Session]
+) -> None:
+    from chess_coach.application.features import ExtractFeatures
+    from chess_coach.infrastructure.persistence.feature_repository import (
+        FeatureRepository,
+    )
+
+    report_features = ExtractFeatures(FeatureRepository(sessions)).run(
+        args.username, args.profile
+    )
+    print(json.dumps(asdict(report_features), indent=2))
+    if report_features.games_failed:
+        raise SystemExit(1)
+
+
+def _parse_games(
+    args: argparse.Namespace, sessions: sessionmaker[Session], settings: Settings
+) -> None:
+    report_parse = ParseImportedGames(
+        ParseRepository(sessions, settings.database_path),
+        parse_game,
+        max_bytes=settings.pgn_max_bytes,
+    ).run(args.username, retry=args.retry)
+    print(json.dumps(asdict(report_parse), indent=2))
+
+
+def _sync_or_show_status(
+    args: argparse.Namespace,
+    sessions: sessionmaker[Session],
+    settings: Settings,
+    parser: argparse.ArgumentParser,
+) -> None:
+    store = SyncRepository(sessions, settings.database_path)
+    if args.command == "sync-status":
+        print(
+            json.dumps(store.diagnostics(normalize_username(args.username)), indent=2)
+        )
+        return
+    month = None
+    if args.month:
+        try:
+            year, number = args.month.split("/")
+            month = Archive(int(year), int(number))
+        except ValueError:
+            parser.error("--month must be YYYY/MM with a valid archive date")
+    with ChessComClient() as provider:
+        prepare = ParseImportedGames(
+            ParseRepository(
+                store.sessions, settings.database_path, lock_already_held=True
+            ),
+            parse_game,
+            max_bytes=settings.pgn_max_bytes,
+        )
+        report = SyncGamesService(provider, store, prepare_games=prepare.run).sync(
+            args.username, force=args.force, dry_run=args.dry_run, month=month
+        )
+    print(json.dumps(asdict(report), indent=2))
+    if report.status in {"FAILED", "PARTIAL"}:
+        raise SystemExit(1)
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = _build_parser()
     args = parser.parse_args(argv)
     if args.command == "doctor":
-        from chess_coach.application.system import overall_status
-        from chess_coach.infrastructure.system.diagnostics import diagnose
-
-        configure_logging()
-        try:
-            checks = diagnose(Settings, deep=args.deep)
-        except Exception:
-            logging.getLogger(__name__).exception(
-                "doctor_failed", extra={"error_code": "DIAGNOSTICS_FAILED"}
-            )
-            print("Diagnostics could not finish. Check backend logs and retry.")
-            raise SystemExit(2) from None
-        labels = {"pass": "PASS", "warn": "WARN", "fail": "FAIL", "skip": "SKIP"}
-        print("Chess Coach — Diagnostics")
-        for check in checks:
-            print(
-                f"{labels[check.status]:4}  {check.name.replace('_', ' ').capitalize()}: {check.message}"
-            )
-            if check.action:
-                print(f"      {check.action}")
-        overall = overall_status(checks)
-        print(f"Overall status: {overall.upper()}")
-        if overall != "unavailable":
-            print(
-                "Available: stored games, historical analysis, deterministic analytics, and stored training."
-            )
-            states = {check.name: check.status for check in checks}
-            if states.get("stockfish") == "pass":
-                print(
-                    "Stockfish is ready. Start the analysis worker to run new analysis."
-                )
-            else:
-                print("Unavailable: new Stockfish analysis.")
-            coaching_ready = (
-                states.get("ollama") == states.get("ollama_model") == "pass"
-            )
-            print(
-                f"{'Available' if coaching_ready else 'Unavailable'}: new LLM explanations."
-            )
-        if overall == "unavailable" or (args.strict and overall != "healthy"):
-            raise SystemExit(1)
+        _run_doctor(args)
         return
     if args.command in (None, "serve"):
         uvicorn.run(
@@ -204,133 +352,21 @@ def main(argv: list[str] | None = None) -> None:
 
         raise SystemExit(diagnose_engine(settings))
     engine = create_database_engine(settings.database_url)
+    sessions = create_session_factory(engine)
     try:
-        if args.command == "import-pgn":
-            from chess_coach.application.import_pgn import import_files
-            from chess_coach.infrastructure.persistence.pgn_repository import (
-                PGNRepository,
-            )
-
-            imported = import_files(
-                PGNRepository(create_session_factory(engine)),
-                args.files,
-                args.username,
-                args.played_at,
-                settings.pgn_max_bytes,
-            )
-            print(json.dumps(imported, indent=2))
-            if imported["rejected"]:
-                raise SystemExit(1)
-            return
-        if args.command == "training":
-            from chess_coach.application.generate_puzzles import (
-                generate_puzzles,
-                guard_idle,
-            )
-            from chess_coach.infrastructure.analysis_lock import worker_guard
-            from chess_coach.infrastructure.engine.stockfish_adapter import (
-                StockfishAdapter,
-            )
-            from chess_coach.infrastructure.persistence.training_repository import (
-                TrainingRepository,
-            )
-
-            with worker_guard(settings.database_path):
-                training_store = TrainingRepository(create_session_factory(engine))
-                guard_idle(training_store)
-                verification_settings = settings.model_copy(
-                    update={"stockfish_threads": settings.training_stockfish_threads}
-                )
-                training_report = generate_puzzles(
-                    training_store,
-                    StockfishAdapter(verification_settings),
-                    verification_settings,
-                    args.player_id,
-                    args.profile,
-                    args.after_move_id,
-                    args.limit,
-                )
-            print(json.dumps(asdict(training_report), indent=2))
-            if training_report.errors:
-                raise SystemExit(1)
-            return
-        if args.command == "analytics-health":
-            from chess_coach.analytics.contracts import AnalyticsRequest, ReportStatus
-            from chess_coach.analytics.service import AnalyticsService
-            from chess_coach.infrastructure.persistence.analytics_repository import (
-                AnalyticsRepository,
-            )
-
-            report_analytics = AnalyticsService(
-                AnalyticsRepository(create_session_factory(engine))
-            ).build_report(
-                AnalyticsRequest.model_validate(
-                    {
-                        "player_id": args.player_id,
-                        "profile_hash": args.profile,
-                        "window": args.window,
-                        "start_date": args.start,
-                        "end_date": args.end,
-                    }
-                )
-            )
-            print(report_analytics.model_dump_json(indent=2))
-            if report_analytics.status == ReportStatus.DATA_ERROR:
-                raise SystemExit(1)
-            return
-        if args.command == "extract-features":
-            from chess_coach.application.features import ExtractFeatures
-            from chess_coach.infrastructure.persistence.feature_repository import (
-                FeatureRepository,
-            )
-
-            report_features = ExtractFeatures(
-                FeatureRepository(create_session_factory(engine))
-            ).run(args.username, args.profile)
-            print(json.dumps(asdict(report_features), indent=2))
-            if report_features.games_failed:
-                raise SystemExit(1)
-            return
-        if args.command == "parse-games":
-            report_parse = ParseImportedGames(
-                ParseRepository(create_session_factory(engine), settings.database_path),
-                parse_game,
-                max_bytes=settings.pgn_max_bytes,
-            ).run(args.username, retry=args.retry)
-            print(json.dumps(asdict(report_parse), indent=2))
-            return
-        store = SyncRepository(create_session_factory(engine), settings.database_path)
-        if args.command == "sync-status":
-            print(
-                json.dumps(
-                    store.diagnostics(normalize_username(args.username)), indent=2
-                )
-            )
-            return
-        month = None
-        if args.month:
-            try:
-                year, number = args.month.split("/")
-                month = Archive(int(year), int(number))
-            except ValueError:
-                parser.error("--month must be YYYY/MM with a valid archive date")
-        with ChessComClient() as provider:
-            store = SyncRepository(
-                create_session_factory(engine), settings.database_path
-            )
-            prepare = ParseImportedGames(
-                ParseRepository(
-                    store.sessions, settings.database_path, lock_already_held=True
-                ),
-                parse_game,
-                max_bytes=settings.pgn_max_bytes,
-            )
-            report = SyncGamesService(provider, store, prepare_games=prepare.run).sync(
-                args.username, force=args.force, dry_run=args.dry_run, month=month
-            )
-        print(json.dumps(asdict(report), indent=2))
-        if report.status in {"FAILED", "PARTIAL"}:
-            raise SystemExit(1)
+        match args.command:
+            case "import-pgn":
+                _import_pgn(args, sessions, settings)
+            case "training":
+                _training(args, sessions, settings)
+            case "analytics-health":
+                _analytics_health(args, sessions)
+            case "extract-features":
+                _extract_features(args, sessions)
+            case "parse-games":
+                _parse_games(args, sessions, settings)
+            case _:
+                _sync_or_show_status(args, sessions, settings, parser)
     except (SourceError, SyncAlreadyRunning, OperationError, ValueError) as exc:
         print(json.dumps({"status": "FAILED", "error": str(exc)}))
         raise SystemExit(1) from None

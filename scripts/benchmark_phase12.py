@@ -18,6 +18,7 @@ from unittest.mock import patch
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 
 from chess_coach.analytics.contracts import AnalyticsRequest
 from chess_coach.analytics.service import AnalyticsService
@@ -57,6 +58,66 @@ class Measurements(logging.Handler):
                     )
                 }
             )
+
+
+def _replicate_games(
+    sessions: sessionmaker[Session],
+    original_games: list[Game],
+    profile: str,
+    scale_games: int,
+) -> None:
+    # Copy persisted evidence only in this disposable load-test database.
+    if scale_games < len(original_games):
+        raise SystemExit("Scale count must be at least the source count.")
+    with sessions.begin() as s:
+        for i in range(len(original_games), scale_games):
+            original = original_games[i % len(original_games)]
+            values = {
+                c.name: getattr(original, c.name)
+                for c in Game.__table__.columns
+                if c.name != "id"
+            }
+            values.update(
+                canonical_hash=fingerprint(["phase12-load-test", i]),
+                external_id=None,
+            )
+            game = Game(**values)
+            s.add(game)
+            s.flush()
+            state = s.scalar(
+                select(GameAnalysisState).where(
+                    GameAnalysisState.game_id == original.id,
+                    GameAnalysisState.profile_hash == profile,
+                )
+            )
+            s.add(
+                GameAnalysisState(
+                    **{
+                        c.name: game.id
+                        if c.name == "game_id"
+                        else getattr(state, c.name)
+                        for c in GameAnalysisState.__table__.columns
+                        if c.name != "id"
+                    }
+                )
+            )
+            for row in s.scalars(
+                select(MoveAnalysis).where(
+                    MoveAnalysis.game_id == original.id,
+                    MoveAnalysis.profile_hash == profile,
+                )
+            ):
+                s.add(
+                    MoveAnalysis(
+                        **{
+                            c.name: game.id
+                            if c.name == "game_id"
+                            else getattr(row, c.name)
+                            for c in MoveAnalysis.__table__.columns
+                            if c.name != "id"
+                        }
+                    )
+                )
 
 
 def main() -> None:
@@ -108,59 +169,8 @@ def main() -> None:
                     .order_by(Game.id)
                 )
             )
-        # Copy persisted evidence only in this disposable load-test database.
         if args.scale_games:
-            if args.scale_games < len(original_games):
-                raise SystemExit("Scale count must be at least the source count.")
-            with sessions.begin() as s:
-                for i in range(len(original_games), args.scale_games):
-                    original = original_games[i % len(original_games)]
-                    values = {
-                        c.name: getattr(original, c.name)
-                        for c in Game.__table__.columns
-                        if c.name != "id"
-                    }
-                    values.update(
-                        canonical_hash=fingerprint(["phase12-load-test", i]),
-                        external_id=None,
-                    )
-                    game = Game(**values)
-                    s.add(game)
-                    s.flush()
-                    state = s.scalar(
-                        select(GameAnalysisState).where(
-                            GameAnalysisState.game_id == original.id,
-                            GameAnalysisState.profile_hash == profile,
-                        )
-                    )
-                    s.add(
-                        GameAnalysisState(
-                            **{
-                                c.name: game.id
-                                if c.name == "game_id"
-                                else getattr(state, c.name)
-                                for c in GameAnalysisState.__table__.columns
-                                if c.name != "id"
-                            }
-                        )
-                    )
-                    for row in s.scalars(
-                        select(MoveAnalysis).where(
-                            MoveAnalysis.game_id == original.id,
-                            MoveAnalysis.profile_hash == profile,
-                        )
-                    ):
-                        s.add(
-                            MoveAnalysis(
-                                **{
-                                    c.name: game.id
-                                    if c.name == "game_id"
-                                    else getattr(row, c.name)
-                                    for c in MoveAnalysis.__table__.columns
-                                    if c.name != "id"
-                                }
-                            )
-                        )
+            _replicate_games(sessions, original_games, profile, args.scale_games)
         with (
             patch.object(
                 subprocess, "Popen", side_effect=AssertionError("No subprocess")

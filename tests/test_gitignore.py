@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
     [
         "frontend/src/lib/index.ts",
         "frontend/src/lib/assets/favicon.svg",
-        "frontend/src/lib/components/Review.svelte",
+        "frontend/src/lib/components/GameReview.svelte",
         "frontend/src/lib/api/client.ts",
         "frontend/src/lib/components/training/PuzzleBoard.svelte.spec.ts",
     ],
