@@ -296,6 +296,12 @@ class AnalysisRepository:
 
     @staticmethod
     def compatible(s: Session, game: Game, profile: AnalysisProfile) -> bool:
+        return AnalysisRepository.validated_moves(s, game, profile) is not None
+
+    @staticmethod
+    def validated_moves(
+        s: Session, game: Game, profile: AnalysisProfile
+    ) -> Sequence[MoveAnalysis] | None:
         state = s.scalar(
             select(GameAnalysisState).where(
                 GameAnalysisState.game_id == game.id,
@@ -310,13 +316,13 @@ class AnalysisRepository:
             or state.status != GameAnalysisStatus.DONE
             or state.source_hash != source_hash(game)
         ):
-            return False
+            return None
         if (
             not isinstance(total_plies, int)
             or not state.position_ids
             or len(state.position_ids) != total_plies + 1
         ):
-            return False
+            return None
         rows = s.scalars(
             select(MoveAnalysis)
             .where(
@@ -326,7 +332,7 @@ class AnalysisRepository:
             .order_by(MoveAnalysis.ply)
         ).all()
         if [r.ply for r in rows] != list(range(1, total_plies + 1)):
-            return False
+            return None
         unknown = bool(metadata.get("history_before_start_unknown"))
         positions = {
             row.id: row
@@ -339,22 +345,22 @@ class AnalysisRepository:
             for index, position_id in enumerate(state.position_ids):
                 cached = positions.get(position_id)
                 if cached is None or not _matches_position_profile(cached, profile):
-                    return False
+                    return None
                 if cached.history_hash != history_hash(board, unknown):
-                    return False
+                    return None
                 validate_result(board, result_of(cached), profile.engine)
                 if index == total_plies:
                     break
                 following = positions.get(state.position_ids[index + 1])
                 if following is None:
-                    return False
+                    return None
                 played = _validated_played_move(board, rows[index], cached, following)
                 if played is None:
-                    return False
+                    return None
                 board.push(played)
-            return board.fen() == metadata.get("final_fen")
+            return rows if board.fen() == metadata.get("final_fen") else None
         except ValueError:
-            return False
+            return None
 
     @staticmethod
     def _transition(run: AnalysisRun, target: Status) -> None:

@@ -8,6 +8,15 @@ export function invalidResponse(status?: number): ApiError {
 	return new ApiError('invalid_response', 'The backend returned an unexpected response.', status);
 }
 
+export function jsonRequest(method: string, body: object, signal?: AbortSignal): RequestInit {
+	return {
+		method,
+		body: JSON.stringify(body),
+		headers: { 'Content-Type': 'application/json' },
+		signal
+	};
+}
+
 export async function apiRequest<T>(
 	path: string,
 	init: RequestInit = {},

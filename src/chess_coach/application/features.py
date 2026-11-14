@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
 from chess_coach.analytics.features import FeatureInputError, extract_game_features
-from chess_coach.application.parse_imported_games import _source_result
+from chess_coach.application.parse_imported_games import parse_game_with_source
 from chess_coach.domain.feature_models import FEATURE_EXTRACTOR_VERSION
 from chess_coach.infrastructure.persistence.feature_repository import FeatureRepository
 from chess_coach.infrastructure.pgn.parser import parse_game
@@ -56,12 +56,7 @@ class ExtractFeatures:
             }
             try:
                 snapshot = self.store.load(game_id, profile_hash)
-                expected, fen = _source_result(snapshot.source)
-                parsed = parse_game(
-                    snapshot.source.raw_pgn,
-                    snapshot.source.username,
-                    source_final_fen=fen,
-                )
+                parsed, expected = parse_game_with_source(snapshot.source, parse_game)
                 if parsed.total_plies != snapshot.expected_plies:
                     raise FeatureInputError("GAME_REVALIDATION_REQUIRED")
                 if expected is not None and parsed.source_result != expected:

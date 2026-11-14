@@ -1,4 +1,4 @@
-import { apiRequest, invalidResponse, isRecord } from './client.js';
+import { apiRequest, invalidResponse, isRecord, jsonRequest } from './client.js';
 import { isGame } from './games.js';
 import type { components } from './generated/schema.js';
 
@@ -121,12 +121,10 @@ export async function getVariationPosition(
 	body: Schemas['ReviewVariationRequest'],
 	signal: AbortSignal
 ) {
-	const data = await apiRequest<VariationPosition>(`/api/v1/games/${id}/review/variation`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(body),
-		signal
-	});
+	const data = await apiRequest<VariationPosition>(
+		`/api/v1/games/${id}/review/variation`,
+		jsonRequest('POST', body, signal)
+	);
 	if (
 		!isRecord(data) ||
 		typeof data.fen !== 'string' ||

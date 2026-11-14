@@ -7,17 +7,12 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from chess_coach.domain.sync import ExternalGame, Rejection, normalize_username
-
-LOSSES = {"checkmated", "timeout", "resigned", "lose", "abandoned"}
-DRAWS = {
-    "agreed",
-    "repetition",
-    "stalemate",
-    "insufficient",
-    "50move",
-    "timevsinsufficient",
-}
+from chess_coach.domain.sync import (
+    ExternalGame,
+    Rejection,
+    archive_result,
+    normalize_username,
+)
 
 
 class Player(BaseModel):
@@ -63,15 +58,9 @@ def normalize_game(
         if played > now:
             raise ValueError("INVALID_END_TIME")
         wr, br = source.white.result, source.black.result
-        if wr == "win" and br in LOSSES:
-            winner = "white"
-        elif br == "win" and wr in LOSSES:
-            winner = "black"
-        elif wr in DRAWS and br in DRAWS:
-            winner = "draw"
-        else:
+        expected = archive_result(wr, br)
+        if expected is None:
             raise ValueError("INVALID_COMPLETION_RESULTS")
-        expected = {"white": "1-0", "black": "0-1", "draw": "1/2-1/2"}[winner]
         # Refuse an explicitly conflicting variant even if the envelope says chess.
         variant = re.search(r'^\[Variant\s+"([^"]+)"\]', source.pgn, re.MULTILINE)
         if variant and variant[1].lower() not in {"standard", "chess"}:
@@ -97,7 +86,13 @@ def normalize_game(
             f"chesscom-source-v1:{url or identity}".encode()
         ).hexdigest()
         color = "white" if username == white else "black"
-        result = "draw" if winner == "draw" else "win" if color == winner else "loss"
+        result = (
+            "draw"
+            if expected == "1/2-1/2"
+            else "win"
+            if (expected == "1-0") == (color == "white")
+            else "loss"
+        )
         return ExternalGame(
             identity,
             fingerprint,

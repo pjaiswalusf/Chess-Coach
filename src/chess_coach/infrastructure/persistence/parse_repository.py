@@ -1,7 +1,6 @@
 """Short atomic parsing transactions; share the import lock during local batches."""
 
 from contextlib import AbstractContextManager, nullcontext
-from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 
@@ -18,6 +17,7 @@ from chess_coach.domain.game_records import (
 )
 from chess_coach.infrastructure.chesscom.opening_names import opening_name_from_url
 from chess_coach.infrastructure.persistence.models import Game, TrackedPlayer
+from chess_coach.infrastructure.persistence.parsed_metadata import parsed_game_metadata
 from chess_coach.infrastructure.persistence.sync_repository import SyncRepository
 
 
@@ -112,11 +112,7 @@ class ParseRepository:
                 game.parse_error = outcome.safe_error_message
                 game.parsed_metadata = None
             else:
-                metadata = asdict(outcome)
-                del metadata[
-                    "moves"
-                ]  # Phase 9 reconstructs the typed sequence from raw PGN.
-                metadata["total_plies"] = outcome.total_plies
+                metadata = parsed_game_metadata(outcome)
                 game.parsed_metadata = metadata
                 game.player_color, game.result = (
                     outcome.player_color,

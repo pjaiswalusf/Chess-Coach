@@ -9,7 +9,10 @@ from typing import Literal, Protocol
 import chess
 from structlog.contextvars import bound_contextvars
 
-from chess_coach.application.parse_imported_games import ParseInput, _source_result
+from chess_coach.application.parse_imported_games import (
+    ParseInput,
+    parse_game_with_source,
+)
 from chess_coach.config import Settings
 from chess_coach.domain.analysis import AnalysisProfile
 from chess_coach.domain.engine_types import EngineResult
@@ -172,7 +175,7 @@ class AnalysisProcessor:
         game_started = perf_counter()
         game, username = self.store.begin_game(run_id, game_id)
         parse_started = perf_counter()
-        expected, final_fen = _source_result(
+        parsed, expected = parse_game_with_source(
             ParseInput(
                 game.id,
                 game.raw_pgn,
@@ -181,13 +184,9 @@ class AnalysisProcessor:
                 game.white_username,
                 game.black_username,
                 game.source_evidence,
-            )
-        )
-        parsed = parse_game(
-            game.raw_pgn,
-            username,
+            ),
+            parse_game,
             max_bytes=self.settings.pgn_max_bytes,
-            source_final_fen=final_fen,
         )
         if expected is not None and parsed.source_result != expected:
             raise ValueError("INVALID_GAME: source result mismatch")

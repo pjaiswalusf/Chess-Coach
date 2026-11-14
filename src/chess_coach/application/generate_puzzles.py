@@ -12,7 +12,10 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from chess_coach.application.analysis import configured_profile
 from chess_coach.application.errors import OperationError
-from chess_coach.application.parse_imported_games import ParseInput, _source_result
+from chess_coach.application.parse_imported_games import (
+    ParseInput,
+    parse_game_with_source,
+)
 from chess_coach.config import Settings
 from chess_coach.domain.analysis import (
     DRAW_POLICY,
@@ -73,7 +76,7 @@ def reconstruct(candidate: Candidate, username: str, max_bytes: int) -> chess.Bo
     ):
         raise Rejected(Rejection.MISSING_ANALYSIS)
     try:
-        expected, final_fen = _source_result(
+        parsed, expected = parse_game_with_source(
             ParseInput(
                 game.id,
                 game.raw_pgn,
@@ -82,10 +85,9 @@ def reconstruct(candidate: Candidate, username: str, max_bytes: int) -> chess.Bo
                 game.white_username,
                 game.black_username,
                 game.source_evidence,
-            )
-        )
-        parsed = parse_game(
-            game.raw_pgn, username, max_bytes=max_bytes, source_final_fen=final_fen
+            ),
+            parse_game,
+            max_bytes=max_bytes,
         )
     except PGNParseError as exc:
         raise Rejected(Rejection.INVALID_POSITION) from exc

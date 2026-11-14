@@ -1,4 +1,4 @@
-import { apiRequest, invalidResponse, isRecord } from './client.js';
+import { apiRequest, invalidResponse, isRecord, jsonRequest } from './client.js';
 import type { components } from './generated/schema.js';
 
 type Schemas = components['schemas'];
@@ -12,15 +12,6 @@ const count = (value: unknown) =>
 const states = ['queued', 'running', 'completed', 'failed'];
 
 export const isActive = (status?: string) => status === 'queued' || status === 'running';
-
-function json(method: string, body: object, signal: AbortSignal): RequestInit {
-	return {
-		method,
-		body: JSON.stringify(body),
-		headers: { 'Content-Type': 'application/json' },
-		signal
-	};
-}
 
 function accepted<T extends Schemas['AcceptedRun']>(data: T): T {
 	if (!isRecord(data) || !positiveId(data.run_id) || !states.includes(data.status))
@@ -46,7 +37,7 @@ export const jobsApi = {
 	setPlayer: (username: string, signal: AbortSignal) =>
 		apiRequest<Schemas['PlayerResponse']>(
 			'/api/v1/player',
-			json('PUT', { username, verify: true }, signal)
+			jsonRequest('PUT', { username, verify: true }, signal)
 		),
 	async latest(signal: AbortSignal) {
 		const data = await apiRequest<Schemas['LatestRuns']>('/api/v1/sync-runs/latest-work', {
@@ -60,13 +51,13 @@ export const jobsApi = {
 		return data;
 	},
 	startSync: (signal: AbortSignal) =>
-		apiRequest<Schemas['AcceptedRun']>('/api/v1/sync-runs', json('POST', {}, signal)).then(
+		apiRequest<Schemas['AcceptedRun']>('/api/v1/sync-runs', jsonRequest('POST', {}, signal)).then(
 			accepted
 		),
 	startAnalysis: (signal: AbortSignal) =>
 		apiRequest<Schemas['RunResponse']>(
 			'/api/v1/analysis-runs',
-			json('POST', { scope: 'pending' }, signal)
+			jsonRequest('POST', { scope: 'pending' }, signal)
 		).then(accepted),
 	async sync(id: number, signal: AbortSignal) {
 		const data = accepted(await apiRequest<SyncRun>(`/api/v1/sync-runs/${id}`, { signal }));

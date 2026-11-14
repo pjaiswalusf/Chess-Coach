@@ -21,7 +21,10 @@ from chess_coach.analytics.contracts import (
 from chess_coach.analytics.feature_config import DEFAULT_CONFIG
 from chess_coach.analytics.features import extract_game_features
 from chess_coach.analytics.sample_policy import severity
-from chess_coach.application.parse_imported_games import ParseInput, _source_result
+from chess_coach.application.parse_imported_games import (
+    ParseInput,
+    parse_game_with_source,
+)
 from chess_coach.domain.analysis import fingerprint, history_hash, validate_result
 from chess_coach.domain.feature_models import (
     FEATURE_EXTRACTOR_VERSION,
@@ -47,6 +50,7 @@ from chess_coach.infrastructure.persistence.models import (
     PositionCache,
     TrackedPlayer,
 )
+from chess_coach.infrastructure.persistence.parsed_metadata import parsed_game_metadata
 from chess_coach.infrastructure.pgn.parser import parse_game
 
 T = TypeVar("T")
@@ -232,8 +236,7 @@ class AnalyticsRepository:
             g.black_username,
             g.source_evidence,
         )
-        expected_result, final_fen = _source_result(source)
-        parsed = parse_game(g.raw_pgn, username, source_final_fen=final_fen)
+        parsed, expected_result = parse_game_with_source(source, parse_game)
         require(
             expected_result is None or parsed.source_result == expected_result,
             "SOURCE_RESULT_INVALID",
@@ -253,9 +256,7 @@ class AnalyticsRepository:
             ),
             "PLAYER_ATTRIBUTION_INVALID",
         )
-        metadata = asdict(parsed)
-        del metadata["moves"]
-        metadata["total_plies"] = parsed.total_plies
+        metadata = parsed_game_metadata(parsed)
         if expected_result is not None:
             metadata["completion_provenance"] = "chesscom_archive"
         require(g.parsed_metadata == metadata, "PARSED_METADATA_INVALID")

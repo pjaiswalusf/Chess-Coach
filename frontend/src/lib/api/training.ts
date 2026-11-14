@@ -1,4 +1,4 @@
-import { apiRequest } from './client.js';
+import { apiRequest, jsonRequest } from './client.js';
 import type { components } from './generated/schema.js';
 
 export type PublicPuzzle = components['schemas']['PublicPuzzle'];
@@ -19,19 +19,14 @@ export function getNextPuzzle(signal?: AbortSignal, puzzleId?: string) {
 }
 
 export function submitPuzzleAttempt(id: number, attempt: SubmitAttempt) {
-	return apiRequest<AttemptResult>(prefix + '/' + id + '/attempts', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(attempt)
-	});
+	return apiRequest<AttemptResult>(prefix + '/' + id + '/attempts', jsonRequest('POST', attempt));
 }
 
 export function playPuzzle(id: number, attempt: PlayPuzzle) {
-	return apiRequest<components['schemas']['PuzzleStep']>(prefix + '/' + id + '/play', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(attempt)
-	});
+	return apiRequest<components['schemas']['PuzzleStep']>(
+		prefix + '/' + id + '/play',
+		jsonRequest('POST', attempt)
+	);
 }
 
 export function getTrainingStats(signal?: AbortSignal) {

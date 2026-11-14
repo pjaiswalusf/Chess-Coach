@@ -353,18 +353,11 @@ class QueryRepository:
                     or profile_of(run).hash != profile
                     or run.analysis_version != state.analysis_version
                     or run.tracked_player_id != g.tracked_player_id
-                    or not self.analysis.compatible(s, g, profile_of(run))
-                ):
+                ) or (
+                    rows := self.analysis.validated_moves(s, g, profile_of(run))
+                ) is None:
                     status = "incompatible"
                 else:
-                    rows = s.scalars(
-                        select(MoveAnalysis)
-                        .where(
-                            MoveAnalysis.game_id == game_id,
-                            MoveAnalysis.profile_hash == profile,
-                        )
-                        .order_by(MoveAnalysis.ply)
-                    ).all()
                     assert state.position_ids
                     final = s.get(PositionCache, state.position_ids[-1])
                     if final is None:
