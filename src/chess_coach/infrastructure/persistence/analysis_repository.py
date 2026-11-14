@@ -1,6 +1,7 @@
 """Short SQLite transactions for persistent runs, compatible cache, and finalization."""
 
 import logging
+from collections.abc import Sequence
 from datetime import timedelta
 from pathlib import Path
 
@@ -81,6 +82,67 @@ def result_of(row: PositionCache) -> EngineResult:
     )
 
 
+def _matches_position_profile(row: PositionCache, profile: AnalysisProfile) -> bool:
+    return (
+        row.engine_version,
+        row.analysis_version,
+        row.config_hash,
+        row.draw_policy_version,
+    ) == (profile.engine, profile.version, profile.config_hash, profile.draw_policy)
+
+
+def _loss_between_scores(
+    before_cp: int | None, after_cp: int | None, mover: chess.Color
+) -> int | None:
+    if before_cp is None or after_cp is None:
+        return None
+    return calculate_loss_cp(before_cp, after_cp, mover)
+
+
+def _validated_played_move(
+    board: chess.Board,
+    move: MoveAnalysis,
+    before: PositionCache,
+    after: PositionCache,
+) -> chess.Move | None:
+    if (
+        move.fen_before,
+        move.best_move_uci,
+        move.eval_before_cp_white,
+        move.mate_before_white,
+        move.mate_before_winner,
+        move.pv_json,
+    ) != (
+        before.fen,
+        before.best_move_uci,
+        before.score_cp_white,
+        before.mate_distance_white,
+        before.mate_winner,
+        before.pv_json,
+    ):
+        return None
+    if (
+        move.eval_after_cp_white,
+        move.mate_after_white,
+        move.mate_after_winner,
+    ) != (after.score_cp_white, after.mate_distance_white, after.mate_winner):
+        return None
+    if move.loss_cp != _loss_between_scores(
+        before.score_cp_white, after.score_cp_white, board.turn
+    ):
+        return None
+    if move.mover != ("white" if board.turn else "black"):
+        return None
+    played = chess.Move.from_uci(move.played_move_uci)
+    if (
+        played not in board.legal_moves
+        or move.played_move_san != board.san(played)
+        or move.move_number != board.fullmove_number
+    ):
+        return None
+    return played
+
+
 class AnalysisRepository:
     def __init__(self, sessions: sessionmaker[Session], database: Path):
         self.sessions, self.database = sessions, database
@@ -154,44 +216,92 @@ class AnalysisRepository:
                 .where(Game.tracked_player_id == player_id)
                 .order_by(Game.id)
             ).all()
-            run = AnalysisRun(
-                tracked_player_id=player_id,
-                engine_version=profile.engine,
-                analysis_version=profile.version,
-                engine_config_hash=profile.config_hash,
-                engine_config_json=profile.config,
-                draw_policy_version=profile.draw_policy,
-                profile_hash=profile.hash,
+            return self._create(s, player_id, profile, games)
+
+    def queue_synced_games(self, profile: AnalysisProfile) -> None:
+        pending = select(Game).where(
+            Game.auto_analysis_pending.is_(True),
+            Game.parse_status == ParseStatus.READY,
+            Game.parser_version == PARSER_VERSION,
+            Game.chess_library_version == chess.__version__,
+            Game.parsed_metadata.is_not(None),
+        )
+        # Most polls find no new work and need no SQLite write reservation.
+        with self.sessions() as s:
+            if s.scalar(pending.with_only_columns(Game.id).limit(1)) is None:
+                return
+        with self.sessions.begin() as s:
+            reserve(s)
+            try:
+                ensure_idle(s)
+            except OperationError:
+                return
+            player_id = s.scalar(
+                pending.with_only_columns(Game.tracked_player_id)
+                .order_by(Game.id)
+                .limit(1)
             )
-            s.add(run)
-            s.flush()
-            for g in games:
-                if (
-                    g.parse_status != ParseStatus.READY
-                    or g.parser_version != PARSER_VERSION
-                    or g.chess_library_version != chess.__version__
-                    or not g.parsed_metadata
-                ):
-                    run.games_excluded += 1
-                    continue
-                skipped = self.compatible(s, g, profile)
-                s.add(
-                    AnalysisRunGame(
-                        run_id=run.id,
-                        game_id=g.id,
-                        source_hash=source_hash(g),
-                        status="skipped" if skipped else "pending",
-                    )
+            if player_id is None:
+                return
+            games = s.scalars(
+                pending.where(Game.tracked_player_id == player_id).order_by(Game.id)
+            ).all()
+            self._create(s, player_id, profile, games)
+
+    def _create(
+        self,
+        s: Session,
+        player_id: int,
+        profile: AnalysisProfile,
+        games: Sequence[Game],
+    ) -> int:
+        run = AnalysisRun(
+            tracked_player_id=player_id,
+            engine_version=profile.engine,
+            analysis_version=profile.version,
+            engine_config_hash=profile.config_hash,
+            engine_config_json=profile.config,
+            draw_policy_version=profile.draw_policy,
+            profile_hash=profile.hash,
+        )
+        s.add(run)
+        s.flush()
+        for g in games:
+            if (
+                g.parse_status != ParseStatus.READY
+                or g.parser_version != PARSER_VERSION
+                or g.chess_library_version != chess.__version__
+                or not g.parsed_metadata
+            ):
+                run.games_excluded += 1
+                continue
+            g.auto_analysis_pending = False
+            skipped = self.compatible(s, g, profile)
+            s.add(
+                AnalysisRunGame(
+                    run_id=run.id,
+                    game_id=g.id,
+                    source_hash=source_hash(g),
+                    status="skipped" if skipped else "pending",
                 )
-                run.games_total += 1
-                run.games_skipped += int(skipped)
-            if run.games_total == run.games_skipped:
-                self._transition(run, Status.RUNNING)
-                self._transition(run, Status.DONE)
-            return run.id
+            )
+            run.games_total += 1
+            run.games_skipped += int(skipped)
+        if run.games_total > run.games_skipped:
+            run.puzzle_cursor = 0
+        else:
+            self._transition(run, Status.RUNNING)
+            self._transition(run, Status.DONE)
+        return run.id
 
     @staticmethod
     def compatible(s: Session, game: Game, profile: AnalysisProfile) -> bool:
+        return AnalysisRepository.validated_moves(s, game, profile) is not None
+
+    @staticmethod
+    def validated_moves(
+        s: Session, game: Game, profile: AnalysisProfile
+    ) -> Sequence[MoveAnalysis] | None:
         state = s.scalar(
             select(GameAnalysisState).where(
                 GameAnalysisState.game_id == game.id,
@@ -199,19 +309,20 @@ class AnalysisRepository:
                 GameAnalysisState.analysis_version == profile.version,
             )
         )
-        n = (game.parsed_metadata or {}).get("total_plies")
+        metadata = game.parsed_metadata or {}
+        total_plies = metadata.get("total_plies")
         if (
             not state
             or state.status != GameAnalysisStatus.DONE
             or state.source_hash != source_hash(game)
         ):
-            return False
+            return None
         if (
-            not isinstance(n, int)
+            not isinstance(total_plies, int)
             or not state.position_ids
-            or len(state.position_ids) != n + 1
+            or len(state.position_ids) != total_plies + 1
         ):
-            return False
+            return None
         rows = s.scalars(
             select(MoveAnalysis)
             .where(
@@ -220,9 +331,9 @@ class AnalysisRepository:
             )
             .order_by(MoveAnalysis.ply)
         ).all()
-        if [r.ply for r in rows] != list(range(1, n + 1)):
-            return False
-        unknown = bool((game.parsed_metadata or {}).get("history_before_start_unknown"))
+        if [r.ply for r in rows] != list(range(1, total_plies + 1)):
+            return None
+        unknown = bool(metadata.get("history_before_start_unknown"))
         positions = {
             row.id: row
             for row in s.scalars(
@@ -230,76 +341,26 @@ class AnalysisRepository:
             )
         }
         try:
-            board = chess.Board(str((game.parsed_metadata or {}).get("initial_fen")))
-            for i, identity in enumerate(state.position_ids):
-                cached = positions.get(identity)
-                if cached is None or (
-                    cached.engine_version,
-                    cached.analysis_version,
-                    cached.config_hash,
-                    cached.draw_policy_version,
-                ) != (
-                    profile.engine,
-                    profile.version,
-                    profile.config_hash,
-                    profile.draw_policy,
-                ):
-                    return False
+            board = chess.Board(str(metadata.get("initial_fen")))
+            for index, position_id in enumerate(state.position_ids):
+                cached = positions.get(position_id)
+                if cached is None or not _matches_position_profile(cached, profile):
+                    return None
                 if cached.history_hash != history_hash(board, unknown):
-                    return False
+                    return None
                 validate_result(board, result_of(cached), profile.engine)
-                if i < n:
-                    row = rows[i]
-                    if (
-                        row.fen_before,
-                        row.best_move_uci,
-                        row.eval_before_cp_white,
-                        row.mate_before_white,
-                        row.mate_before_winner,
-                        row.pv_json,
-                    ) != (
-                        cached.fen,
-                        cached.best_move_uci,
-                        cached.score_cp_white,
-                        cached.mate_distance_white,
-                        cached.mate_winner,
-                        cached.pv_json,
-                    ):
-                        return False
-                    following = positions.get(state.position_ids[i + 1])
-                    if following is None or (
-                        row.eval_after_cp_white,
-                        row.mate_after_white,
-                        row.mate_after_winner,
-                    ) != (
-                        following.score_cp_white,
-                        following.mate_distance_white,
-                        following.mate_winner,
-                    ):
-                        return False
-                    expected_loss = None
-                    if (
-                        cached.score_cp_white is not None
-                        and following.score_cp_white is not None
-                    ):
-                        expected_loss = calculate_loss_cp(
-                            cached.score_cp_white, following.score_cp_white, board.turn
-                        )
-                    if row.loss_cp != expected_loss or row.mover != (
-                        "white" if board.turn else "black"
-                    ):
-                        return False
-                    played = chess.Move.from_uci(row.played_move_uci)
-                    if (
-                        played not in board.legal_moves
-                        or row.played_move_san != board.san(played)
-                        or row.move_number != board.fullmove_number
-                    ):
-                        return False
-                    board.push(played)
-            return board.fen() == (game.parsed_metadata or {}).get("final_fen")
+                if index == total_plies:
+                    break
+                following = positions.get(state.position_ids[index + 1])
+                if following is None:
+                    return None
+                played = _validated_played_move(board, rows[index], cached, following)
+                if played is None:
+                    return None
+                board.push(played)
+            return rows if board.fen() == metadata.get("final_fen") else None
         except ValueError:
-            return False
+            return None
 
     @staticmethod
     def _transition(run: AnalysisRun, target: Status) -> None:
@@ -585,17 +646,7 @@ class AnalysisRepository:
             evidence: list[EngineResult] = []
             for i, identity in enumerate(positions):
                 row = s.get(PositionCache, identity)
-                if not row or (
-                    row.engine_version,
-                    row.analysis_version,
-                    row.config_hash,
-                    row.draw_policy_version,
-                ) != (
-                    profile.engine,
-                    profile.version,
-                    profile.config_hash,
-                    profile.draw_policy,
-                ):
+                if row is None or not _matches_position_profile(row, profile):
                     raise ValueError("Incompatible position evidence")
                 if row.history_hash != history_hash(
                     board, parsed.history_before_start_unknown
@@ -619,16 +670,6 @@ class AnalysisRepository:
             for move, before, after in zip(
                 parsed.moves, evidence, evidence[1:], strict=False
             ):
-                loss = None
-                if (
-                    before.score_cp_white is not None
-                    and after.score_cp_white is not None
-                ):
-                    loss = calculate_loss_cp(
-                        before.score_cp_white,
-                        after.score_cp_white,
-                        move.mover_color == "white",
-                    )
                 s.add(
                     MoveAnalysis(
                         game_id=game_id,
@@ -648,7 +689,11 @@ class AnalysisRepository:
                         mate_after_white=after.mate_white,
                         mate_before_winner=before.mate_winner,
                         mate_after_winner=after.mate_winner,
-                        loss_cp=loss,
+                        loss_cp=_loss_between_scores(
+                            before.score_cp_white,
+                            after.score_cp_white,
+                            move.mover_color == "white",
+                        ),
                         pv_json=list(before.pv_uci),
                     )
                 )

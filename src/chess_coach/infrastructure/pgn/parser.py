@@ -154,6 +154,53 @@ def _annotation_seconds(read: Callable[[], float | None]) -> float | None:
         return None
 
 
+def _read_mainline(
+    game: chess.pgn.Game,
+    board: chess.Board,
+    control: TimeControl,
+    unknown_history: bool,
+) -> list[ParsedMove]:
+    previous: dict[chess.Color, float | None] = {
+        chess.WHITE: None if unknown_history else control.base_seconds,
+        chess.BLACK: None if unknown_history else control.base_seconds,
+    }
+    moves: list[ParsedMove] = []
+    for index, node in enumerate(game.mainline(), 1):
+        move = node.move
+        if move not in board.legal_moves or board.is_game_over(claim_draw=False):
+            raise PGNParseError(R.INVALID_MOVES)
+        before, number, turn = board.fen(), board.fullmove_number, board.turn
+        san = board.san(move)
+        clock, elapsed = _annotation_seconds(node.clock), _annotation_seconds(node.emt)
+        elapsed_source = "recorded" if elapsed is not None else "unknown"
+        prior = previous[turn]
+        if (
+            elapsed is None
+            and clock is not None
+            and prior is not None
+            and control.increment_seconds is not None
+        ):
+            elapsed = _seconds(prior + control.increment_seconds - clock)
+            elapsed_source = "estimated" if elapsed is not None else "unknown"
+        previous[turn] = clock  # A missing move clock breaks the estimation chain.
+        board.push(move)
+        moves.append(
+            ParsedMove(
+                index,
+                number,
+                PlayerColor.WHITE if turn else PlayerColor.BLACK,
+                san,
+                move.uci(),
+                before,
+                board.fen(),
+                clock,
+                elapsed,
+                elapsed_source,
+            )
+        )
+    return moves
+
+
 def parse_game(
     raw_pgn: str,
     tracked_username: str,
@@ -209,44 +256,7 @@ def parse_game(
     initial_fen = board.fen()
     unknown_history = "FEN" in headers
     control = _time_control(_optional(headers.get("TimeControl")))
-    previous: dict[chess.Color, float | None] = {
-        chess.WHITE: None if unknown_history else control.base_seconds,
-        chess.BLACK: None if unknown_history else control.base_seconds,
-    }
-    moves: list[ParsedMove] = []
-    for index, node in enumerate(game.mainline(), 1):
-        move = node.move
-        if move not in board.legal_moves or board.is_game_over(claim_draw=False):
-            raise PGNParseError(R.INVALID_MOVES)
-        before, number, turn = board.fen(), board.fullmove_number, board.turn
-        san = board.san(move)
-        clock, elapsed = _annotation_seconds(node.clock), _annotation_seconds(node.emt)
-        elapsed_source = "recorded" if elapsed is not None else "unknown"
-        prior = previous[turn]
-        if (
-            elapsed is None
-            and clock is not None
-            and prior is not None
-            and control.increment_seconds is not None
-        ):
-            elapsed = _seconds(prior + control.increment_seconds - clock)
-            elapsed_source = "estimated" if elapsed is not None else "unknown"
-        previous[turn] = clock  # A missing move clock breaks the estimation chain.
-        board.push(move)
-        moves.append(
-            ParsedMove(
-                index,
-                number,
-                PlayerColor.WHITE if turn else PlayerColor.BLACK,
-                san,
-                move.uci(),
-                before,
-                board.fen(),
-                clock,
-                elapsed,
-                elapsed_source,
-            )
-        )
+    moves = _read_mainline(game, board, control, unknown_history)
     outcome = board.outcome(claim_draw=False)
     if outcome is not None and outcome.result() != result:
         raise PGNParseError(R.RESULT_MISMATCH)

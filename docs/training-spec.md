@@ -2,8 +2,9 @@
 
 ## Source and puzzle contract
 
-A puzzle asks the tracked player to find one engine-supported first move in the
-position immediately before their mistake in a completed standard chess game.
+A puzzle starts immediately before the tracked player's mistake in a completed
+standard chess game. It asks for either one engine-supported move or a sequence
+of up to four solver moves. For a sequence, the app plays the opponent replies.
 `source_ply` is 1-based relative to the PGN's main line. Ply 37 means replay the
 first 36 half-moves. The PV supplies feedback after grading.
 
@@ -45,7 +46,13 @@ games carry the completion declaration from the PGN.
   a forcing check, or a critical capture only after the verification criteria
   pass. A mate in one is labeled easy, a longer forced mate hard, and verified
   checks and captures medium. Difficulty describes the heuristic category.
-- The solution, evidence and source link are immutable once published. Stored
+- Version 2 also accepts a longer verified line ending in checkmate, or a
+  capture on a later solver turn that improves the solver's material balance
+  by at least two points after the opponent's engine reply. For each later
+  solver turn with multiple legal moves, both searches must agree on the
+  decisive move or a uniquely shortest mate. A verified continuation may be
+  enabled on an unattempted puzzle using its original stored solution.
+- The solution, original engine evidence and source link are immutable once published. Stored
   metadata includes both ranked searches, source and history fingerprints,
   engine version and settings, source profile, and generator version. A
   one-line historical engine cache is compatible for source validation.
@@ -56,6 +63,14 @@ The policy is a conservative search heuristic. The acceptance sample is recorded
 in [Phase 18 validation](PHASE18_VALIDATION.md).
 
 ## Local generation and recovery
+
+Sync queues each newly imported Chess.com game for analysis after PGN
+validation. The analysis worker scans completed analysis for puzzle candidates
+from that run and saves accepted puzzles directly to Puzzles. The worker
+saves its scan cursor between batches and retries verification errors. The
+usual review schedule applies once a puzzle has been attempted.
+
+For a manual backfill of older analyses:
 
 Run `uv run alembic upgrade head` and finish or cancel any queued analysis. Stop
 the analysis or combined coaching worker to release the shared engine lock.
@@ -83,11 +98,20 @@ review leave the historical analysis records intact.
 
 ## Grading and review
 
-`GET /api/v1/training/next` prioritizes due reviews ahead of new puzzles, then
-orders by due time and ID. The public puzzle contains FEN, side to move,
+`GET /api/v1/training/next` prioritizes due reviews ahead of new puzzles. New
+puzzles alternate formats when both are available. The public puzzle contains FEN, side to move,
 difficulty, theme, prior-attempt count and legal move choices. The grade,
 historical move, solution, and PV are revealed after a legal attempt at
-`POST /api/v1/training/{puzzle_id}/attempts`.
+`POST /api/v1/training/{puzzle_id}/attempts` for one-move puzzles. For a sequence,
+`POST /api/v1/training/{puzzle_id}/play` replays the submitted moves and returns
+the next position after the opponent reply, or the final grade. The first
+incorrect move ends the attempt. A completed sequence counts as one attempt.
+
+Selecting a legal destination or choosing a promotion submits the move.
+After a wrong move, Puzzles explains the consequence using saved engine evidence
+when available and offers a retry from the same position. The retry sends the
+latest incorrect attempt ID. The saved solve streak counts consecutive
+successful attempts across puzzles and resets on any incorrect attempt.
 
 The backend uses python-chess to validate the submitted UCI move. Correctness
 is exact equality with the immutable approved UCI, including the promotion

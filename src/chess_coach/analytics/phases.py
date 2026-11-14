@@ -4,10 +4,10 @@ import chess
 
 from chess_coach.analytics.feature_config import (
     DEFAULT_CONFIG,
-    PIECE_VALUES,
     FeatureConfig,
 )
 from chess_coach.domain.feature_models import GamePhase
+from chess_coach.domain.material import PIECE_VALUES
 
 
 def classify_phase(

@@ -7,28 +7,17 @@ import chess
 from chess_coach.analytics.clocks import ClockState
 from chess_coach.analytics.feature_config import (
     DEFAULT_CONFIG,
-    PIECE_VALUES,
 )
 from chess_coach.analytics.phases import classify_phase
 from chess_coach.domain.feature_models import FeatureAnalysis, GamePhase, MoveFeatures
-from chess_coach.domain.game_records import ParsedGame, PlayerColor
+from chess_coach.domain.game_records import ParsedGame, ParsedMove, PlayerColor
+from chess_coach.domain.material import PIECE_VALUES, calculate_material
 
 
 class FeatureInputError(ValueError):
     def __init__(self, code: str, ply: int | None = None):
         self.code, self.ply = code, ply
         super().__init__(f"{code}: inspect stored game/evidence and retry (ply={ply}).")
-
-
-def calculate_material(board: chess.Board) -> tuple[int, int]:
-    totals = [
-        sum(
-            value * len(board.pieces(piece, color))
-            for piece, value in PIECE_VALUES.items()
-        )
-        for color in (chess.WHITE, chess.BLACK)
-    ]
-    return totals[0], totals[1]
 
 
 def tactical(board: chess.Board, move: chess.Move) -> tuple[bool, bool, bool]:
@@ -66,6 +55,59 @@ def _validate_score(
         raise FeatureInputError("SCORE_POSITION_CONFLICT", ply)
 
 
+def _validate_played_move(
+    board: chess.Board, parsed: ParsedMove, ply: int
+) -> tuple[PlayerColor, chess.Move]:
+    mover = PlayerColor.WHITE if board.turn else PlayerColor.BLACK
+    try:
+        move = chess.Move.from_uci(parsed.uci)
+    except ValueError:
+        raise FeatureInputError("INVALID_PLAYED_MOVE", ply) from None
+    if (
+        parsed.ply_index != ply
+        or parsed.fen_before != board.fen()
+        or parsed.mover_color != mover
+        or parsed.move_number != board.fullmove_number
+    ):
+        raise FeatureInputError("FEN_ALIGNMENT_FAILED", ply)
+    if move not in board.legal_moves or board.is_game_over(claim_draw=False):
+        raise FeatureInputError("INVALID_PLAYED_MOVE", ply)
+    return mover, move
+
+
+def _validate_engine_evidence(
+    board: chess.Board,
+    played_uci: str,
+    ply: int,
+    evidence: FeatureAnalysis | None,
+    prior: FeatureAnalysis | None,
+) -> tuple[bool | None, bool | None, bool | None]:
+    if evidence and (
+        evidence.fen_before != board.fen() or evidence.played_move_uci != played_uci
+    ):
+        raise FeatureInputError("ANALYSIS_ALIGNMENT_FAILED", ply)
+    if evidence:
+        _validate_score(board, evidence, "before", ply)
+        if prior:
+            previous_score, current_score = (
+                _score(prior, "after"),
+                _score(evidence, "before"),
+            )
+            if (
+                any(v is not None for v in previous_score)
+                and any(v is not None for v in current_score)
+                and previous_score != current_score
+            ):
+                raise FeatureInputError("ADJACENT_SCORE_CONFLICT", ply)
+    best: tuple[bool | None, bool | None, bool | None] = (None, None, None)
+    if evidence and evidence.best_move_uci is not None:
+        try:
+            best = tactical(board, chess.Move.from_uci(evidence.best_move_uci))
+        except ValueError:
+            raise FeatureInputError("INVALID_BEST_MOVE", ply) from None
+    return best
+
+
 def extract_game_features(
     game_id: int,
     game: ParsedGame,
@@ -99,45 +141,11 @@ def extract_game_features(
     previous_eval: int | None = None
     result = []
     for ply, parsed in enumerate(game.moves, 1):
-        mover = PlayerColor.WHITE if board.turn else PlayerColor.BLACK
-        try:
-            move = chess.Move.from_uci(parsed.uci)
-        except ValueError:
-            raise FeatureInputError("INVALID_PLAYED_MOVE", ply) from None
-        if (
-            parsed.ply_index != ply
-            or parsed.fen_before != board.fen()
-            or parsed.mover_color != mover
-            or parsed.move_number != board.fullmove_number
-        ):
-            raise FeatureInputError("FEN_ALIGNMENT_FAILED", ply)
-        if move not in board.legal_moves or board.is_game_over(claim_draw=False):
-            raise FeatureInputError("INVALID_PLAYED_MOVE", ply)
+        mover, move = _validate_played_move(board, parsed, ply)
         evidence = analysis.get(ply)
-        if evidence and (
-            evidence.fen_before != board.fen() or evidence.played_move_uci != parsed.uci
-        ):
-            raise FeatureInputError("ANALYSIS_ALIGNMENT_FAILED", ply)
-        if evidence:
-            _validate_score(board, evidence, "before", ply)
-            prior = analysis.get(ply - 1)
-            if prior:
-                previous_score, current_score = (
-                    _score(prior, "after"),
-                    _score(evidence, "before"),
-                )
-                if (
-                    any(v is not None for v in previous_score)
-                    and any(v is not None for v in current_score)
-                    and previous_score != current_score
-                ):
-                    raise FeatureInputError("ADJACENT_SCORE_CONFLICT", ply)
-        best: tuple[bool | None, bool | None, bool | None] = (None, None, None)
-        if evidence and evidence.best_move_uci is not None:
-            try:
-                best = tactical(board, chess.Move.from_uci(evidence.best_move_uci))
-            except ValueError:
-                raise FeatureInputError("INVALID_BEST_MOVE", ply) from None
+        best = _validate_engine_evidence(
+            board, parsed.uci, ply, evidence, analysis.get(ply - 1)
+        )
         turn, number = board.turn, board.fullmove_number
         piece = board.piece_at(move.from_square)
         assert piece is not None

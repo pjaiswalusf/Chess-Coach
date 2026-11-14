@@ -235,7 +235,6 @@ def get_coaching_service(
     settings: Annotated[Settings, Depends(get_settings)],
     queries: Annotated[QueryService, Depends(get_query_service)],
 ) -> CoachingService:
-    from chess_coach.application.coaching import CoachingService
     from chess_coach.infrastructure.llm.health import check_health
     from chess_coach.infrastructure.persistence.coaching_repository import (
         CoachingRepository,

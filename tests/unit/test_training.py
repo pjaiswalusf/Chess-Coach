@@ -3,11 +3,17 @@ from datetime import UTC, datetime, timedelta, timezone
 import chess
 import pytest
 
-from chess_coach.application.training import _compare
+from chess_coach.application.training_transfer import _compare
 from chess_coach.domain.engine_types import EngineResult
 from chess_coach.domain.game_records import PlayerColor
 from chess_coach.domain.review_schedule import schedule
-from chess_coach.domain.training import Rejected, Rejection, verify_solution
+from chess_coach.domain.training import (
+    Rejected,
+    Rejection,
+    Solution,
+    continuation,
+    verify_solution,
+)
 
 NOW = datetime(2026, 12, 30, 22, 17, tzinfo=timezone(timedelta(hours=-5)))
 
@@ -111,6 +117,29 @@ def test_mate_compared_separately_and_second_mate_is_ambiguous():
         verify_solution(
             board, "f3h3", [mate, line(board, "f3g3", None, mate=3), third], "fake"
         )
+
+
+def test_material_line_must_survive_the_opponents_reply():
+    board = chess.Board()
+    board.push_uci("e2e4")
+    board.push_uci("d7d5")
+    winning = Solution(
+        "e4d5", ("e4d5", "b8c6", "d5c6", "a7a6"), "critical_capture", "medium"
+    )
+    exchanged = Solution(
+        "e4d5", ("e4d5", "e7e6", "d5e6", "c8e6"), "critical_capture", "medium"
+    )
+    result = continuation(board, winning)
+    assert (result.theme, result.solve_plies) == ("material_gain", 4)
+    assert continuation(board, exchanged).solve_plies == 1
+
+
+def test_mate_continuation_requires_actual_checkmate():
+    board = chess.Board("5k2/5ppp/2B2q2/p3p3/8/8/P1P2PPP/1R1Q2K1 w - - 0 24")
+    setup = Solution("b1b8", ("b1b8", "f8e7"), "forced_mate", "hard")
+    mate = Solution("b1b8", (*setup.pv, "b8e8"), "forced_mate", "hard")
+    assert continuation(board, setup).solve_plies == 1
+    assert continuation(board, mate).solve_plies == 3
 
 
 def test_transfer_rates_require_both_game_and_move_support():

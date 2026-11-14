@@ -1,7 +1,6 @@
 """Short atomic parsing transactions; share the import lock during local batches."""
 
 from contextlib import AbstractContextManager, nullcontext
-from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 
@@ -16,7 +15,9 @@ from chess_coach.domain.game_records import (
     ParseStatus,
     PGNParseError,
 )
+from chess_coach.infrastructure.chesscom.opening_names import opening_name_from_url
 from chess_coach.infrastructure.persistence.models import Game, TrackedPlayer
+from chess_coach.infrastructure.persistence.parsed_metadata import parsed_game_metadata
 from chess_coach.infrastructure.persistence.sync_repository import SyncRepository
 
 
@@ -60,6 +61,22 @@ class ParseRepository:
                 query = query.where(Game.parse_status == ParseStatus.PENDING)
             return list(session.scalars(query.order_by(Game.id)))
 
+    def interrupted_sync_players(self) -> list[str]:
+        with self.sessions() as session:
+            return list(
+                session.scalars(
+                    select(TrackedPlayer.username)
+                    .join(Game)
+                    .where(
+                        Game.auto_analysis_pending.is_(True),
+                        Game.parse_status.in_(
+                            (ParseStatus.PENDING, ParseStatus.PARSING)
+                        ),
+                    )
+                    .distinct()
+                )
+            )
+
     def begin(self, game_id: int, now: datetime) -> ParseInput:
         with self.sessions.begin() as session:
             game = session.get(Game, game_id)
@@ -89,24 +106,25 @@ class ParseRepository:
             game.parser_version = PARSER_VERSION
             game.chess_library_version = chess.__version__
             if isinstance(outcome, PGNParseError):
+                game.auto_analysis_pending = False
                 game.parse_status = outcome.status
                 game.parse_reason = outcome.reason_code
                 game.parse_error = outcome.safe_error_message
                 game.parsed_metadata = None
             else:
-                metadata = asdict(outcome)
-                del metadata[
-                    "moves"
-                ]  # Phase 9 reconstructs the typed sequence from raw PGN.
-                metadata["total_plies"] = outcome.total_plies
+                metadata = parsed_game_metadata(outcome)
                 game.parsed_metadata = metadata
                 game.player_color, game.result = (
                     outcome.player_color,
                     outcome.player_result,
                 )
                 game.eco_code = outcome.eco or game.eco_code
-                game.opening_name = outcome.opening_name or game.opening_name
                 game.eco_url = outcome.eco_url or game.eco_url
+                game.opening_name = (
+                    outcome.opening_name
+                    or game.opening_name
+                    or opening_name_from_url(game.eco_url)
+                )
                 game.time_control = outcome.time_control.raw or game.time_control
                 game.parse_status = ParseStatus.READY
                 game.parse_reason = game.parse_error = None

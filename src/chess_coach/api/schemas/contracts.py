@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from chess_coach.analytics.coach_brief import CoachPriority
 from chess_coach.analytics.contracts import (
     AnalyticsHealthReport,
     ContextMetric,
@@ -101,6 +102,7 @@ class GameItem(BaseModel):
     result: GameResult
     time_class: str | None
     opening_name: str | None
+    eco_code: str | None = None
     analysis_status: GameStatus
     player_rating: int | None = None
     critical_errors: int | None = Field(default=None, ge=0)
@@ -174,6 +176,7 @@ class ProgressEvidence(BaseModel):
 
 
 class PatternsResponse(AnalyticsBase, ProgressEvidence):
+    priority: CoachPriority | None = None
     report_hash: str | None
     ranker_version: str = "weakness-ranker-v1"
     patterns: dict[str, tuple[Weakness, ...]]

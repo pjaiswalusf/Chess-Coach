@@ -213,8 +213,12 @@ remain unpublished while the human quality gate is pending. See the
 
 ## Personalized Training
 
-Generate one-move puzzles from your mistakes in completed games after a
-compatible local Stockfish analysis finishes. Run migrations, stop the analysis
+New Chess.com games are queued for analysis after sync validates them. The
+analysis worker saves weakness evidence and verifies one-move and multi-move puzzles
+from completed analyses. Queued work survives worker restarts. Open **Puzzles**
+to play the resulting puzzles.
+
+To backfill older analyses manually, run migrations and stop the analysis
 worker, then use the tracked player ID and completed run's profile hash:
 
 ```sh
@@ -222,14 +226,14 @@ uv run alembic upgrade head
 uv run chess-coach training generate --player-id 1 --profile PROFILE_HASH
 ```
 
-Open **Training** to select a move, see the engine solution and continuation,
+Open **Puzzles** to select a move, see the engine solution and continuation,
 and review the source game. Generation rejects close alternatives and
 unstable engine choices. The backend grades against the stored solution and
 schedules the next review in UTC. Incorrect answers return after one day.
 Consecutive correct answers extend reviews to 3, 7, 14, then 30 days.
 Practice remains available with Stockfish and Ollama offline.
 
-The Training page shows puzzle accuracy and, when enough comparable games
+The Puzzles page shows puzzle accuracy and, when enough comparable games
 exist, the observed change in centipawn-scored critical errors after training
 began. The game comparison is observational.
 

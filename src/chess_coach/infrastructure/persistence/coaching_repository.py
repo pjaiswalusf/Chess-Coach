@@ -221,7 +221,7 @@ class CoachingRepository:
 
     def _game_rows(
         self, s: Session, game_id: int, profile: str | None
-    ) -> tuple[Game, AnalysisRun, GameAnalysisState, list[MoveAnalysis]]:
+    ) -> tuple[Game, AnalysisRun, GameAnalysisState, Sequence[MoveAnalysis]]:
         game = s.get(Game, game_id)
         assert game is not None
         state = s.scalar(
@@ -243,22 +243,13 @@ class CoachingRepository:
             or run is None
             or run.tracked_player_id != game.tracked_player_id
             or profile_of(run).hash != profile
-            or not self.queries.analysis.compatible(s, game, profile_of(run))
+            or (rows := self.queries.analysis.validated_moves(s, game, profile_of(run)))
+            is None
         ):
             raise OperationError(
                 "EVIDENCE_INCOMPLETE",
                 "Complete compatible engine analysis before retrying.",
             )
-        rows = list(
-            s.scalars(
-                select(MoveAnalysis)
-                .where(
-                    MoveAnalysis.game_id == game_id,
-                    MoveAnalysis.profile_hash == profile,
-                )
-                .order_by(MoveAnalysis.ply)
-            )
-        )
         return game, run, state, rows
 
     @staticmethod

@@ -3,6 +3,27 @@
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Literal
+
+_LOSSES = {"checkmated", "timeout", "resigned", "lose", "abandoned"}
+_DRAWS = {
+    "agreed",
+    "repetition",
+    "stalemate",
+    "insufficient",
+    "50move",
+    "timevsinsufficient",
+}
+
+
+def archive_result(white: str, black: str) -> Literal["1-0", "0-1", "1/2-1/2"] | None:
+    if white == "win" and black in _LOSSES:
+        return "1-0"
+    if black == "win" and white in _LOSSES:
+        return "0-1"
+    if white in _DRAWS and black in _DRAWS:
+        return "1/2-1/2"
+    return None
 
 
 def normalize_username(value: str) -> str:

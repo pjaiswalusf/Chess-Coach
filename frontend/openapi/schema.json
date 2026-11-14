@@ -289,6 +289,28 @@
             "title": "Correct",
             "type": "boolean"
           },
+          "final_fen": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final Fen"
+          },
+          "last_move_uci": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Move Uci"
+          },
           "next_review_at": {
             "format": "date-time",
             "title": "Next Review At",
@@ -328,6 +350,17 @@
           "submitted_move_uci": {
             "title": "Submitted Move Uci",
             "type": "string"
+          },
+          "wrong_move_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wrong Move Reason"
           }
         },
         "required": [
@@ -429,6 +462,91 @@
         ],
         "title": "ChessEventType",
         "type": "string"
+      },
+      "CoachExample": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "game_id": {
+            "title": "Game Id",
+            "type": "integer"
+          },
+          "move_label": {
+            "title": "Move Label",
+            "type": "string"
+          },
+          "opponent": {
+            "title": "Opponent",
+            "type": "string"
+          },
+          "ply": {
+            "title": "Ply",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "game_id",
+          "ply",
+          "move_label",
+          "opponent",
+          "detail"
+        ],
+        "title": "CoachExample",
+        "type": "object"
+      },
+      "CoachPriority": {
+        "properties": {
+          "affected_games": {
+            "title": "Affected Games",
+            "type": "integer"
+          },
+          "examples": {
+            "items": {
+              "$ref": "#/components/schemas/CoachExample"
+            },
+            "title": "Examples",
+            "type": "array"
+          },
+          "finding": {
+            "title": "Finding",
+            "type": "string"
+          },
+          "habit": {
+            "title": "Habit",
+            "type": "string"
+          },
+          "pattern": {
+            "$ref": "#/components/schemas/Pattern"
+          },
+          "practice_puzzle_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Practice Puzzle Id"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pattern",
+          "title",
+          "finding",
+          "habit",
+          "affected_games",
+          "examples",
+          "practice_puzzle_id"
+        ],
+        "title": "CoachPriority",
+        "type": "object"
       },
       "CoachingMetrics": {
         "properties": {
@@ -1305,12 +1423,12 @@
           "result",
           "time_class",
           "opening_name",
+          "eco_code",
           "analysis_status",
           "white_username",
           "black_username",
           "white_rating",
           "black_rating",
-          "eco_code",
           "time_control",
           "raw_pgn",
           "completion_provenance"
@@ -1342,6 +1460,17 @@
               }
             ],
             "title": "Critical Errors"
+          },
+          "eco_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eco Code"
           },
           "id": {
             "title": "Id",
@@ -2475,6 +2604,15 @@
         "title": "OverviewResponse",
         "type": "object"
       },
+      "Pattern": {
+        "enum": [
+          "missed_mate",
+          "lost_piece",
+          "lost_advantage"
+        ],
+        "title": "Pattern",
+        "type": "string"
+      },
       "PatternsResponse": {
         "properties": {
           "analytics_version": {
@@ -2530,6 +2668,16 @@
             "default": "support-v1",
             "title": "Policy Version",
             "type": "string"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CoachPriority"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "profile_hash": {
             "anyOf": [
@@ -2630,6 +2778,43 @@
         "title": "PeriodEvidence",
         "type": "object"
       },
+      "PlayPuzzle": {
+        "properties": {
+          "moves": {
+            "items": {
+              "pattern": "^[a-h][1-8][a-h][1-8][qrbn]?$",
+              "type": "string"
+            },
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Moves",
+            "type": "array"
+          },
+          "retry_after_attempt_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry After Attempt Id"
+          },
+          "submission_id": {
+            "format": "uuid",
+            "title": "Submission Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "submission_id",
+          "moves"
+        ],
+        "title": "PlayPuzzle",
+        "type": "object"
+      },
       "PlayerColor": {
         "enum": [
           "white",
@@ -2717,6 +2902,11 @@
           "side_to_move": {
             "$ref": "#/components/schemas/PlayerColor"
           },
+          "solver_moves": {
+            "default": 1,
+            "title": "Solver Moves",
+            "type": "integer"
+          },
           "theme": {
             "title": "Theme",
             "type": "string"
@@ -2732,6 +2922,58 @@
           "legal_moves"
         ],
         "title": "PublicPuzzle",
+        "type": "object"
+      },
+      "PuzzleContinuation": {
+        "properties": {
+          "fen": {
+            "title": "Fen",
+            "type": "string"
+          },
+          "legal_moves": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Legal Moves",
+            "type": "array"
+          },
+          "reply_san": {
+            "title": "Reply San",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fen",
+          "legal_moves",
+          "reply_san"
+        ],
+        "title": "PuzzleContinuation",
+        "type": "object"
+      },
+      "PuzzleStep": {
+        "properties": {
+          "continuation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PuzzleContinuation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AttemptResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "PuzzleStep",
         "type": "object"
       },
       "Rate": {
@@ -3969,6 +4211,18 @@
             "title": "Move Uci",
             "type": "string"
           },
+          "retry_after_attempt_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry After Attempt Id"
+          },
           "submission_id": {
             "format": "uuid",
             "title": "Submission Id",
@@ -4489,6 +4743,11 @@
           },
           "puzzles_total": {
             "title": "Puzzles Total",
+            "type": "integer"
+          },
+          "solve_streak": {
+            "default": 0,
+            "title": "Solve Streak",
             "type": "integer"
           },
           "themes": {
@@ -8990,6 +9249,25 @@
     "/api/v1/training/next": {
       "get": {
         "operationId": "next_puzzle_api_v1_training_next_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "puzzle_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Puzzle Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -9367,6 +9645,118 @@
           }
         },
         "summary": "Submit Attempt",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/training/{puzzle_id}/play": {
+      "post": {
+        "operationId": "play_puzzle_api_v1_training__puzzle_id__play_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "puzzle_id",
+            "required": true,
+            "schema": {
+              "title": "Puzzle Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlayPuzzle"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PuzzleStep"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Play Puzzle",
         "tags": [
           "training"
         ]

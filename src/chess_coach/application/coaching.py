@@ -634,6 +634,26 @@ class CoachingService:
         )
 
 
+def _generation_request(
+    row: CoachingOutput, evidence: JobEvidence
+) -> tuple[type[BaseModel], str]:
+    if isinstance(evidence, MotifEvidence):
+        return MotifPrediction, motif_input(evidence)
+    if isinstance(evidence, MoveCoachingEvidence):
+        return MovePractice, move_prompt_payload(evidence)
+    if isinstance(evidence, GameCoachingEvidence):
+        return GamePractice, json.dumps(
+            [
+                moment.model_dump(mode="json", exclude={"move"})
+                for moment in evidence.moments
+                if moment.allowed_focuses
+            ]
+        )
+    return HistoricalExplanation, json.dumps(
+        row.evidence_json, sort_keys=True, separators=(",", ":")
+    )
+
+
 class CoachingProcessor:
     def __init__(self, service: CoachingService, model: CoachModel):
         self.service, self.model = service, model
@@ -680,6 +700,39 @@ class CoachingProcessor:
                 )
                 raise
 
+    def _check_generation_inputs(
+        self, row: CoachingOutput, evidence: JobEvidence
+    ) -> None:
+        _, prompt, schema_version = job_config(evidence)
+        if (
+            row.prompt_version != prompt
+            or row.schema_version != schema_version
+            or row.generation_json != generation_settings(self.service.settings)
+            or row.model_name != self.service.settings.ollama_model
+        ):
+            raise OperationError(
+                "COACHING_CONFIG_CHANGED",
+                "Request coaching with the current configuration.",
+            )
+        if not self.current(evidence):
+            raise OperationError(
+                "EVIDENCE_INCOMPLETE",
+                "The game evidence changed; request coaching again.",
+            )
+        health = self.service.health()
+        if health.status != "ready":
+            raise OperationError(
+                "MODEL_NOT_INSTALLED"
+                if health.status == "model_missing"
+                else "OLLAMA_UNAVAILABLE",
+                health.message,
+            )
+        if health.model_digest != row.model_digest:
+            raise OperationError(
+                "MODEL_CHANGED",
+                "The installed model changed; request coaching again.",
+            )
+
     def _process(self, row: CoachingOutput, started: float) -> None:
         output: dict[str, object] | None = None
         error: str | None = None
@@ -690,55 +743,8 @@ class CoachingProcessor:
         schema_valid: bool | None = None
         try:
             evidence = job_evidence(row)
-            _, prompt, schema_version = job_config(evidence)
-            if (
-                row.prompt_version != prompt
-                or row.schema_version != schema_version
-                or row.generation_json != generation_settings(self.service.settings)
-                or row.model_name != self.service.settings.ollama_model
-            ):
-                raise OperationError(
-                    "COACHING_CONFIG_CHANGED",
-                    "Request coaching with the current configuration.",
-                )
-            if not self.current(evidence):
-                raise OperationError(
-                    "EVIDENCE_INCOMPLETE",
-                    "The game evidence changed; request coaching again.",
-                )
-            health = self.service.health()
-            if health.status != "ready":
-                raise OperationError(
-                    "MODEL_NOT_INSTALLED"
-                    if health.status == "model_missing"
-                    else "OLLAMA_UNAVAILABLE",
-                    health.message,
-                )
-            if health.model_digest != row.model_digest:
-                raise OperationError(
-                    "MODEL_CHANGED",
-                    "The installed model changed; request coaching again.",
-                )
-            schema: type[BaseModel]
-            if isinstance(evidence, MotifEvidence):
-                schema, payload = MotifPrediction, motif_input(evidence)
-            elif isinstance(evidence, MoveCoachingEvidence):
-                schema = MovePractice
-                payload = move_prompt_payload(evidence)
-            elif isinstance(evidence, GameCoachingEvidence):
-                schema = GamePractice
-                payload = json.dumps(
-                    [
-                        moment.model_dump(mode="json", exclude={"move"})
-                        for moment in evidence.moments
-                        if moment.allowed_focuses
-                    ]
-                )
-            else:
-                schema = HistoricalExplanation
-                payload = json.dumps(
-                    row.evidence_json, sort_keys=True, separators=(",", ":")
-                )
+            self._check_generation_inputs(row, evidence)
+            schema, payload = _generation_request(row, evidence)
             for attempt in range(2):
                 self.service.store.attempt(row.id)
                 attempt_count += 1

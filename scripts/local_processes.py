@@ -17,17 +17,9 @@ def signal_group(process: subprocess.Popen[bytes], sig: int) -> bool:
     return True
 
 
-def stop_children(
-    children: list[subprocess.Popen[bytes]], *, graceful_parents: bool = False
-) -> None:
-    if graceful_parents:
-        # Give workers time to close their engine and save resumable state.
-        for process in children:
-            process.terminate()
-        remaining = [p for p in children if signal_group(p, 0)]
-    else:
-        # A reload or package-manager parent can exit before its children.
-        remaining = [p for p in children if signal_group(p, signal.SIGTERM)]
+def stop_children(children: list[subprocess.Popen[bytes]]) -> None:
+    # A reload or package-manager parent can exit before its children.
+    remaining = [p for p in children if signal_group(p, signal.SIGTERM)]
     deadline = time.monotonic() + 5
     while remaining and time.monotonic() < deadline:
         for process in remaining:

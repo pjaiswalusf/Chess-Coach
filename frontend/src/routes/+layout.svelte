@@ -14,7 +14,7 @@
 		{ label: 'Sync', href: '/sync' },
 		{ label: 'Games', href: '/games' },
 		{ label: 'Coach', href: '/coach' },
-		{ label: 'Training', href: '/training' },
+		{ label: 'Puzzles', href: '/training' },
 		{ label: 'System', href: '/system' }
 	] as const;
 </script>

@@ -49,7 +49,7 @@ test('loads and refreshes deep links from FastAPI with real API data and Ollama 
 				['/', 'Dashboard'],
 				['/games', 'Games'],
 				['/coach', 'Coach'],
-				['/training', 'Training'],
+				['/training', 'Puzzles'],
 				['/sync', 'Sync'],
 				['/system', 'System'],
 				['/games/analysis', 'Analyze your completed games']

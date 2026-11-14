@@ -1,6 +1,8 @@
 """Start the packaged app and its workers from the macOS Finder launcher."""
 
+import argparse
 import json
+import os
 import signal
 import subprocess
 import sys
@@ -10,7 +12,7 @@ from time import monotonic, sleep
 from urllib.error import URLError
 from urllib.request import ProxyHandler, build_opener
 
-from local_processes import HOST, check_port, stop_children
+from local_processes import HOST, check_port
 
 ROOT = Path(__file__).resolve().parents[1]
 PORT = 8000
@@ -49,6 +51,13 @@ def open_browser() -> None:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Start Chess Coach and its local workers."
+    )
+    parser.add_argument(
+        "--no-browser", action="store_true", help="Keep the existing browser tab."
+    )
+    args = parser.parse_args()
     stopping = False
 
     def request_stop(_signum: int, _frame: object) -> None:
@@ -61,7 +70,16 @@ def main() -> int:
     children: list[subprocess.Popen[bytes]] = []
 
     def launch(command: list[str]) -> subprocess.Popen[bytes]:
-        child = subprocess.Popen(command, cwd=ROOT, start_new_session=True)
+        child = subprocess.Popen(
+            [
+                sys.executable,
+                str(ROOT / "scripts/launcher_child.py"),
+                str(os.getpid()),
+                *command,
+            ],
+            cwd=ROOT,
+            start_new_session=True,
+        )
         children.append(child)
         return child
 
@@ -73,20 +91,21 @@ def main() -> int:
 
         cli = str(ROOT / ".venv/bin/chess-coach")
         workers = {}
-        for name, args in (
+        for name, worker_args in (
             ("Sync worker", ["sync-worker"]),
             ("Analysis and coaching worker", ["analysis-worker", "--with-coaching"]),
         ):
             if stopping:
                 return 0
-            workers[name] = launch([cli, *args])
+            workers[name] = launch([cli, *worker_args])
 
         if not stopping:
             print(
                 f"Chess Coach is ready at {URL}. Press Ctrl+C here to stop it.",
                 flush=True,
             )
-            open_browser()
+            if not args.no_browser:
+                open_browser()
         while not stopping:
             if server.poll() is not None:
                 raise RuntimeError("The server exited. See the message above.")
@@ -103,7 +122,15 @@ def main() -> int:
         print(f"Could not run Chess Coach: {exc}", file=sys.stderr)
         return 1
     finally:
-        stop_children(children, graceful_parents=True)
+        for child in children:
+            child.terminate()
+        deadline = monotonic() + 7
+        for child in children:
+            try:
+                child.wait(max(0, deadline - monotonic()))
+            except subprocess.TimeoutExpired:
+                child.kill()
+                child.wait()
 
 
 if __name__ == "__main__":

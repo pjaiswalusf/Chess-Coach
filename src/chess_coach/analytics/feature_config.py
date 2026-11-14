@@ -2,8 +2,6 @@
 
 from dataclasses import dataclass
 
-PIECE_VALUES = {1: 1, 2: 3, 3: 3, 4: 5, 5: 9}
-
 
 @dataclass(frozen=True)
 class FeatureConfig:

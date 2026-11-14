@@ -14,6 +14,7 @@ const games = {
 			played_at: '2026-01-01T00:00:00Z',
 			time_class: 'rapid',
 			opening_name: null,
+			eco_code: 'C20',
 			analysis_status: 'pending'
 		}
 	]
@@ -39,6 +40,7 @@ test('shows loading then real response values with one request per entry', async
 	}
 	await expect(page.getByText('vs Example opponent', { exact: true })).toBeVisible();
 	await expect(page.getByText('Draw', { exact: true })).toBeVisible();
+	await expect(page.getByRole('cell', { name: 'C20' })).toBeVisible();
 	expect(requests).toBe(1);
 });
 
@@ -103,8 +105,8 @@ test('cancels an outstanding game request when navigating away', async ({ page }
 		const cancelled = page.waitForEvent('requestfailed', (request) =>
 			request.url().endsWith('/api/v1/games?limit=25&offset=0')
 		);
-		await page.getByRole('navigation').getByRole('link', { name: 'Training' }).click();
-		await expect(page.getByRole('heading', { name: 'Training' })).toBeVisible();
+		await page.getByRole('navigation').getByRole('link', { name: 'Puzzles' }).click();
+		await expect(page.getByRole('heading', { name: 'Puzzles' })).toBeVisible();
 		expect((await cancelled).failure()?.errorText).toBe('net::ERR_ABORTED');
 		await expect(page.getByRole('alert')).toHaveCount(0);
 	} finally {

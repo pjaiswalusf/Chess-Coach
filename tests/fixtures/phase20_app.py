@@ -215,6 +215,7 @@ def main(directory: Path, port: int) -> None:
             started.set()
             try:
                 while not stop.is_set():
+                    analysis.queue_synced_games(profile)
                     if pending := sync.next_pending():
                         sync_service.sync(pending[1], queued_run_id=pending[0])
                     elif (run_id := analysis.claim(profile)) is not None:
@@ -228,6 +229,7 @@ def main(directory: Path, port: int) -> None:
                                 run.tracked_player_id,
                                 profile.hash,
                                 limit=1,
+                                run_id=run_id,
                             )
                     elif (job := coaching.store.claim()) is not None:
                         coaching_processor.process(job)

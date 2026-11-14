@@ -211,7 +211,10 @@ def test_packaged_launcher_refuses_stale_storage(tmp_path, isolated_env):
 
 
 @LIVE
-def test_finder_launcher_opens_ready_server_and_stops_workers(tmp_path, isolated_env):
+@pytest.mark.parametrize("exit_signal", [signal.SIGHUP, signal.SIGKILL])
+def test_finder_launcher_opens_ready_server_and_stops_workers(
+    tmp_path, isolated_env, exit_signal
+):
     stockfish = shutil.which("stockfish")
     if not stockfish:
         pytest.skip("requires Stockfish for the real analysis worker")
@@ -254,8 +257,20 @@ def test_finder_launcher_opens_ready_server_and_stops_workers(tmp_path, isolated
         assert wait_for_http(process, BACKEND + "/health/live", log) == {
             "status": "alive"
         }
-        process.send_signal(signal.SIGHUP)
-        assert process.wait(8) == 0, log.read_text()
+        process.send_signal(exit_signal)
+        assert process.wait(8) == (0 if exit_signal == signal.SIGHUP else -exit_signal)
+        deadline = monotonic() + 7
+        while monotonic() < deadline:
+            if db.execute("SELECT status FROM analysis_worker_state").fetchone() == (
+                "stopped",
+            ):
+                try:
+                    verify_port_free(8000)
+                except OSError:
+                    pass
+                else:
+                    break
+            sleep(0.05)
         assert db.execute("SELECT status FROM analysis_worker_state").fetchone() == (
             "stopped",
         )

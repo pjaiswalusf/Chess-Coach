@@ -571,6 +571,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/training/{puzzle_id}/play": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Play Puzzle */
+        post: operations["play_puzzle_api_v1_training__puzzle_id__play_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -724,6 +741,10 @@ export interface components {
             attempted_at: string;
             /** Correct */
             correct: boolean;
+            /** Final Fen */
+            final_fen?: string | null;
+            /** Last Move Uci */
+            last_move_uci?: string | null;
             /**
              * Next Review At
              * Format: date-time
@@ -745,6 +766,8 @@ export interface components {
             source_profile_hash: string;
             /** Submitted Move Uci */
             submitted_move_uci: string;
+            /** Wrong Move Reason */
+            wrong_move_reason?: string | null;
         };
         /** ChessComComponent */
         ChessComComponent: {
@@ -785,6 +808,35 @@ export interface components {
          * @enum {string}
          */
         ChessEventType: "MATE_ALLOWED" | "MATE_MISSED" | "MATERIAL_LOSS" | "WINNING_OPPORTUNITY_LOST";
+        /** CoachExample */
+        CoachExample: {
+            /** Detail */
+            detail: string;
+            /** Game Id */
+            game_id: number;
+            /** Move Label */
+            move_label: string;
+            /** Opponent */
+            opponent: string;
+            /** Ply */
+            ply: number;
+        };
+        /** CoachPriority */
+        CoachPriority: {
+            /** Affected Games */
+            affected_games: number;
+            /** Examples */
+            examples: components["schemas"]["CoachExample"][];
+            /** Finding */
+            finding: string;
+            /** Habit */
+            habit: string;
+            pattern: components["schemas"]["Pattern"];
+            /** Practice Puzzle Id */
+            practice_puzzle_id: number | null;
+            /** Title */
+            title: string;
+        };
         /** CoachingMetrics */
         CoachingMetrics: {
             /** Final Failure Rate */
@@ -1058,6 +1110,8 @@ export interface components {
             analysis_status: "pending" | "running" | "completed" | "failed" | "incompatible";
             /** Critical Errors */
             critical_errors?: number | null;
+            /** Eco Code */
+            eco_code?: string | null;
             /** Id */
             id: number;
             /** Opening Name */
@@ -1453,6 +1507,11 @@ export interface components {
             selected_game_ids: number[];
             status: components["schemas"]["ReportStatus"];
         };
+        /**
+         * Pattern
+         * @enum {string}
+         */
+        Pattern: "missed_mate" | "lost_piece" | "lost_advantage";
         /** PatternsResponse */
         PatternsResponse: {
             /**
@@ -1476,6 +1535,7 @@ export interface components {
              * @default support-v1
              */
             policy_version: string;
+            priority?: components["schemas"]["CoachPriority"] | null;
             /** Profile Hash */
             profile_hash: string | null;
             /**
@@ -1501,6 +1561,18 @@ export interface components {
             game_ids: number[];
             /** Moves */
             moves: number;
+        };
+        /** PlayPuzzle */
+        PlayPuzzle: {
+            /** Moves */
+            moves: string[];
+            /** Retry After Attempt Id */
+            retry_after_attempt_id?: number | null;
+            /**
+             * Submission Id
+             * Format: uuid
+             */
+            submission_id: string;
         };
         /**
          * PlayerColor
@@ -1542,8 +1614,27 @@ export interface components {
             /** Legal Moves */
             legal_moves: string[];
             side_to_move: components["schemas"]["PlayerColor"];
+            /**
+             * Solver Moves
+             * @default 1
+             */
+            solver_moves: number;
             /** Theme */
             theme: string;
+        };
+        /** PuzzleContinuation */
+        PuzzleContinuation: {
+            /** Fen */
+            fen: string;
+            /** Legal Moves */
+            legal_moves: string[];
+            /** Reply San */
+            reply_san: string;
+        };
+        /** PuzzleStep */
+        PuzzleStep: {
+            continuation?: components["schemas"]["PuzzleContinuation"] | null;
+            result?: components["schemas"]["AttemptResult"] | null;
         };
         /** Rate */
         Rate: {
@@ -1926,6 +2017,8 @@ export interface components {
         SubmitAttempt: {
             /** Move Uci */
             move_uci: string;
+            /** Retry After Attempt Id */
+            retry_after_attempt_id?: number | null;
             /**
              * Submission Id
              * Format: uuid
@@ -2092,6 +2185,11 @@ export interface components {
             puzzles_due: number;
             /** Puzzles Total */
             puzzles_total: number;
+            /**
+             * Solve Streak
+             * @default 0
+             */
+            solve_streak: number;
             /** Themes */
             themes: components["schemas"]["ThemeStats"][];
         };
@@ -5247,7 +5345,9 @@ export interface operations {
     };
     next_puzzle_api_v1_training_next_get: {
         parameters: {
-            query?: never;
+            query?: {
+                puzzle_id?: number | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -5516,6 +5616,95 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AttemptResult"];
+                };
+            };
+            /** @description Invalid local Host header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Untrusted browser origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflicting operation or configuration */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Local dependency unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    play_puzzle_api_v1_training__puzzle_id__play_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                puzzle_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlayPuzzle"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PuzzleStep"];
                 };
             };
             /** @description Invalid local Host header */

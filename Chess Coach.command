@@ -10,4 +10,4 @@ fi
 
 # Finder's Terminal session may not have Homebrew on its search path.
 export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin"
-exec "$PYTHON" "$ROOT/scripts/launch.py"
+exec "$PYTHON" "$ROOT/scripts/launch.py" "$@"

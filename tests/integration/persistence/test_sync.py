@@ -7,9 +7,15 @@ import httpx
 import pytest
 from sqlalchemy import event, func, select
 
+from chess_coach.application.analysis import configured_profile
+from chess_coach.application.parse_imported_games import ParseImportedGames
 from chess_coach.application.sync_games import SyncGamesService
+from chess_coach.config import Settings
 from chess_coach.domain.sync import Archive, SourceError, SyncAlreadyRunning
 from chess_coach.infrastructure.chesscom.client import BASE_URL, ChessComClient
+from chess_coach.infrastructure.persistence.analysis_repository import (
+    AnalysisRepository,
+)
 from chess_coach.infrastructure.persistence.models import (
     ArchiveSyncState,
     Game,
@@ -17,7 +23,9 @@ from chess_coach.infrastructure.persistence.models import (
     ImportRun,
     TrackedPlayer,
 )
+from chess_coach.infrastructure.persistence.parse_repository import ParseRepository
 from chess_coach.infrastructure.persistence.sync_repository import SyncRepository
+from chess_coach.infrastructure.pgn.parser import parse_game
 
 NOW = datetime(2026, 11, 7, tzinfo=UTC)
 
@@ -129,6 +137,33 @@ def test_three_runs_and_immutable_existing_rows(setup_sync, sessions):
     assert all(c.status == "complete" for c in store.checkpoints("testplayer").values())
     forced = service.sync("testplayer", force=True)
     assert forced.archives_fetched == 2 and forced.games_inserted == 0
+
+
+def test_new_validated_sync_games_queue_analysis_once(setup_sync, sessions, tmp_path):
+    source, _, service = setup_sync
+    database = tmp_path / "test.db"
+    parsing = ParseRepository(sessions, database, lock_already_held=True)
+    service.prepare_games = ParseImportedGames(parsing, parse_game).run
+    source.bad_pgn = (
+        '[White "TestPlayer"]\n[Black "Opponent"]\n[Result "1-0"]\n\n1. e4 e5 *'
+    )
+    report = service.sync("testplayer")
+    assert report.games_inserted == 7
+    assert report.games_quarantined == 1
+
+    analysis = AnalysisRepository(sessions, database)
+    profile = configured_profile(
+        Settings(database_path=database, _env_file=None), "fixture-engine"
+    )
+    assert analysis.runs() == []
+    analysis.queue_synced_games(profile)
+    (run,) = analysis.runs()
+    assert run.status == "pending"
+    assert run.games_total == 6 and run.puzzle_cursor == 0
+    analysis.cancel(run.id)
+    assert service.sync("testplayer").games_inserted == 0
+    analysis.queue_synced_games(profile)
+    assert [item.id for item in analysis.runs()] == [run.id]
 
 
 def test_partial_failure_retry_and_diagnostics(setup_sync, sessions):

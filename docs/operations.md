@@ -94,7 +94,7 @@ their HTTP error status.
 ## Backup, upgrade, and restore
 
 Use the same `.env` and database path throughout. Before an upgrade, stop the
-API and both job workers and record the counts shown in System and Training.
+API and both job workers and record the counts shown in System and Puzzles.
 Use the SQLite backup API rather than copying a live database file; it includes
 committed data in the WAL. Run from the repository root:
 

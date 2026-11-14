@@ -4,20 +4,28 @@ import logging
 import shutil
 import signal
 from threading import Event, Thread
+from time import monotonic
 
 from sqlalchemy.exc import OperationalError
 
 from chess_coach.application.analysis import AnalysisProcessor, configured_profile
+from chess_coach.application.generate_puzzles import generate_puzzles
 from chess_coach.config import Settings
 from chess_coach.infrastructure.analysis_lock import worker_guard
+from chess_coach.infrastructure.engine.exceptions import EngineAnalysisError
 from chess_coach.infrastructure.engine.stockfish_adapter import StockfishAdapter
 from chess_coach.infrastructure.persistence.analysis_repository import (
     AnalysisRepository,
 )
 from chess_coach.infrastructure.persistence.engine import create_database_engine
 from chess_coach.infrastructure.persistence.session import create_session_factory
+from chess_coach.infrastructure.persistence.training_repository import (
+    TrainingRepository,
+)
 from chess_coach.infrastructure.system.diagnostics import database_checks
 from chess_coach.observability.logging import configure_logging
+
+logger = logging.getLogger(__name__)
 
 
 def run_worker(
@@ -39,6 +47,10 @@ def run_worker(
     }
     db = create_database_engine(settings.database_url)
     store = AnalysisRepository(create_session_factory(db), settings.database_path)
+    training = TrainingRepository(store.sessions)
+    verification = settings.model_copy(
+        update={"stockfish_threads": settings.training_stockfish_threads}
+    )
     try:
         with worker_guard(settings.database_path), StockfishAdapter(settings) as engine:
             profile = configured_profile(settings, engine.engine_name)
@@ -65,6 +77,12 @@ def run_worker(
             try:
                 processor = AnalysisProcessor(store, engine, settings, stop)
                 failures = 0
+                retry_scan_at = 0.0
+                scans_enabled = verification.stockfish_max_nodes >= 4
+                if not scans_enabled:
+                    logger.warning(
+                        "puzzle_scan_requires_stockfish_max_nodes_of_at_least_four"
+                    )
                 while not stop.is_set():
                     try:
                         if (
@@ -76,16 +94,64 @@ def run_worker(
                             raise OSError(
                                 "DISK_SPACE_LOW: free disk space before restarting worker"
                             )
+                        store.queue_synced_games(profile)
                         run_id = store.claim(profile)
                         if run_id is not None:
                             processor.process(run_id)
-                        elif coaching is not None:
-                            row = coaching.service.store.claim()
-                            if row is not None:
-                                # Keep the same kernel guard, without retaining Stockfish memory
-                                # while Ollama loads the model. Restart on the next engine run.
+                        scan = (
+                            training.next_scan()
+                            if scans_enabled
+                            and not stop.is_set()
+                            and monotonic() >= retry_scan_at
+                            else None
+                        )
+                        job = (
+                            coaching.service.store.claim()
+                            if run_id is None
+                            and coaching is not None
+                            and not stop.is_set()
+                            else None
+                        )
+                        if job is not None and coaching is not None:
+                            # Release Stockfish memory before Ollama loads the model.
+                            engine.close()
+                            coaching.process(job)
+                        elif scan is not None and scan.puzzle_cursor is not None:
+                            try:
                                 engine.close()
-                                coaching.process(row)
+                            except EngineAnalysisError:
+                                logger.exception("puzzle_scan_engine_shutdown_failed")
+                                retry_scan_at = monotonic() + 30
+                                if once:
+                                    break
+                                continue
+                            report = generate_puzzles(
+                                training,
+                                StockfishAdapter(verification),
+                                verification,
+                                scan.tracked_player_id,
+                                scan.profile_hash,
+                                scan.puzzle_cursor,
+                                run_id=scan.id,
+                                stop=stop,
+                            )
+                            cursor: int | None = report.next_after_move_id
+                            if report.errors:
+                                retry_scan_at = monotonic() + 30
+                                if report.retry_from_move_id is not None:
+                                    cursor = report.retry_from_move_id
+                                logger.warning(
+                                    "puzzle_scan_retry", extra={"run_id": scan.id}
+                                )
+                            elif not stop.is_set() and (
+                                report.candidates_examined
+                                < verification.training_candidate_limit
+                            ):
+                                cursor = None
+                            training.save_scan(scan.id, cursor)
+                            if not report.errors and not once and not stop.is_set():
+                                failures = 0
+                                continue
                         failures = 0
                         if once:
                             break

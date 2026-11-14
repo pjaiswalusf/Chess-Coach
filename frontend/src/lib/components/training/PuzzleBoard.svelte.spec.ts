@@ -5,6 +5,7 @@ import PuzzleBoard from './PuzzleBoard.svelte';
 import type { PublicPuzzle } from '#lib/api/training.js';
 
 const puzzle: PublicPuzzle = {
+	solver_moves: 1,
 	id: 1,
 	fen: 'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2',
 	side_to_move: 'white',
@@ -20,7 +21,7 @@ it('selects a White capture with the keyboard and exposes the selection', async 
 	const from = page.getByRole('button', { name: 'e4: White pawn' });
 	await from.click();
 	await expect.element(from).toHaveAttribute('aria-pressed', 'true');
-	const destination = page.getByRole('button', { name: 'd5: Black pawn' }).element();
+	const destination = page.getByRole('button', { name: /d5: Black pawn/ }).element();
 	(destination as HTMLButtonElement).focus();
 	await userEvent.keyboard('{Enter}');
 	expect(onMove).toHaveBeenLastCalledWith('e4d5');
@@ -40,7 +41,7 @@ it('orients for Black and selects a castling move supplied by the API', async ()
 	const board = page.getByRole('group', { name: /Black at bottom/ });
 	await expect.element(board.getByRole('button').first()).toHaveAttribute('data-square', 'h1');
 	await board.getByRole('button', { name: 'e8: Black king' }).click();
-	await board.getByRole('button', { name: 'g8: empty' }).click();
+	await board.getByRole('button', { name: /g8: empty/ }).click();
 	expect(onMove).toHaveBeenLastCalledWith('e8g8');
 });
 
@@ -53,7 +54,7 @@ it('requires an explicit promotion choice and locks controls during submission',
 	};
 	const view = render(PuzzleBoard, { puzzle: promotion, onMove });
 	await page.getByRole('button', { name: 'a7: White pawn' }).click();
-	await page.getByRole('button', { name: 'a8: empty' }).click();
+	await page.getByRole('button', { name: /a8: empty/ }).click();
 	expect(onMove).toHaveBeenLastCalledWith(null);
 	await page.getByLabelText('Promote to').selectOptions('a7a8n');
 	expect(onMove).toHaveBeenLastCalledWith('a7a8n');

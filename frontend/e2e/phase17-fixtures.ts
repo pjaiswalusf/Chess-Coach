@@ -101,6 +101,7 @@ export function patterns(window: Window, analyzed = 12): Patterns {
 		filters: { window, color: 'all', time_class: 'all' },
 		profile_hash: profile,
 		report_hash: reportHash,
+		priority: null,
 		analytics_version: 'longitudinal-v1',
 		policy_version: 'support-v1',
 		ranker_version: 'weakness-ranker-v1',

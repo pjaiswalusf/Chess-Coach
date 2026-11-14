@@ -16,6 +16,7 @@ from chess_coach.domain.game_records import (
 from chess_coach.domain.game_records import (
     ReasonCode as R,
 )
+from chess_coach.domain.sync import archive_result
 
 logger = logging.getLogger(__name__)
 
@@ -62,24 +63,10 @@ def _source_result(record: ParseInput) -> tuple[str | None, str | None]:
     if evidence.get("rules") != "chess":
         raise PGNParseError(R.UNSUPPORTED_VARIANT)
     white, black = evidence.get("white_result"), evidence.get("black_result")
-    losses = {"checkmated", "timeout", "resigned", "lose", "abandoned"}
-    draws = {
-        "agreed",
-        "repetition",
-        "stalemate",
-        "insufficient",
-        "50move",
-        "timevsinsufficient",
-    }
     if not isinstance(white, str) or not isinstance(black, str):
         raise PGNParseError(R.SOURCE_EVIDENCE_MISSING)
-    if white == "win" and black in losses:
-        expected = "1-0"
-    elif black == "win" and white in losses:
-        expected = "0-1"
-    elif white in draws and black in draws:
-        expected = "1/2-1/2"
-    else:
+    expected = archive_result(white, black)
+    if expected is None:
         raise PGNParseError(R.SOURCE_EVIDENCE_MISSING)
     if evidence.get("result") != expected:
         raise PGNParseError(R.RESULT_MISMATCH)
@@ -87,6 +74,15 @@ def _source_result(record: ParseInput) -> tuple[str | None, str | None]:
     if fen is not None and not isinstance(fen, str):
         raise PGNParseError(R.FINAL_POSITION_MISMATCH)
     return expected, fen
+
+
+def parse_game_with_source(
+    record: ParseInput, parser: GameParser, *, max_bytes: int = 1_000_000
+) -> tuple[ParsedGame, str | None]:
+    expected, final_fen = _source_result(record)
+    return parser(
+        record.raw_pgn, record.username, max_bytes=max_bytes, source_final_fen=final_fen
+    ), expected
 
 
 class ParseImportedGames:
@@ -118,12 +114,8 @@ class ParseImportedGames:
                     summary.games_attempted += 1
                     outcome: ParsedGame | PGNParseError
                     try:
-                        expected, fen = _source_result(record)
-                        parsed = self.parser(
-                            record.raw_pgn,
-                            record.username,
-                            max_bytes=self.max_bytes,
-                            source_final_fen=fen,
+                        parsed, expected = parse_game_with_source(
+                            record, self.parser, max_bytes=self.max_bytes
                         )
                         if expected is not None and parsed.source_result != expected:
                             raise PGNParseError(R.RESULT_MISMATCH)

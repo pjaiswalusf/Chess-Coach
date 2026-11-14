@@ -1,6 +1,5 @@
 """Atomic file-import persistence; no network or engine operations."""
 
-from dataclasses import asdict
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -10,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from chess_coach.application.errors import OperationError
 from chess_coach.domain.game_records import PARSER_VERSION, ParseStatus
+from chess_coach.infrastructure.chesscom.opening_names import opening_name_from_url
 from chess_coach.infrastructure.persistence.models import (
     Game,
     ImportRejection,
@@ -20,6 +20,7 @@ from chess_coach.infrastructure.persistence.models import (
     utc_now,
 )
 from chess_coach.infrastructure.persistence.operations import ensure_idle, reserve
+from chess_coach.infrastructure.persistence.parsed_metadata import parsed_game_metadata
 
 if TYPE_CHECKING:
     from chess_coach.application.import_pgn import FileGame
@@ -78,9 +79,7 @@ class PGNRepository:
                 ):
                     existing += 1
                     continue
-                metadata = asdict(parsed)
-                del metadata["moves"]
-                metadata["total_plies"] = parsed.total_plies
+                metadata = parsed_game_metadata(parsed)
                 session.add(
                     Game(
                         tracked_player_id=player.id,
@@ -94,7 +93,8 @@ class PGNRepository:
                         result=parsed.player_result,
                         time_control=parsed.time_control.raw,
                         eco_code=parsed.eco,
-                        opening_name=parsed.opening_name,
+                        opening_name=parsed.opening_name
+                        or opening_name_from_url(parsed.eco_url),
                         eco_url=parsed.eco_url,
                         source_evidence={
                             "import_run_id": run.id,

@@ -45,10 +45,10 @@ def system_report(
                 detail = "Install Stockfish to generate new puzzles."
             elif worker_owns_engine or (counts and counts.get("active_analysis_runs")):
                 generation_status = "busy"
-                detail = "Finish pending analysis and stop the local analysis worker before generating puzzles."
+                detail = "The local analysis worker scans newly analyzed games for puzzles automatically."
             else:
                 generation_status = "verify_with_cli"
-                detail = "Use the local training CLI for verification and generation diagnostics."
+                detail = "Start the local analysis worker to process queued analysis and puzzle scans."
             training_status = {
                 "practice_status": "ready",
                 "generation_status": generation_status,

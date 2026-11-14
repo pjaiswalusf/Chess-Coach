@@ -5,8 +5,8 @@ from enum import StrEnum
 import chess
 
 from chess_coach.analytics.contracts import Severity
-from chess_coach.analytics.features import calculate_material
 from chess_coach.analytics.sample_policy import severity
+from chess_coach.domain.material import calculate_material
 
 
 class ReviewRating(StrEnum):

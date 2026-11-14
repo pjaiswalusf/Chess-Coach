@@ -1,4 +1,4 @@
-import { apiRequest, invalidResponse, isRecord } from './client.js';
+import { apiRequest, invalidResponse, isRecord, jsonRequest } from './client.js';
 import type { components, paths } from './generated/schema.js';
 
 export type RunResponse = components['schemas']['RunResponse'];
@@ -47,12 +47,14 @@ export const analysisApi = {
 		return runs;
 	},
 	start: (player: number, signal?: AbortSignal) =>
-		apiRequest<unknown>('/api/v1/analysis-runs', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ scope: 'pending', tracked_player_id: player } satisfies StartRun),
-			signal
-		}).then(requireRun),
+		apiRequest<unknown>(
+			'/api/v1/analysis-runs',
+			jsonRequest(
+				'POST',
+				{ scope: 'pending', tracked_player_id: player } satisfies StartRun,
+				signal
+			)
+		).then(requireRun),
 	cancel: (id: number, signal?: AbortSignal) =>
 		apiRequest<unknown>(`/api/v1/analysis-runs/${id}/cancel`, { method: 'POST', signal }).then(
 			requireRun

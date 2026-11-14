@@ -8,6 +8,7 @@
 	import Card from '#lib/components/ui/Card.svelte';
 	import ErrorMessage from '#lib/components/ui/ErrorMessage.svelte';
 	import Spinner from '#lib/components/ui/Spinner.svelte';
+	import AnalysisRunProgress from './AnalysisRunProgress.svelte';
 	import StatusBadge from '#lib/components/ui/StatusBadge.svelte';
 
 	type Player = Awaited<ReturnType<typeof jobsApi.player>>;
@@ -25,8 +26,8 @@
 	const analysis = watchRun(() => analysisId, jobsApi.analysis);
 	const busy = $derived(
 		loading ||
-			!!discoveryError ||
-			!!submitting ||
+			Boolean(discoveryError) ||
+			submitting !== null ||
 			(syncId !== null &&
 				(sync.state.data?.run_id !== syncId || isActive(sync.state.data.status))) ||
 			(analysisId !== null &&
@@ -59,6 +60,29 @@
 	onMount(() => {
 		void discover();
 		return () => lifetime.abort();
+	});
+
+	$effect(() => {
+		const run = sync.state.data;
+		if (!run || isActive(run.status) || !run.progress.games_inserted) return;
+		const controller = new AbortController();
+		let timer: ReturnType<typeof setTimeout>;
+		async function checkAnalysis() {
+			try {
+				const runs = await jobsApi.latest(controller.signal);
+				if (!controller.signal.aborted && runs.analysis_run_id !== null) {
+					analysisId = runs.analysis_run_id;
+				}
+			} catch {
+				// Retry if the backend is temporarily unavailable.
+			}
+			if (!controller.signal.aborted) timer = setTimeout(() => void checkAnalysis(), 2000);
+		}
+		void checkAnalysis();
+		return () => {
+			controller.abort();
+			clearTimeout(timer);
+		};
 	});
 
 	async function submit(kind: 'sync' | 'analysis') {
@@ -104,7 +128,7 @@
 <svelte:head><title>Sync · Chess Coach</title></svelte:head>
 
 <h1 class="text-3xl font-semibold tracking-tight">Sync</h1>
-<p>Import completed Chess.com games, then analyze them with local Stockfish.</p>
+<p>New completed games are automatically queued for Stockfish analysis and puzzle generation.</p>
 
 {#if loading}<Spinner label="Checking tracked player and existing runs…" />{/if}
 {#if discoveryError}
@@ -136,7 +160,7 @@
 				autocapitalize="none"
 				spellcheck={false}
 				bind:value={username}
-				disabled={loading || !!submitting}
+				disabled={loading || submitting !== null}
 			/>
 			<p class="text-sm text-muted">
 				{#if username.trim()}Sync will link the library to <strong class="break-all"
@@ -216,41 +240,9 @@
 			<Spinner label="Loading analysis progress…" />
 		{/if}
 		{#if analysis.state.data}
-			{@const run = analysis.state.data}
-			<div role="status" class="space-y-2">
-				<StatusBadge
-					label={run.storage_status === 'completed_with_errors'
-						? 'Completed with failures'
-						: run.storage_status === 'cancelled'
-							? 'Cancelled'
-							: run.status}
-					tone={run.status === 'failed'
-						? 'caution'
-						: run.status === 'completed'
-							? 'positive'
-							: 'neutral'}
-				/>
-				{#if run.status === 'completed' && run.games_total === run.games_skipped}
-					<p>No pending games were eligible for analysis.</p>
-					{#if run.games_skipped}<p>Already analyzed: {run.games_skipped}</p>{/if}
-				{:else}
-					<p>
-						Games selected: {run.games_total} · Analyzed: {run.games_completed} · Failed: {run.games_failed}
-						· Already analyzed: {run.games_skipped} · Remaining: {run.games_remaining}
-					</p>
-				{/if}
-				{#if run.games_excluded}<p>
-						Excluded games without compatible parsed source: {run.games_excluded}.
-					</p>{/if}
-				{#if isActive(run.status) && !run.worker_available}<p>
-						Waiting for the local analysis worker to resume.
-					</p>{/if}
-				{#if run.status === 'failed'}<p>
-						{run.error_message ??
-							'Successful analyses are saved. Check System and retry pending games.'}
-					</p>{/if}
-			</div>
+			<AnalysisRunProgress run={analysis.state.data} />
 		{/if}
 	{/if}
 	<a href={resolve('/games')} class="font-medium text-accent underline">Browse games</a>
+	<a href={resolve('/training')} class="font-medium text-accent underline">Open Puzzles</a>
 </Card>

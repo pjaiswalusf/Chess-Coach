@@ -120,7 +120,6 @@ test('solves real historical puzzles, restarts FastAPI, and replays a committed 
 			{ times: 1 }
 		);
 		await selectMove(firstMove);
-		await page.getByRole('button', { name: 'Submit move' }).click();
 		await expect(page.getByRole('alert')).toContainText('Move submission failed');
 		await page.getByRole('button', { name: 'Retry submission' }).click();
 		await expect(page.getByText('Correct', { exact: true })).toBeVisible();
@@ -153,7 +152,6 @@ test('solves real historical puzzles, restarts FastAPI, and replays a committed 
 		const second = await next();
 		const wrong = db(`SELECT original_move_uci FROM puzzles WHERE id = ${second.id}`);
 		await selectMove(wrong);
-		await page.getByRole('button', { name: 'Submit move' }).click();
 		await expect(page.getByText('Incorrect', { exact: true })).toBeVisible();
 		await page.screenshot({ path: info.outputPath('puzzle-incorrect.png'), fullPage: true });
 		await expect(

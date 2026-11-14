@@ -27,7 +27,10 @@ On macOS, you can also double-click `Chess Coach.command` in the repository
 folder in Finder. It starts the packaged server and both workers, then opens
 your default browser. Use it in place of the manual server and worker commands.
 Keep its Terminal window open while using Chess Coach. Press Ctrl+C in that
-window to stop the server and workers together.
+window to stop the server and workers together. If Terminal closes unexpectedly,
+the server and workers shut down on their own. Give them a few seconds to
+release port 8000, then open `Chess Coach.command` again and reload your browser
+tab to pick up the new session.
 
 Open [Chess Coach](http://127.0.0.1:8000). In another terminal, confirm the
 server and database are ready.

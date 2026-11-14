@@ -133,7 +133,7 @@
 								<td class="p-2">{results[game.result]}</td>
 								<td class="p-2">{game.player_rating ?? 'Unknown'}</td>
 								<td class="p-2 capitalize">{game.time_class ?? 'Unknown'}</td>
-								<td class="p-2">{game.opening_name ?? 'Unknown'}</td>
+								<td class="p-2">{game.opening_name ?? game.eco_code ?? 'Unknown'}</td>
 								<td class="p-2">{game.critical_errors ?? 'Unavailable'}</td>
 								<td class="p-2"
 									><StatusBadge

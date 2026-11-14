@@ -9,8 +9,8 @@ test('preserves the shell during a disconnection and reconnects on retry', async
 	});
 	await page.goto('/');
 	await expect(page.getByText('Backend unavailable', { exact: true })).toBeVisible();
-	await page.getByRole('navigation').getByRole('link', { name: 'Training' }).click();
-	await expect(page.getByRole('heading', { name: 'Training' })).toBeVisible();
+	await page.getByRole('navigation').getByRole('link', { name: 'Puzzles' }).click();
+	await expect(page.getByRole('heading', { name: 'Puzzles' })).toBeVisible();
 	await expect(page.getByText('Backend unavailable', { exact: true })).toBeVisible();
 	expect(checks).toBe(1);
 	await page.getByRole('button', { name: 'Retry backend connection' }).click();

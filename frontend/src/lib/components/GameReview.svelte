@@ -7,10 +7,11 @@
 		type ReviewMove
 	} from '#lib/api/review.js';
 	import { asyncRead } from '#lib/async-read.svelte.js';
-	import { formatDate, results } from '#lib/utils/display.js';
+	import { moveRatings } from '#lib/utils/review-rating.js';
 	import BoardEvaluationBar from './BoardEvaluationBar.svelte';
 	import ChessBoard from './ChessBoard.svelte';
 	import EvaluationChart from './EvaluationChart.svelte';
+	import GameDetails from './GameDetails.svelte';
 	import MoveCoaching from './MoveCoaching.svelte';
 	import ReviewEngineLines from './ReviewEngineLines.svelte';
 	import ReviewMoveList from './ReviewMoveList.svelte';
@@ -20,7 +21,6 @@
 	import Card from './ui/Card.svelte';
 	import ErrorMessage from './ui/ErrorMessage.svelte';
 	import Spinner from './ui/Spinner.svelte';
-	import StatusBadge from './ui/StatusBadge.svelte';
 
 	let { id, requestedPly, profile }: { id: number; requestedPly: number; profile: string | null } =
 		$props();
@@ -162,7 +162,7 @@
 	<ErrorMessage title="Unable to load game." message={game.state.message} retry={game.refresh} />
 {:else if recorded}
 	{#if report?.status !== 'completed'}
-		{@render gameDetails()}
+		<GameDetails game={recorded} />
 	{/if}
 
 	{#if analysis.state.status === 'loading'}
@@ -320,7 +320,7 @@
 							{#each critical.slice(0, 8) as move (move.ply)}
 								<li>
 									<Button onclick={() => show(move.ply, true)}
-										>{notation(move)} — Critical error</Button
+										>{notation(move)} — {moveRatings[move.rating].label}</Button
 									>
 								</li>
 							{/each}
@@ -331,7 +331,7 @@
 				</section>
 			</aside>
 		</div>
-		{@render gameDetails()}
+		<GameDetails game={recorded} />
 	{/if}
 {/if}
 
@@ -396,66 +396,5 @@
 				>
 			{/if}
 		</div>
-	{/if}
-{/snippet}
-
-{#snippet gameDetails()}
-	{#if recorded}
-		<Card>
-			<div class="flex flex-wrap items-center justify-between gap-2">
-				<h2 class="min-w-0 text-xl font-semibold wrap-anywhere">
-					{recorded.white_username} vs {recorded.black_username}
-				</h2>
-				<StatusBadge label={results[recorded.result]} />
-			</div>
-			<dl class="grid gap-3 text-sm sm:grid-cols-3">
-				<div>
-					<dt class="font-semibold">Played</dt>
-					<dd>{formatDate(recorded.played_at)}</dd>
-				</div>
-				<div>
-					<dt class="font-semibold">Your color</dt>
-					<dd class="capitalize">{recorded.player_color}</dd>
-				</div>
-				<div>
-					<dt class="font-semibold">Time control</dt>
-					<dd class="capitalize">
-						{recorded.time_class ?? 'Unknown'}{recorded.time_control
-							? ' · ' + recorded.time_control
-							: ''}
-					</dd>
-				</div>
-				<div>
-					<dt class="font-semibold">Your rating</dt>
-					<dd>
-						{recorded.player_rating ??
-							(recorded.player_color === 'white' ? recorded.white_rating : recorded.black_rating) ??
-							'Unknown'}
-					</dd>
-				</div>
-				<div>
-					<dt class="font-semibold">White rating</dt>
-					<dd>{recorded.white_rating ?? 'Unknown'}</dd>
-				</div>
-				<div>
-					<dt class="font-semibold">Black rating</dt>
-					<dd>{recorded.black_rating ?? 'Unknown'}</dd>
-				</div>
-				<div>
-					<dt class="font-semibold">Opening</dt>
-					<dd>{recorded.opening_name ?? recorded.eco_code ?? 'Unknown'}</dd>
-				</div>
-			</dl>
-			<details>
-				<summary class="cursor-pointer font-semibold">Completed game PGN</summary>
-				<p class="mt-2 text-sm text-muted">
-					Completion source: {recorded.completion_provenance === 'pgn_declaration'
-						? 'declared PGN result'
-						: 'Chess.com completed archive'}.
-				</p>
-				<pre
-					class="mt-2 max-h-64 overflow-auto rounded-lg bg-raised p-3 text-sm wrap-anywhere whitespace-pre-wrap">{recorded.raw_pgn}</pre>
-			</details>
-		</Card>
 	{/if}
 {/snippet}
