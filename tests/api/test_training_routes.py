@@ -254,6 +254,27 @@ def test_full_puzzle_attempt_is_graded_once(practice, last_move, correct):
     assert client.get(PREFIX + "/stats").json()["attempts_total"] == 1
 
 
+def test_wrong_move_explanation_retry_and_persisted_streak(practice):
+    client, sessions, *_ = practice
+    path = attempt_path(client)
+    wrong = client.post(path, json=answer("g1f3")).json()
+    assert wrong["wrong_move_reason"].startswith("Nf3 gives up 1.60 pawns")
+    assert client.get(PREFIX + "/stats").json()["solve_streak"] == 0
+    retry = answer("e4d5") | {"retry_after_attempt_id": wrong["attempt_id"]}
+    first = client.post(path, json=retry)
+    assert first.status_code == 200 and first.json()["correct"]
+    assert client.post(path, json=retry).json() == first.json()
+    assert client.get(PREFIX + "/stats").json()["solve_streak"] == 1
+    with sessions.begin() as session:
+        puzzle = session.scalar(select(Puzzle))
+        puzzle.last_attempt_at -= timedelta(days=4)
+        puzzle.next_review_at -= timedelta(days=4)
+    second = client.post(path, json=answer("g1f3"))
+    assert second.status_code == 200 and not second.json()["correct"]
+    stats = client.get(PREFIX + "/stats").json()
+    assert stats["attempts_total"] == 3 and stats["solve_streak"] == 0
+
+
 @pytest.mark.parametrize("corruption", ["position", "turn", "source"])
 def test_reconstruction_refuses_corrupt_evidence(api, training_source, corruption):
     _, sessions, _, _, settings, profile, _ = api

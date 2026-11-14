@@ -3,7 +3,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
 from chess_coach.api.dependencies import get_query_service, get_training_service
@@ -25,10 +25,12 @@ Training = Annotated[TrainingService, Depends(get_training_service)]
 class SubmitAttempt(BaseModel):
     submission_id: UUID
     move_uci: str = Field(pattern=r"^[a-h][1-8][a-h][1-8][qrbn]?$")
+    retry_after_attempt_id: int | None = Field(default=None, gt=0)
 
 
 class PlayPuzzle(BaseModel):
     submission_id: UUID
+    retry_after_attempt_id: int | None = Field(default=None, gt=0)
     moves: list[Annotated[str, Field(pattern=r"^[a-h][1-8][a-h][1-8][qrbn]?$")]] = (
         Field(min_length=1, max_length=4)
     )
@@ -44,8 +46,12 @@ Player = Annotated[int | None, Depends(player_id)]
 
 
 @router.get("/next")
-def next_puzzle(service: Training, player: Player) -> NextPuzzle:
-    return service.next(player, utc_now())
+def next_puzzle(
+    service: Training,
+    player: Player,
+    puzzle_id: Annotated[int | None, Query(gt=0)] = None,
+) -> NextPuzzle:
+    return service.next(player, utc_now(), puzzle_id)
 
 
 @router.post("/{puzzle_id}/attempts")
@@ -53,7 +59,12 @@ def submit_attempt(
     puzzle_id: int, body: SubmitAttempt, service: Training, player: Player
 ) -> AttemptResult:
     return service.submit(
-        player, puzzle_id, body.submission_id, body.move_uci, utc_now()
+        player,
+        puzzle_id,
+        body.submission_id,
+        body.move_uci,
+        utc_now(),
+        body.retry_after_attempt_id,
     )
 
 
@@ -61,7 +72,14 @@ def submit_attempt(
 def play_puzzle(
     puzzle_id: int, body: PlayPuzzle, service: Training, player: Player
 ) -> PuzzleStep:
-    return service.play(player, puzzle_id, body.submission_id, body.moves, utc_now())
+    return service.play(
+        player,
+        puzzle_id,
+        body.submission_id,
+        body.moves,
+        utc_now(),
+        body.retry_after_attempt_id,
+    )
 
 
 @router.get("/stats")

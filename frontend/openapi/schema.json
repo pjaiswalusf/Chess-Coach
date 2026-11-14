@@ -300,6 +300,17 @@
             ],
             "title": "Final Fen"
           },
+          "last_move_uci": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Move Uci"
+          },
           "next_review_at": {
             "format": "date-time",
             "title": "Next Review At",
@@ -339,6 +350,17 @@
           "submitted_move_uci": {
             "title": "Submitted Move Uci",
             "type": "string"
+          },
+          "wrong_move_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wrong Move Reason"
           }
         },
         "required": [
@@ -440,6 +462,91 @@
         ],
         "title": "ChessEventType",
         "type": "string"
+      },
+      "CoachExample": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "game_id": {
+            "title": "Game Id",
+            "type": "integer"
+          },
+          "move_label": {
+            "title": "Move Label",
+            "type": "string"
+          },
+          "opponent": {
+            "title": "Opponent",
+            "type": "string"
+          },
+          "ply": {
+            "title": "Ply",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "game_id",
+          "ply",
+          "move_label",
+          "opponent",
+          "detail"
+        ],
+        "title": "CoachExample",
+        "type": "object"
+      },
+      "CoachPriority": {
+        "properties": {
+          "affected_games": {
+            "title": "Affected Games",
+            "type": "integer"
+          },
+          "examples": {
+            "items": {
+              "$ref": "#/components/schemas/CoachExample"
+            },
+            "title": "Examples",
+            "type": "array"
+          },
+          "finding": {
+            "title": "Finding",
+            "type": "string"
+          },
+          "habit": {
+            "title": "Habit",
+            "type": "string"
+          },
+          "pattern": {
+            "$ref": "#/components/schemas/Pattern"
+          },
+          "practice_puzzle_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Practice Puzzle Id"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pattern",
+          "title",
+          "finding",
+          "habit",
+          "affected_games",
+          "examples",
+          "practice_puzzle_id"
+        ],
+        "title": "CoachPriority",
+        "type": "object"
       },
       "CoachingMetrics": {
         "properties": {
@@ -1316,12 +1423,12 @@
           "result",
           "time_class",
           "opening_name",
+          "eco_code",
           "analysis_status",
           "white_username",
           "black_username",
           "white_rating",
           "black_rating",
-          "eco_code",
           "time_control",
           "raw_pgn",
           "completion_provenance"
@@ -1353,6 +1460,17 @@
               }
             ],
             "title": "Critical Errors"
+          },
+          "eco_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eco Code"
           },
           "id": {
             "title": "Id",
@@ -2486,6 +2604,15 @@
         "title": "OverviewResponse",
         "type": "object"
       },
+      "Pattern": {
+        "enum": [
+          "missed_mate",
+          "lost_piece",
+          "lost_advantage"
+        ],
+        "title": "Pattern",
+        "type": "string"
+      },
       "PatternsResponse": {
         "properties": {
           "analytics_version": {
@@ -2541,6 +2668,16 @@
             "default": "support-v1",
             "title": "Policy Version",
             "type": "string"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CoachPriority"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "profile_hash": {
             "anyOf": [
@@ -2652,6 +2789,18 @@
             "minItems": 1,
             "title": "Moves",
             "type": "array"
+          },
+          "retry_after_attempt_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry After Attempt Id"
           },
           "submission_id": {
             "format": "uuid",
@@ -4062,6 +4211,18 @@
             "title": "Move Uci",
             "type": "string"
           },
+          "retry_after_attempt_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry After Attempt Id"
+          },
           "submission_id": {
             "format": "uuid",
             "title": "Submission Id",
@@ -4582,6 +4743,11 @@
           },
           "puzzles_total": {
             "title": "Puzzles Total",
+            "type": "integer"
+          },
+          "solve_streak": {
+            "default": 0,
+            "title": "Solve Streak",
             "type": "integer"
           },
           "themes": {
@@ -9083,6 +9249,25 @@
     "/api/v1/training/next": {
       "get": {
         "operationId": "next_puzzle_api_v1_training_next_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "puzzle_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Puzzle Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {

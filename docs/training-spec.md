@@ -107,6 +107,12 @@ historical move, solution, and PV are revealed after a legal attempt at
 the next position after the opponent reply, or the final grade. The first
 incorrect move ends the attempt. A completed sequence counts as one attempt.
 
+Selecting a legal destination or choosing a promotion submits the move.
+After a wrong move, Puzzles explains the consequence using saved engine evidence
+when available and offers a retry from the same position. The retry sends the
+latest incorrect attempt ID. The saved solve streak counts consecutive
+successful attempts across puzzles and resets on any incorrect attempt.
+
 The backend uses python-chess to validate the submitted UCI move. Correctness
 is exact equality with the immutable approved UCI, including the promotion
 piece. Invalid or illegal moves return 422. Unknown puzzles return 404.

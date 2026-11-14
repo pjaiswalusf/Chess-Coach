@@ -39,9 +39,24 @@ test('reuses the submission ID when the first response is lost and displays the 
 	await page.route('**/api/v1/training/1/attempts', async (route) => {
 		submitted.push(route.request().postDataJSON() as SubmitAttempt);
 		if (submitted.length === 1) return route.abort();
+		if (submitted.length === 3) {
+			return route.fulfill({
+				json: {
+					correct: true,
+					solution_san: 'a8=Q+',
+					solution_pv_san: ['a8=Q+'],
+					source_game_id: 2,
+					source_ply: 18,
+					source_profile_hash: 'a'.repeat(64),
+					next_review_at: '2026-11-10T12:00:00Z'
+				}
+			});
+		}
 		await route.fulfill({
 			json: {
 				correct: false,
+				attempt_id: 82,
+				wrong_move_reason: 'Underpromotion misses the verified tactic.',
 				solution_move_uci: 'a7a8q',
 				solution_san: 'a8=Q+',
 				solution_pv_san: ['a8=Q+'],
@@ -57,18 +72,24 @@ test('reuses the submission ID when the first response is lost and displays the 
 	await expect(page.getByRole('heading', { name: 'white to move' })).toBeVisible();
 	await expect(page.getByText('Engine solution')).toHaveCount(0);
 	await page.getByRole('button', { name: 'a7: White pawn' }).click();
-	await page.getByRole('button', { name: 'a8: empty' }).click();
-	await expect(page.getByRole('button', { name: 'Submit move' })).toBeDisabled();
+	await page.getByRole('button', { name: /a8: empty/ }).click();
 	await page.getByLabel('Promote to').selectOption('a7a8n');
-	await page.getByRole('button', { name: 'Submit move' }).click();
 	await expect(page.getByRole('alert')).toContainText('Move submission failed');
 	await expect(page.getByRole('button', { name: 'a7: White pawn' })).toBeDisabled();
 	await page.getByRole('button', { name: 'Retry submission' }).click();
 	await expect(page.getByText('Incorrect', { exact: true })).toBeVisible();
-	await expect(page.getByText('Engine solution')).toContainText('a8=Q+');
+	await expect(page.getByText('Underpromotion misses the verified tactic.')).toBeVisible();
+	await expect(page.getByText('0 solved in a row')).toBeVisible();
+	await page.getByRole('button', { name: 'Retry puzzle' }).click();
+	await expect(page.getByRole('button', { name: 'a7: White pawn' })).toBeEnabled();
 	expect(submitted).toHaveLength(2);
 	expect(submitted[1]).toEqual(submitted[0]);
 	expect(submitted[0].move_uci).toBe('a7a8n');
+	await page.getByRole('button', { name: 'a7: White pawn' }).click();
+	await page.getByRole('button', { name: /a8: empty/ }).click();
+	await page.getByLabel('Promote to').selectOption('a7a8q');
+	await expect(page.getByText('Correct', { exact: true })).toBeVisible();
+	expect(submitted[2]).toMatchObject({ move_uci: 'a7a8q', retry_after_attempt_id: 82 });
 	await page.getByRole('button', { name: 'Next puzzle' }).click();
 	await expect(page.getByRole('heading', { name: 'All caught up' })).toBeVisible();
 	await page.reload();
@@ -128,12 +149,10 @@ test('plays the opponent reply and asks for the second move before grading', asy
 	await expect(page.getByText('Move 1 of 2')).toBeVisible();
 	await page.locator('[data-square="e4"]').click();
 	await page.locator('[data-square="d5"]').click();
-	await page.getByRole('button', { name: 'Submit move' }).click();
 	await expect(page.getByText(/Opponent played Nc6. Move 2 of 2/)).toBeVisible();
 	await expect(page.getByText('Engine solution')).toHaveCount(0);
 	await page.locator('[data-square="d5"]').click();
 	await page.locator('[data-square="c6"]').click();
-	await page.getByRole('button', { name: 'Submit move' }).click();
 	await expect(page.getByText('Correct', { exact: true })).toBeVisible();
 	await expect(page.getByRole('button', { name: 'c6: Black pawn' })).toBeVisible();
 });

@@ -179,6 +179,7 @@ class QueryRepository:
                 "result",
                 "time_class",
                 "opening_name",
+                "eco_code",
             )
         } | {
             "opponent": g.black_username
@@ -315,7 +316,6 @@ class QueryRepository:
                         "black_username",
                         "white_rating",
                         "black_rating",
-                        "eco_code",
                         "time_control",
                         "raw_pgn",
                     )

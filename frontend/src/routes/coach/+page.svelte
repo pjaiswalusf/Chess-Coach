@@ -29,6 +29,7 @@
 		undefined,
 		() => window
 	);
+	let detailsOpen = $state(false);
 
 	function selectWindow(value: string) {
 		const next = options.find((item) => item.value === value);
@@ -78,43 +79,85 @@
 			<a href={resolve('/sync')} class="font-semibold text-accent underline">Go to Sync</a>
 		</EmptyState>
 	{:else}
-		<Card>
-			<h2 class="text-lg font-semibold">Measured evidence</h2>
-			<p>
-				{report.health?.analyzed_games} analyzed of {report.health?.selected_games} selected games · {report
-					.health?.analyzed_player_moves} analyzed player moves
-			</p>
-			<p class="text-sm text-muted">
-				All colors and time controls · {report.analytics_version} / {report.policy_version}
-			</p>
-			{#if report.status === 'PARTIAL'}<p>
-					Some selected games lack compatible analysis. Analyze pending games to improve coverage.
-				</p>{/if}
-			<h3 class="font-semibold">Recurring weaknesses by category</h3>
-			<WeaknessList patterns={report.patterns} examples profile={report.profile_hash} />
-		</Card>
-		<Card>
-			<h2 class="text-lg font-semibold">Results over time</h2>
-			<ProgressEvidence
-				conversion={report.conversion}
-				conversion_strength={report.conversion_strength}
-				recent_trends={report.recent_trends}
-			/>
-		</Card>
-		{#if isProfile(report.profile_hash) && isProfile(report.report_hash) && Object.values(report.patterns).some((rows) => rows.length)}
-			{#key `${window}:${report.profile_hash}`}
-				<HistoricalCoaching
-					{window}
-					profile={report.profile_hash}
-					{report}
-					refresh={evidence.refresh}
-				/>
-			{/key}
+		{#if report.priority && isProfile(report.profile_hash)}
+			{@const priority = report.priority}
+			<Card>
+				<p class="text-sm font-semibold text-accent">Your practice priority</p>
+				<h2 class="text-2xl font-semibold tracking-tight">{priority.title}</h2>
+				<p>
+					{priority.finding} This showed up in {priority.affected_games} of {report.health
+						?.analyzed_games} analyzed games.
+				</p>
+				<p><strong>Try this in your next game.</strong> {priority.habit}</p>
+				<ul class="grid gap-3 sm:grid-cols-2">
+					{#each priority.examples as example (example.game_id)}
+						<li class="rounded-lg border border-line bg-raised p-3 text-sm">
+							<a
+								class="font-semibold text-accent underline"
+								href={resolve(
+									`/games/[id=gameId]?ply=${example.ply}&profile=${report.profile_hash}`,
+									{ id: String(example.game_id) }
+								)}>{example.move_label} vs {example.opponent}</a
+							>
+							<p class="mt-1">{example.detail}</p>
+						</li>
+					{/each}
+				</ul>
+				{#if priority.practice_puzzle_id}
+					<a
+						class="text-accent-ink inline-flex rounded-lg bg-accent px-4 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+						href={resolve(`/training?puzzle=${priority.practice_puzzle_id}`)}>Practice this</a
+					>
+				{/if}
+			</Card>
 		{:else}
-			<Card
-				><h2 class="text-lg font-semibold">Coach interpretation and practice</h2>
-				<p>Coaching needs a recurring weakness supported by analyzed games.</p></Card
-			>
+			<EmptyState title="No recurring pattern verified in this window">
+				<p>
+					Choose a larger game window or analyze more completed games to look for a recurring
+					mistake.
+				</p>
+			</EmptyState>
 		{/if}
+		<details bind:open={detailsOpen} class="space-y-3 rounded-xl border border-line bg-raised p-4">
+			<summary class="cursor-pointer font-semibold">View analysis details</summary>
+			<Card>
+				<h2 class="text-lg font-semibold">Measured evidence</h2>
+				<p>
+					{report.health?.analyzed_games} analyzed of {report.health?.selected_games} selected games ·
+					{report.health?.analyzed_player_moves} analyzed player moves
+				</p>
+				<p class="text-sm text-muted">
+					All colors and time controls · {report.analytics_version} / {report.policy_version}
+				</p>
+				{#if report.status === 'PARTIAL'}<p>
+						Some selected games lack compatible analysis. Analyze pending games to improve coverage.
+					</p>{/if}
+				<h3 class="font-semibold">Recurring weaknesses by category</h3>
+				<WeaknessList patterns={report.patterns} examples profile={report.profile_hash} />
+			</Card>
+			<Card>
+				<h2 class="text-lg font-semibold">Results over time</h2>
+				<ProgressEvidence
+					conversion={report.conversion}
+					conversion_strength={report.conversion_strength}
+					recent_trends={report.recent_trends}
+				/>
+			</Card>
+			{#if isProfile(report.profile_hash) && isProfile(report.report_hash) && Object.values(report.patterns).some((rows) => rows.length)}
+				{#key `${window}:${report.profile_hash}`}
+					<HistoricalCoaching
+						{window}
+						profile={report.profile_hash}
+						{report}
+						refresh={evidence.refresh}
+					/>
+				{/key}
+			{:else}
+				<Card
+					><h2 class="text-lg font-semibold">Coach interpretation and practice</h2>
+					<p>Coaching needs a recurring weakness supported by analyzed games.</p></Card
+				>
+			{/if}
+		</details>
 	{/if}
 {/if}

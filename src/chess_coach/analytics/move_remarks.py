@@ -10,7 +10,7 @@ from chess_coach.domain.material import PIECE_VALUES, calculate_material
 _CENTER = chess.SquareSet([chess.D4, chess.E4, chess.D5, chess.E5])
 
 
-def _line_consequence(
+def line_consequence(
     start: chess.Board, line: tuple[str, ...], material_baseline: chess.Board
 ) -> str | None:
     """Describe what the side achieves in this saved line."""
@@ -101,7 +101,7 @@ def _correction(
 
     played_san = before.san(played)
     best_san = before.san(chess.Move.from_uci(evidence.best_move_uci))
-    reply = _line_consequence(after, evidence.played_refutation_uci, before)
+    reply = line_consequence(after, evidence.played_refutation_uci, before)
     if missed_mate:
         problem = f"{played_san} misses a forced mate"
     elif allows_mate:
@@ -120,7 +120,7 @@ def _correction(
         improvement = f"Play {best_san} to force mate"
     elif allows_mate:
         improvement = f"Play {best_san} to avoid that forced mate"
-    elif alternative := _line_consequence(before, evidence.best_line_uci, before):
+    elif alternative := line_consequence(before, evidence.best_line_uci, before):
         improvement = (
             f"Instead, {alternative}"
             if alternative.startswith(f"{best_san} ")

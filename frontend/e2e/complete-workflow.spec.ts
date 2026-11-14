@@ -132,7 +132,7 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 		await navigate(reopened, 'Games');
 		await reopened.getByRole('link', { name: 'vs Fixture_13' }).click();
 		await expect(reopened.getByRole('group', { name: /Chessboard/ })).toBeVisible();
-		await reopened.getByRole('button', { name: '4. Ne2 — Critical error' }).click();
+		await reopened.getByRole('button', { name: '4. Ne2 — Blunder' }).click();
 		await expect(reopened.getByText('Before 4. Ne2 · Ply 7')).toBeVisible();
 		const engineLines = reopened.getByRole('region', { name: 'Engine lines' });
 		await expect(engineLines.getByRole('group', { name: 'Best continuation' })).toBeVisible();
@@ -145,6 +145,7 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 		await capture(reopened, 'game-review', reopened.getByRole('region', { name: 'Move coaching' }));
 
 		await navigate(reopened, 'Coach');
+		await reopened.getByText('View analysis details', { exact: true }).click();
 		await expect(reopened.getByText(/13 analyzed of 13 selected games/)).toBeVisible();
 		await reopened.getByRole('button', { name: 'Generate historical coaching' }).click();
 		const advice = 'Review your opening decisions before moving.';
@@ -155,7 +156,6 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 		const board = reopened.getByRole('group', { name: /Chessboard/ });
 		await board.locator('[data-square="f3"]').click();
 		await board.locator('[data-square="f7"]').click();
-		await reopened.getByRole('button', { name: 'Submit move' }).click();
 		await expect(reopened.getByText('Correct', { exact: true })).toBeVisible();
 		await expect(reopened.getByText(/1 attempt ·/)).toBeVisible();
 		await capture(reopened, 'training', reopened.getByText('Correct', { exact: true }));
@@ -181,6 +181,7 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 		await reopened.getByRole('button', { name: 'Retry backend connection' }).click();
 		await expect(reopened.getByText('Backend connected', { exact: true })).toBeVisible();
 		await navigate(reopened, 'Coach');
+		await reopened.getByText('View analysis details', { exact: true }).click();
 		await expect(reopened.getByText(advice)).toBeVisible();
 		expect((await (await context.request.get('/api/v1/system/llm')).json()).status).toBe(
 			'server_unavailable'

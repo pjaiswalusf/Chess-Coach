@@ -4,11 +4,13 @@ from collections.abc import Callable
 
 import chess
 
+from chess_coach.analytics.coach_brief import CoachPriority, top_priority
 from chess_coach.analytics.contracts import AnalyticsReport, AnalyticsRequest
 from chess_coach.analytics.sample_policy import severity
 from chess_coach.analytics.service import AnalyticsService
 from chess_coach.application.errors import OperationError
 from chess_coach.domain.sync import SourceError, normalize_username
+from chess_coach.infrastructure.persistence.coach_brief_repository import coach_findings
 from chess_coach.infrastructure.persistence.query_repository import QueryRepository
 
 
@@ -21,6 +23,11 @@ class QueryService:
     ):
         self.store, self.analytics = store, analytics
         self.verify_player = verify_player
+
+    def coach_priority(self, report: AnalyticsReport | None) -> CoachPriority | None:
+        if report is None:
+            return None
+        return top_priority(coach_findings(self.store.sessions, report))
 
     def player(self) -> dict[str, object]:
         return self.store.player()

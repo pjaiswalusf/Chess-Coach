@@ -14,6 +14,7 @@ const games = {
 			played_at: '2026-01-01T00:00:00Z',
 			time_class: 'rapid',
 			opening_name: null,
+			eco_code: 'C20',
 			analysis_status: 'pending'
 		}
 	]
@@ -39,6 +40,7 @@ test('shows loading then real response values with one request per entry', async
 	}
 	await expect(page.getByText('vs Example opponent', { exact: true })).toBeVisible();
 	await expect(page.getByText('Draw', { exact: true })).toBeVisible();
+	await expect(page.getByRole('cell', { name: 'C20' })).toBeVisible();
 	expect(requests).toBe(1);
 });
 

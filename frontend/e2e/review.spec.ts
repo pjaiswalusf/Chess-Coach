@@ -50,7 +50,7 @@ test('reviews a custom start, a promotion, and the final Black move on a narrow 
 	await expect(evalBar.locator('rect')).toHaveAttribute('y', '0');
 	await expect(page.getByRole('button', { name: 'Next move' })).toBeDisabled();
 	await expect(page.getByText('190 cp', { exact: true })).toBeHidden();
-	await page.getByRole('button', { name: '38... Kg6 — Critical error' }).click();
+	await page.getByRole('button', { name: '38... Kg6 — Blunder' }).click();
 	await expect(board.getByTitle('h7: Black king', { exact: true })).toBeVisible();
 	await expect(board.getByText('g7: empty · Engine suggestion', { exact: true })).toHaveCount(1);
 	await expect(board.getByTitle('Blunder')).toHaveCount(0);

@@ -16,6 +16,7 @@ from chess_coach.domain.game_records import (
     ParseStatus,
     PGNParseError,
 )
+from chess_coach.infrastructure.chesscom.opening_names import opening_name_from_url
 from chess_coach.infrastructure.persistence.models import Game, TrackedPlayer
 from chess_coach.infrastructure.persistence.sync_repository import SyncRepository
 
@@ -122,8 +123,12 @@ class ParseRepository:
                     outcome.player_result,
                 )
                 game.eco_code = outcome.eco or game.eco_code
-                game.opening_name = outcome.opening_name or game.opening_name
                 game.eco_url = outcome.eco_url or game.eco_url
+                game.opening_name = (
+                    outcome.opening_name
+                    or game.opening_name
+                    or opening_name_from_url(game.eco_url)
+                )
                 game.time_control = outcome.time_control.raw or game.time_control
                 game.parse_status = ParseStatus.READY
                 game.parse_reason = game.parse_error = None

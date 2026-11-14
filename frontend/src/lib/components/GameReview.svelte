@@ -8,6 +8,7 @@
 	} from '#lib/api/review.js';
 	import { asyncRead } from '#lib/async-read.svelte.js';
 	import { formatDate, results } from '#lib/utils/display.js';
+	import { moveRatings } from '#lib/utils/review-rating.js';
 	import BoardEvaluationBar from './BoardEvaluationBar.svelte';
 	import ChessBoard from './ChessBoard.svelte';
 	import EvaluationChart from './EvaluationChart.svelte';
@@ -320,7 +321,7 @@
 							{#each critical.slice(0, 8) as move (move.ply)}
 								<li>
 									<Button onclick={() => show(move.ply, true)}
-										>{notation(move)} — Critical error</Button
+										>{notation(move)} — {moveRatings[move.rating].label}</Button
 									>
 								</li>
 							{/each}

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from chess_coach.application.errors import OperationError
 from chess_coach.domain.game_records import PARSER_VERSION, ParseStatus
+from chess_coach.infrastructure.chesscom.opening_names import opening_name_from_url
 from chess_coach.infrastructure.persistence.models import (
     Game,
     ImportRejection,
@@ -94,7 +95,8 @@ class PGNRepository:
                         result=parsed.player_result,
                         time_control=parsed.time_control.raw,
                         eco_code=parsed.eco,
-                        opening_name=parsed.opening_name,
+                        opening_name=parsed.opening_name
+                        or opening_name_from_url(parsed.eco_url),
                         eco_url=parsed.eco_url,
                         source_evidence={
                             "import_run_id": run.id,

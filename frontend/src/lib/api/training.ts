@@ -10,8 +10,9 @@ export type PlayPuzzle = components['schemas']['PlayPuzzle'];
 
 const prefix = '/api/v1/training';
 
-export function getNextPuzzle(signal?: AbortSignal) {
-	return apiRequest<components['schemas']['NextPuzzle']>(prefix + '/next', {
+export function getNextPuzzle(signal?: AbortSignal, puzzleId?: string) {
+	const query = puzzleId ? '?' + new URLSearchParams({ puzzle_id: puzzleId }) : '';
+	return apiRequest<components['schemas']['NextPuzzle']>(prefix + '/next' + query, {
 		signal,
 		cache: 'no-store'
 	});

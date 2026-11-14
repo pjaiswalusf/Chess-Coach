@@ -8,8 +8,9 @@ from uuid import UUID
 
 import chess
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 
+from chess_coach.analytics.move_remarks import line_consequence
 from chess_coach.analytics.sample_policy import CRITICAL_LOSS_CP
 from chess_coach.application.errors import OperationError
 from chess_coach.domain.analysis import AnalysisProfile
@@ -60,6 +61,8 @@ class AttemptResult(BaseModel):
     attempted_at: datetime
     next_review_at: datetime
     final_fen: str | None = None
+    wrong_move_reason: str | None = None
+    last_move_uci: str | None = None
 
 
 class PuzzleContinuation(BaseModel):
@@ -91,6 +94,7 @@ class TrainingStats(BaseModel):
     puzzles_due: int
     average_attempts: float | None
     themes: list[ThemeStats]
+    solve_streak: int = 0
 
 
 class PeriodEvidence(BaseModel):
@@ -133,6 +137,94 @@ def _puzzle_board(puzzle: Puzzle) -> chess.Board:
     )
 
 
+def _wrong_move_reason(puzzle: Puzzle, board: chess.Board, moves: list[str]) -> str:
+    index = (len(moves) - 1) * 2
+    for uci in puzzle.solution_pv_json[:index]:
+        board.push_uci(uci)
+    move = board.parse_uci(moves[-1])
+    san = board.san(move)
+    evidence = puzzle.verification_json
+    upgrade = evidence.get("continuation")
+    followups = (
+        upgrade.get("followups")
+        if isinstance(upgrade, dict)
+        else evidence.get("followups")
+    )
+    ranks = evidence.get("deep") if index == 0 else None
+    if index and isinstance(followups, list):
+        ranks = next(
+            (
+                entry
+                for entry in reversed(followups)
+                if isinstance(entry, list)
+                and entry
+                and isinstance(entry[0], dict)
+                and entry[0].get("fen") == board.fen()
+            ),
+            None,
+        )
+    if isinstance(ranks, list) and ranks and isinstance(ranks[0], dict):
+        best = ranks[0]
+        alternate = next(
+            (
+                entry
+                for entry in ranks
+                if isinstance(entry, dict) and entry.get("best_move_uci") == moves[-1]
+            ),
+            None,
+        )
+        if alternate is not None:
+            if alternate.get("mate_winner") == (not board.turn):
+                return f"{san} allows a forced mate."
+            if best.get("mate_winner") == board.turn:
+                if alternate.get("mate_winner") != board.turn:
+                    return f"{san} misses the forced mate."
+                return f"{san} takes longer to force mate."
+            best_score, alternate_score = (
+                best.get("score_cp_white"),
+                alternate.get("score_cp_white"),
+            )
+            if type(best_score) is int and type(alternate_score) is int:
+                gap = (best_score - alternate_score) * (1 if board.turn else -1)
+                if gap > 0:
+                    detail = (
+                        f"{san} gives up {gap / 100:.2f} pawns of engine evaluation."
+                    )
+                    line = alternate.get("pv_uci")
+                    if (
+                        isinstance(line, (list, tuple))
+                        and line[0:1]
+                        and line[0] == moves[-1]
+                    ):
+                        after = board.copy()
+                        after.push(move)
+                        try:
+                            reply_detail = line_consequence(
+                                after, tuple(line[1:]), board
+                            )
+                        except ValueError:
+                            reply_detail = None
+                        if reply_detail:
+                            detail += f" In the engine line, {reply_detail}."
+                    return detail
+    after = board.copy()
+    after.push(move)
+    if after.is_stalemate():
+        return f"{san} ends the game in stalemate."
+    for reply in after.legal_moves:
+        mate = after.copy()
+        mate.push(reply)
+        if mate.is_checkmate():
+            return f"{san} allows checkmate in one with {after.san(reply)}."
+    goal = {
+        "forced_mate": "the verified mating line",
+        "material_gain": "the verified sequence that wins material",
+        "critical_capture": "the key capture in the verified line",
+        "forcing_check": "the forcing check in the verified line",
+    }.get(puzzle.theme, "the verified tactic")
+    return f"{san} misses {goal}. Try another move in this position."
+
+
 def _feedback(
     puzzle: Puzzle, attempt: PuzzleAttempt, board: chess.Board
 ) -> AttemptResult:
@@ -143,7 +235,17 @@ def _feedback(
         ):
             raise ValueError("Inconsistent solution")
         pv = []
-        final_fen = None
+        submitted = attempt.submitted_line_json or [attempt.submitted_move_uci]
+        played_board = board.copy()
+        for uci in puzzle.solution_pv_json[: (len(submitted) - 1) * 2]:
+            played_board.push_uci(uci)
+        played_board.push_uci(submitted[-1])
+        final_fen = played_board.fen()
+        reason = (
+            None
+            if attempt.is_correct
+            else _wrong_move_reason(puzzle, board.copy(), submitted)
+        )
         for ply, uci in enumerate(puzzle.solution_pv_json, start=1):
             move = board.parse_uci(uci)
             if not move:
@@ -175,6 +277,12 @@ def _feedback(
         attempted_at=attempt.attempted_at,
         next_review_at=attempt.next_review_at_after,
         final_fen=final_fen,
+        wrong_move_reason=reason,
+        last_move_uci=(
+            puzzle.solution_pv_json[puzzle.solve_plies - 1]
+            if attempt.is_correct
+            else submitted[-1]
+        ),
     )
 
 
@@ -243,8 +351,14 @@ class TrainingService:
     def __init__(self, store: TrainingRepository):
         self.store = store
 
-    def next(self, player_id: int | None, now: datetime) -> NextPuzzle:
-        puzzle = self.store.next(player_id, now) if player_id is not None else None
+    def next(
+        self, player_id: int | None, now: datetime, puzzle_id: int | None = None
+    ) -> NextPuzzle:
+        puzzle = (
+            self.store.next(player_id, now, puzzle_id)
+            if player_id is not None
+            else None
+        )
         if puzzle is None:
             return NextPuzzle(reason="NO_PUZZLES_DUE")
         board = _puzzle_board(puzzle)
@@ -268,9 +382,16 @@ class TrainingService:
         submission_id: UUID,
         uci: str,
         now: datetime,
+        retry_after_attempt_id: int | None = None,
     ) -> AttemptResult:
         step = self._submit(
-            player_id, puzzle_id, submission_id, [uci], now, single=True
+            player_id,
+            puzzle_id,
+            submission_id,
+            [uci],
+            now,
+            single=True,
+            retry_after_attempt_id=retry_after_attempt_id,
         )
         assert step.result is not None
         return step.result
@@ -282,8 +403,16 @@ class TrainingService:
         submission_id: UUID,
         moves: list[str],
         now: datetime,
+        retry_after_attempt_id: int | None = None,
     ) -> PuzzleStep:
-        return self._submit(player_id, puzzle_id, submission_id, moves, now)
+        return self._submit(
+            player_id,
+            puzzle_id,
+            submission_id,
+            moves,
+            now,
+            retry_after_attempt_id=retry_after_attempt_id,
+        )
 
     def _submit(
         self,
@@ -294,6 +423,7 @@ class TrainingService:
         now: datetime,
         *,
         single: bool = False,
+        retry_after_attempt_id: int | None = None,
     ) -> PuzzleStep:
         context = {"puzzle_id": puzzle_id}
         duplicate = False
@@ -333,7 +463,20 @@ class TrainingService:
                             "PUZZLE_RETIRED",
                             "This puzzle is retired. Load another puzzle.",
                         )
-                    if puzzle.next_review_at > now:
+                    can_retry = False
+                    if retry_after_attempt_id is not None:
+                        last_attempt = session.scalar(
+                            select(PuzzleAttempt)
+                            .where(PuzzleAttempt.puzzle_id == puzzle.id)
+                            .order_by(PuzzleAttempt.id.desc())
+                            .limit(1)
+                        )
+                        can_retry = bool(
+                            last_attempt
+                            and last_attempt.id == retry_after_attempt_id
+                            and not last_attempt.is_correct
+                        )
+                    if puzzle.next_review_at > now and not can_retry:
                         raise OperationError(
                             "PUZZLE_NOT_DUE",
                             "This puzzle is scheduled for a later review. Load another puzzle.",
@@ -385,6 +528,26 @@ class TrainingService:
                 if player_id is not None
                 else []
             )
+            streak = 0
+            if player_id is not None:
+                history = (
+                    select(PuzzleAttempt.id)
+                    .join(Puzzle)
+                    .where(Puzzle.tracked_player_id == player_id)
+                )
+                last_wrong = (
+                    history.with_only_columns(func.max(PuzzleAttempt.id))
+                    .where(PuzzleAttempt.is_correct.is_(False))
+                    .scalar_subquery()
+                )
+                streak = (
+                    session.scalar(
+                        history.with_only_columns(func.count(PuzzleAttempt.id)).where(
+                            PuzzleAttempt.id > func.coalesce(last_wrong, 0)
+                        )
+                    )
+                    or 0
+                )
         puzzles = attempted = attempts = correct = due = 0
         themes = []
         for theme, count, tried, answers, right, ready in rows:
@@ -412,6 +575,7 @@ class TrainingService:
             puzzles_due=due,
             average_attempts=attempts / attempted if attempted else None,
             themes=themes,
+            solve_streak=streak,
         )
 
     def transfer(self, player_id: int | None) -> TransferReport:

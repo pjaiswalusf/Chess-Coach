@@ -153,11 +153,12 @@ test('imports and analyzes completed games, then follows measured coaching evide
 	await nav.getByRole('link', { name: 'Games' }).click();
 	await page.getByRole('link', { name: 'vs White fixture' }).click();
 	await expect(page).toHaveURL('/games/17');
-	await page.getByRole('button', { name: '38... Kg6 — Critical error' }).click();
+	await page.getByRole('button', { name: '38... Kg6 — Blunder' }).click();
 	await expect(page.getByText('Before 38... Kg6 · Ply 2')).toBeVisible();
 	const continuation = page.getByTitle('38... Kg7', { exact: true });
 	await expect(continuation.getByRole('img', { name: 'king' })).toBeVisible();
 	await nav.getByRole('link', { name: 'Coach' }).click();
+	await page.getByText('View analysis details', { exact: true }).click();
 	await expect(page.getByText('12 critical errors in 120 opportunities')).toBeVisible();
 	await page.getByRole('link', { name: 'Game 17, ply 2' }).click();
 	await expect(page.getByText('Before 38... Kg6 · Ply 2')).toBeVisible();

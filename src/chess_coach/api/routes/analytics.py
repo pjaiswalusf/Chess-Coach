@@ -66,7 +66,8 @@ def projection(
             | {
                 "patterns": report.ranked_weaknesses if report else {},
                 "contexts": report.behavioral_metrics if report else (),
-            "report_hash": coaching_report_hash(report) if report else None,
+                "report_hash": coaching_report_hash(report) if report else None,
+                "priority": service.coach_priority(report),
             }
         )
     return common | {

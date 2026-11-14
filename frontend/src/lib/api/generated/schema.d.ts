@@ -743,6 +743,8 @@ export interface components {
             correct: boolean;
             /** Final Fen */
             final_fen?: string | null;
+            /** Last Move Uci */
+            last_move_uci?: string | null;
             /**
              * Next Review At
              * Format: date-time
@@ -764,6 +766,8 @@ export interface components {
             source_profile_hash: string;
             /** Submitted Move Uci */
             submitted_move_uci: string;
+            /** Wrong Move Reason */
+            wrong_move_reason?: string | null;
         };
         /** ChessComComponent */
         ChessComComponent: {
@@ -804,6 +808,35 @@ export interface components {
          * @enum {string}
          */
         ChessEventType: "MATE_ALLOWED" | "MATE_MISSED" | "MATERIAL_LOSS" | "WINNING_OPPORTUNITY_LOST";
+        /** CoachExample */
+        CoachExample: {
+            /** Detail */
+            detail: string;
+            /** Game Id */
+            game_id: number;
+            /** Move Label */
+            move_label: string;
+            /** Opponent */
+            opponent: string;
+            /** Ply */
+            ply: number;
+        };
+        /** CoachPriority */
+        CoachPriority: {
+            /** Affected Games */
+            affected_games: number;
+            /** Examples */
+            examples: components["schemas"]["CoachExample"][];
+            /** Finding */
+            finding: string;
+            /** Habit */
+            habit: string;
+            pattern: components["schemas"]["Pattern"];
+            /** Practice Puzzle Id */
+            practice_puzzle_id: number | null;
+            /** Title */
+            title: string;
+        };
         /** CoachingMetrics */
         CoachingMetrics: {
             /** Final Failure Rate */
@@ -1077,6 +1110,8 @@ export interface components {
             analysis_status: "pending" | "running" | "completed" | "failed" | "incompatible";
             /** Critical Errors */
             critical_errors?: number | null;
+            /** Eco Code */
+            eco_code?: string | null;
             /** Id */
             id: number;
             /** Opening Name */
@@ -1472,6 +1507,11 @@ export interface components {
             selected_game_ids: number[];
             status: components["schemas"]["ReportStatus"];
         };
+        /**
+         * Pattern
+         * @enum {string}
+         */
+        Pattern: "missed_mate" | "lost_piece" | "lost_advantage";
         /** PatternsResponse */
         PatternsResponse: {
             /**
@@ -1495,6 +1535,7 @@ export interface components {
              * @default support-v1
              */
             policy_version: string;
+            priority?: components["schemas"]["CoachPriority"] | null;
             /** Profile Hash */
             profile_hash: string | null;
             /**
@@ -1525,6 +1566,8 @@ export interface components {
         PlayPuzzle: {
             /** Moves */
             moves: string[];
+            /** Retry After Attempt Id */
+            retry_after_attempt_id?: number | null;
             /**
              * Submission Id
              * Format: uuid
@@ -1974,6 +2017,8 @@ export interface components {
         SubmitAttempt: {
             /** Move Uci */
             move_uci: string;
+            /** Retry After Attempt Id */
+            retry_after_attempt_id?: number | null;
             /**
              * Submission Id
              * Format: uuid
@@ -2140,6 +2185,11 @@ export interface components {
             puzzles_due: number;
             /** Puzzles Total */
             puzzles_total: number;
+            /**
+             * Solve Streak
+             * @default 0
+             */
+            solve_streak: number;
             /** Themes */
             themes: components["schemas"]["ThemeStats"][];
         };
@@ -5295,7 +5345,9 @@ export interface operations {
     };
     next_puzzle_api_v1_training_next_get: {
         parameters: {
-            query?: never;
+            query?: {
+                puzzle_id?: number | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;

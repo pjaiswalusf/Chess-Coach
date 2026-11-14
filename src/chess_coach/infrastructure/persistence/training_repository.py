@@ -206,8 +206,18 @@ class TrainingRepository:
     def due(now: datetime) -> ColumnElement[bool]:
         return and_(Puzzle.status == "active", Puzzle.next_review_at <= now)
 
-    def next(self, player_id: int, now: datetime) -> Puzzle | None:
+    def next(
+        self, player_id: int, now: datetime, puzzle_id: int | None = None
+    ) -> Puzzle | None:
         with self.sessions() as session:
+            if puzzle_id is not None:
+                return session.scalar(
+                    select(Puzzle).where(
+                        Puzzle.id == puzzle_id,
+                        Puzzle.tracked_player_id == player_id,
+                        self.due(now),
+                    )
+                )
             previous_was_line = session.scalar(
                 select(Puzzle.solve_plies > 1)
                 .where(

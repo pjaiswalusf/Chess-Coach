@@ -7,11 +7,13 @@
 		puzzle,
 		disabled = false,
 		solution,
+		lastMove,
 		onMove
 	}: {
 		puzzle: PublicPuzzle;
 		disabled?: boolean;
 		solution?: string;
+		lastMove?: string;
 		onMove: (uci: string | null) => void;
 	} = $props();
 
@@ -27,13 +29,24 @@
 	const choices = $derived(
 		from && to ? puzzle.legal_moves.filter((move) => move.startsWith(from + to)) : []
 	);
+	const sources = $derived([...new Set(puzzle.legal_moves.map((move) => move.slice(0, 2)))]);
+	const destinations = $derived(
+		puzzle.legal_moves.filter((move) => move.startsWith(from)).map((move) => move.slice(2, 4))
+	);
+
+	function play(source: string, destination: string) {
+		const options = puzzle.legal_moves.filter((move) => move.startsWith(source + destination));
+		if (disabled || !options.length) return;
+		from = source;
+		to = destination;
+		promotion = '';
+		onMove(options.find((move) => move.length === 4) ?? null);
+	}
 
 	function selectSquare(square: string) {
 		if (disabled) return;
 		if (from && !to && puzzle.legal_moves.some((move) => move.startsWith(from + square))) {
-			to = square;
-			const chosen = puzzle.legal_moves.find((move) => move === from + square);
-			onMove(chosen ?? null);
+			play(from, square);
 			return;
 		}
 		from = puzzle.legal_moves.some((move) => move.startsWith(square)) ? square : from;
@@ -56,6 +69,15 @@
 	{selectSquare}
 	selected={solution ? [] : [from, to]}
 	bestMove={solution}
+	{lastMove}
+	legalDestinations={disabled || to || !from ? [] : destinations}
+	draggableSquares={sources}
+	onDragSource={(source) => {
+		from = source;
+		to = '';
+		promotion = '';
+	}}
+	onDropMove={play}
 	{disabled}
 />
 

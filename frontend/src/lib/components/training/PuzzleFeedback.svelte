@@ -10,8 +10,12 @@
 	<p class={['font-semibold', result.correct ? 'text-accent' : 'text-warning']}>
 		{result.correct ? 'Correct' : 'Incorrect'}
 	</p>
-	<p>Engine solution <strong>{result.solution_san}</strong></p>
-	<p class="text-sm">Verified line {result.solution_pv_san.join(' ')}</p>
+	{#if result.correct}
+		<p>Engine solution <strong>{result.solution_san}</strong></p>
+		<p class="text-sm">Verified line {result.solution_pv_san.join(' ')}</p>
+	{:else}
+		<p>{result.wrong_move_reason ?? 'That move misses the verified tactic. Try again.'}</p>
+	{/if}
 	<p class="text-sm">Next review {formatDate(result.next_review_at)}</p>
 	<a
 		class="inline-block text-sm font-semibold text-accent underline"

@@ -12,6 +12,15 @@
 		examples?: boolean;
 		profile?: string | null;
 	} = $props();
+	function distinctExamples(refs: Weakness['source_moves']) {
+		const examples: Weakness['source_moves'] = [];
+		for (const ref of refs) {
+			if (examples.some(([id]) => id === ref[0])) continue;
+			examples.push(ref);
+			if (examples.length === 3) break;
+		}
+		return examples;
+	}
 </script>
 
 {#if !Object.values(patterns).some((rows) => rows.length)}
@@ -30,7 +39,7 @@
 						</p>
 						{#if examples}
 							<ul class="flex flex-wrap gap-x-4 text-sm">
-								{#each pattern.source_moves.slice(0, 3) as [id, ply] (`${id}:${ply}`)}
+								{#each distinctExamples(pattern.source_moves) as [id, ply] (id)}
 									<li>
 										<a
 											href={resolve(
