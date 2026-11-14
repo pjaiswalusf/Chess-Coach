@@ -8,14 +8,14 @@ from pydantic import BaseModel, Field
 
 from chess_coach.api.dependencies import get_query_service, get_training_service
 from chess_coach.application.queries import QueryService
-from chess_coach.application.training import (
+from chess_coach.application.training import TrainingService
+from chess_coach.application.training_models import (
     AttemptResult,
     NextPuzzle,
     PuzzleStep,
-    TrainingService,
     TrainingStats,
-    TransferReport,
 )
+from chess_coach.application.training_transfer import TransferReport
 from chess_coach.infrastructure.persistence.models import utc_now
 
 router = APIRouter(prefix="/api/v1/training", tags=["training"])

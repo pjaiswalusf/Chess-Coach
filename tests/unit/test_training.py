@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta, timezone
 import chess
 import pytest
 
-from chess_coach.application.training import _compare
+from chess_coach.application.training_transfer import _compare
 from chess_coach.domain.engine_types import EngineResult
 from chess_coach.domain.game_records import PlayerColor
 from chess_coach.domain.review_schedule import schedule

@@ -245,6 +245,26 @@ class TrainingRepository:
                 .limit(1)
             )
 
+    def solve_streak(self, session: Session, player_id: int) -> int:
+        history = (
+            select(PuzzleAttempt.id)
+            .join(Puzzle)
+            .where(Puzzle.tracked_player_id == player_id)
+        )
+        last_wrong = (
+            history.with_only_columns(func.max(PuzzleAttempt.id))
+            .where(PuzzleAttempt.is_correct.is_(False))
+            .scalar_subquery()
+        )
+        return (
+            session.scalar(
+                history.with_only_columns(func.count(PuzzleAttempt.id)).where(
+                    PuzzleAttempt.id > func.coalesce(last_wrong, 0)
+                )
+            )
+            or 0
+        )
+
     def counts(self, session: Session, player_id: int | None, now: datetime):
         # Aggregate per puzzle first so a puzzle with several attempts counts once.
         attempts = (

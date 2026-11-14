@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
         "frontend/src/lib/assets/favicon.svg",
         "frontend/src/lib/components/Review.svelte",
         "frontend/src/lib/api/client.ts",
-        "frontend/src/lib/vitest-examples/greet.spec.ts",
+        "frontend/src/lib/components/training/PuzzleBoard.svelte.spec.ts",
     ],
 )
 def test_frontend_source_is_not_ignored(path: str) -> None:

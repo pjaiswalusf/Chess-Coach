@@ -2,6 +2,7 @@
 
 import logging
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from threading import Event
 from typing import Protocol
@@ -44,7 +45,7 @@ from chess_coach.infrastructure.persistence.analysis_repository import (
     result_of,
     source_hash,
 )
-from chess_coach.infrastructure.persistence.models import utc_now
+from chess_coach.infrastructure.persistence.models import Puzzle, utc_now
 from chess_coach.infrastructure.persistence.training_repository import (
     Candidate,
     TrainingRepository,
@@ -203,6 +204,132 @@ def verify_followups(
     return evidence
 
 
+def _upgrade_continuation(
+    store: TrainingRepository,
+    existing: Puzzle,
+    board: chess.Board,
+    engine: VerificationEngine,
+    nodes: int,
+    start_engine: Callable[[], None],
+) -> bool:
+    if existing.fen != board.fen():
+        raise Rejected(Rejection.INVALID_POSITION)
+    replay = board.copy(stack=True)
+    try:
+        if (
+            not existing.solution_pv_json
+            or existing.solution_pv_json[0] != existing.solution_uci
+        ):
+            raise ValueError("Inconsistent solution")
+        for uci in existing.solution_pv_json:
+            if replay.is_game_over():
+                raise ValueError("Terminal position in solution")
+            move_in_line = replay.parse_uci(uci)
+            if not move_in_line:
+                raise ValueError("Null move in solution")
+            replay.push(move_in_line)
+    except ValueError as exc:
+        raise Rejected(Rejection.INVALID_ENGINE_RESULT) from exc
+    playable = continuation(
+        board,
+        Solution(
+            existing.solution_uci,
+            tuple(existing.solution_pv_json),
+            existing.theme,
+            existing.difficulty,
+        ),
+    )
+    if playable.solve_plies <= 1:
+        return False
+    start_engine()
+    evidence = verify_followups(board, playable, engine, nodes)
+    return store.enable_continuation(
+        existing,
+        playable.solve_plies,
+        playable.theme,
+        playable.difficulty,
+        existing.verification_json
+        | {
+            "continuation": {
+                "version": GENERATOR_VERSION,
+                "theme": playable.theme,
+                "engine": engine.engine_name,
+                "nodes": nodes,
+                "followups": evidence,
+            },
+        },
+    )
+
+
+def _verify_and_publish(
+    store: TrainingRepository,
+    candidate: Candidate,
+    board: chess.Board,
+    engine: VerificationEngine,
+    settings: Settings,
+    nodes: int,
+) -> int | None:
+    game, move, _, _ = candidate
+    ranks = min(POLICY.multipv, board.legal_moves.count())
+    shallow = engine.analyze_puzzle_candidate(board, nodes=nodes // 4, multipv=ranks)
+    first = verify_solution(board, move.played_move_uci, shallow, engine.engine_name)
+    deep = engine.analyze_puzzle_candidate(board, nodes=nodes, multipv=ranks)
+    solution = verify_solution(board, move.played_move_uci, deep, engine.engine_name)
+    if (solution.move_uci, solution.theme) != (
+        first.move_uci,
+        first.theme,
+    ):
+        raise Rejected(Rejection.UNSTABLE_ENGINE_RESULT)
+    playable = continuation(board, solution)
+    try:
+        followups = verify_followups(board, playable, engine, nodes)
+    except Rejected:
+        if solution.theme == "material_gain":
+            raise
+        playable, followups = solution, []
+    solution = playable
+    config = {
+        **configured_profile(settings, engine.engine_name).config,
+        "nodes": nodes,
+        "stability_nodes": nodes // 4,
+        "multipv": ranks,
+        "draw_policy": DRAW_POLICY,
+        "claimable_draws": "reject_candidate",
+        "policy": asdict(POLICY),
+    }
+    now = utc_now()
+    return store.publish(
+        {
+            "tracked_player_id": game.tracked_player_id,
+            "source_game_id": game.id,
+            "source_ply": move.ply,
+            "source_analysis_version": move.analysis_version,
+            "source_profile_hash": move.profile_hash,
+            "fen": board.fen(),
+            "side_to_move": game.player_color,
+            "original_move_uci": move.played_move_uci,
+            "solution_uci": solution.move_uci,
+            "solution_pv_json": list(solution.pv),
+            "solve_plies": solution.solve_plies,
+            "theme": solution.theme,
+            "difficulty": solution.difficulty,
+            "engine_version": engine.engine_name,
+            "engine_config_hash": fingerprint(config),
+            "verification_json": {
+                "config": config,
+                "history_hash": history_hash(board, False),
+                "source_hash": source_hash(game),
+                "shallow": [asdict(line) for line in shallow],
+                "deep": [asdict(line) for line in deep],
+                "followups": followups,
+            },
+            "generator_version": GENERATOR_VERSION,
+            "next_review_at": now,
+            "created_at": now,
+        }
+    )
+
+
 def generate_puzzles(
     store: TrainingRepository,
     engine: VerificationEngine,
@@ -232,6 +359,13 @@ def generate_puzzles(
     reasons: Counter[str] = Counter()
     logger.info("puzzle_generation_started", extra={"tracked_player_id": player_id})
     started = False
+
+    def start_engine() -> None:
+        nonlocal started
+        if not started:
+            engine.start()
+            started = True
+
     try:
         for candidate in candidates:
             if stop is not None and stop.is_set():
@@ -244,137 +378,27 @@ def generate_puzzles(
                 if existing is not None:
                     report.already_existing += 1
                     if (
-                        existing.solve_plies == 1
-                        and existing.attempt_count == 0
-                        and existing.source_profile_hash == profile
+                        existing.solve_plies != 1
+                        or existing.attempt_count != 0
+                        or existing.source_profile_hash != profile
                     ):
-                        board = reconstruct(candidate, username, settings.pgn_max_bytes)
-                        validate_source_analysis(store, candidate, board)
-                        if existing.fen != board.fen():
-                            raise Rejected(Rejection.INVALID_POSITION)
-                        replay = board.copy(stack=True)
-                        try:
-                            if (
-                                not existing.solution_pv_json
-                                or existing.solution_pv_json[0] != existing.solution_uci
-                            ):
-                                raise ValueError("Inconsistent solution")
-                            for uci in existing.solution_pv_json:
-                                if replay.is_game_over():
-                                    raise ValueError("Terminal position in solution")
-                                move_in_line = replay.parse_uci(uci)
-                                if not move_in_line:
-                                    raise ValueError("Null move in solution")
-                                replay.push(move_in_line)
-                        except ValueError as exc:
-                            raise Rejected(Rejection.INVALID_ENGINE_RESULT) from exc
-                        playable = continuation(
-                            board,
-                            Solution(
-                                existing.solution_uci,
-                                tuple(existing.solution_pv_json),
-                                existing.theme,
-                                existing.difficulty,
-                            ),
+                        report.next_after_move_id = move.id
+                        continue
+                board = reconstruct(candidate, username, settings.pgn_max_bytes)
+                validate_source_analysis(store, candidate, board)
+                if existing is not None:
+                    if _upgrade_continuation(
+                        store, existing, board, engine, nodes, start_engine
+                    ):
+                        report.enabled_continuations += 1
+                        logger.info(
+                            "puzzle_continuation_enabled",
+                            extra={**event, "puzzle_id": existing.id},
                         )
-                        if playable.solve_plies > 1:
-                            if not started:
-                                engine.start()
-                                started = True
-                            evidence = verify_followups(board, playable, engine, nodes)
-                            enabled = store.enable_continuation(
-                                existing,
-                                playable.solve_plies,
-                                playable.theme,
-                                playable.difficulty,
-                                existing.verification_json
-                                | {
-                                    "continuation": {
-                                        "version": GENERATOR_VERSION,
-                                        "theme": playable.theme,
-                                        "engine": engine.engine_name,
-                                        "nodes": nodes,
-                                        "followups": evidence,
-                                    },
-                                },
-                            )
-                            if enabled:
-                                report.enabled_continuations += 1
-                                logger.info(
-                                    "puzzle_continuation_enabled",
-                                    extra={**event, "puzzle_id": existing.id},
-                                )
                 else:
-                    board = reconstruct(candidate, username, settings.pgn_max_bytes)
-                    validate_source_analysis(store, candidate, board)
-                    if not started:
-                        engine.start()
-                        started = True
-                    ranks = min(POLICY.multipv, board.legal_moves.count())
-                    shallow = engine.analyze_puzzle_candidate(
-                        board, nodes=nodes // 4, multipv=ranks
-                    )
-                    first = verify_solution(
-                        board, move.played_move_uci, shallow, engine.engine_name
-                    )
-                    deep = engine.analyze_puzzle_candidate(
-                        board, nodes=nodes, multipv=ranks
-                    )
-                    solution = verify_solution(
-                        board, move.played_move_uci, deep, engine.engine_name
-                    )
-                    if (solution.move_uci, solution.theme) != (
-                        first.move_uci,
-                        first.theme,
-                    ):
-                        raise Rejected(Rejection.UNSTABLE_ENGINE_RESULT)
-                    playable = continuation(board, solution)
-                    try:
-                        followups = verify_followups(board, playable, engine, nodes)
-                    except Rejected:
-                        if solution.theme == "material_gain":
-                            raise
-                        playable, followups = solution, []
-                    solution = playable
-                    config = {
-                        **configured_profile(settings, engine.engine_name).config,
-                        "nodes": nodes,
-                        "stability_nodes": nodes // 4,
-                        "multipv": ranks,
-                        "draw_policy": DRAW_POLICY,
-                        "claimable_draws": "reject_candidate",
-                        "policy": asdict(POLICY),
-                    }
-                    now = utc_now()
-                    puzzle_id = store.publish(
-                        {
-                            "tracked_player_id": player_id,
-                            "source_game_id": game.id,
-                            "source_ply": move.ply,
-                            "source_analysis_version": move.analysis_version,
-                            "source_profile_hash": profile,
-                            "fen": board.fen(),
-                            "side_to_move": game.player_color,
-                            "original_move_uci": move.played_move_uci,
-                            "solution_uci": solution.move_uci,
-                            "solution_pv_json": list(solution.pv),
-                            "solve_plies": solution.solve_plies,
-                            "theme": solution.theme,
-                            "difficulty": solution.difficulty,
-                            "engine_version": engine.engine_name,
-                            "engine_config_hash": fingerprint(config),
-                            "verification_json": {
-                                "config": config,
-                                "history_hash": history_hash(board, False),
-                                "source_hash": source_hash(game),
-                                "shallow": [asdict(line) for line in shallow],
-                                "deep": [asdict(line) for line in deep],
-                                "followups": followups,
-                            },
-                            "generator_version": GENERATOR_VERSION,
-                            "next_review_at": now,
-                            "created_at": now,
-                        }
+                    start_engine()
+                    puzzle_id = _verify_and_publish(
+                        store, candidate, board, engine, settings, nodes
                     )
                     if puzzle_id is None:
                         report.already_existing += 1
