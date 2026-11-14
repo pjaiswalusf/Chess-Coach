@@ -103,8 +103,8 @@ test('cancels an outstanding game request when navigating away', async ({ page }
 		const cancelled = page.waitForEvent('requestfailed', (request) =>
 			request.url().endsWith('/api/v1/games?limit=25&offset=0')
 		);
-		await page.getByRole('navigation').getByRole('link', { name: 'Training' }).click();
-		await expect(page.getByRole('heading', { name: 'Training' })).toBeVisible();
+		await page.getByRole('navigation').getByRole('link', { name: 'Puzzles' }).click();
+		await expect(page.getByRole('heading', { name: 'Puzzles' })).toBeVisible();
 		expect((await cancelled).failure()?.errorText).toBe('net::ERR_ABORTED');
 		await expect(page.getByRole('alert')).toHaveCount(0);
 	} finally {

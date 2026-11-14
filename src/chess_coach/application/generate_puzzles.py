@@ -3,6 +3,7 @@
 import logging
 from collections import Counter
 from dataclasses import asdict, dataclass, field
+from threading import Event
 from typing import Protocol
 
 import chess
@@ -26,6 +27,10 @@ from chess_coach.domain.training import (
     POLICY,
     Rejected,
     Rejection,
+    Solution,
+    continuation,
+    ranked_scores,
+    verified_followup,
     verify_solution,
 )
 from chess_coach.infrastructure.engine.exceptions import (
@@ -170,11 +175,32 @@ class GenerationReport:
     candidates_examined: int = 0
     accepted: int = 0
     already_existing: int = 0
+    enabled_continuations: int = 0
     rejected: int = 0
     errors: int = 0
     rejection_reasons: dict[str, int] = field(default_factory=dict)
     retry_from_move_id: int | None = None
     error: str | None = None
+
+
+def verify_followups(
+    board: chess.Board, solution: Solution, engine: VerificationEngine, nodes: int
+) -> list[list[dict[str, object]]]:
+    evidence = []
+    replay = board.copy(stack=True)
+    for ply, uci in enumerate(solution.pv[: solution.solve_plies]):
+        ranks = min(POLICY.multipv, replay.legal_moves.count())
+        if ply and ply % 2 == 0 and ranks > 1:
+            for budget in (nodes // 4, nodes):
+                lines = engine.analyze_puzzle_candidate(
+                    replay, nodes=budget, multipv=ranks
+                )
+                scores = ranked_scores(replay, lines, engine.engine_name)
+                if lines[0].best_move_uci != uci or not verified_followup(scores):
+                    raise Rejected(Rejection.AMBIGUOUS_SOLUTION)
+                evidence.append([asdict(line) for line in lines])
+        replay.push_uci(uci)
+    return evidence
 
 
 def generate_puzzles(
@@ -185,6 +211,9 @@ def generate_puzzles(
     profile: str,
     after: int = 0,
     limit: int | None = None,
+    *,
+    run_id: int | None = None,
+    stop: Event | None = None,
 ) -> GenerationReport:
     limit = settings.training_candidate_limit if limit is None else limit
     if not 1 <= limit <= settings.training_candidate_limit or after < 0:
@@ -196,19 +225,85 @@ def generate_puzzles(
         raise ValueError(
             "Training verification requires a Stockfish node ceiling of at least 4."
         )
-    username, candidates = store.candidates(player_id, profile, after, limit)
+    username, candidates = store.candidates(
+        player_id, profile, after, limit, run_id=run_id
+    )
     report = GenerationReport(after)
     reasons: Counter[str] = Counter()
     logger.info("puzzle_generation_started", extra={"tracked_player_id": player_id})
     started = False
     try:
         for candidate in candidates:
+            if stop is not None and stop.is_set():
+                break
             game, move, _, run = candidate
             report.candidates_examined += 1
             event = {"source_game_id": game.id, "run_id": run.id, "ply": move.ply}
             try:
-                if store.exists(player_id, game.id, move.ply):
+                existing = store.existing_puzzle(player_id, game.id, move.ply)
+                if existing is not None:
                     report.already_existing += 1
+                    if (
+                        existing.solve_plies == 1
+                        and existing.attempt_count == 0
+                        and existing.source_profile_hash == profile
+                    ):
+                        board = reconstruct(candidate, username, settings.pgn_max_bytes)
+                        validate_source_analysis(store, candidate, board)
+                        if existing.fen != board.fen():
+                            raise Rejected(Rejection.INVALID_POSITION)
+                        replay = board.copy(stack=True)
+                        try:
+                            if (
+                                not existing.solution_pv_json
+                                or existing.solution_pv_json[0] != existing.solution_uci
+                            ):
+                                raise ValueError("Inconsistent solution")
+                            for uci in existing.solution_pv_json:
+                                if replay.is_game_over():
+                                    raise ValueError("Terminal position in solution")
+                                move_in_line = replay.parse_uci(uci)
+                                if not move_in_line:
+                                    raise ValueError("Null move in solution")
+                                replay.push(move_in_line)
+                        except ValueError as exc:
+                            raise Rejected(Rejection.INVALID_ENGINE_RESULT) from exc
+                        playable = continuation(
+                            board,
+                            Solution(
+                                existing.solution_uci,
+                                tuple(existing.solution_pv_json),
+                                existing.theme,
+                                existing.difficulty,
+                            ),
+                        )
+                        if playable.solve_plies > 1:
+                            if not started:
+                                engine.start()
+                                started = True
+                            evidence = verify_followups(board, playable, engine, nodes)
+                            enabled = store.enable_continuation(
+                                existing,
+                                playable.solve_plies,
+                                playable.theme,
+                                playable.difficulty,
+                                existing.verification_json
+                                | {
+                                    "continuation": {
+                                        "version": GENERATOR_VERSION,
+                                        "theme": playable.theme,
+                                        "engine": engine.engine_name,
+                                        "nodes": nodes,
+                                        "followups": evidence,
+                                    },
+                                },
+                            )
+                            if enabled:
+                                report.enabled_continuations += 1
+                                logger.info(
+                                    "puzzle_continuation_enabled",
+                                    extra={**event, "puzzle_id": existing.id},
+                                )
                 else:
                     board = reconstruct(candidate, username, settings.pgn_max_bytes)
                     validate_source_analysis(store, candidate, board)
@@ -233,6 +328,14 @@ def generate_puzzles(
                         first.theme,
                     ):
                         raise Rejected(Rejection.UNSTABLE_ENGINE_RESULT)
+                    playable = continuation(board, solution)
+                    try:
+                        followups = verify_followups(board, playable, engine, nodes)
+                    except Rejected:
+                        if solution.theme == "material_gain":
+                            raise
+                        playable, followups = solution, []
+                    solution = playable
                     config = {
                         **configured_profile(settings, engine.engine_name).config,
                         "nodes": nodes,
@@ -255,6 +358,7 @@ def generate_puzzles(
                             "original_move_uci": move.played_move_uci,
                             "solution_uci": solution.move_uci,
                             "solution_pv_json": list(solution.pv),
+                            "solve_plies": solution.solve_plies,
                             "theme": solution.theme,
                             "difficulty": solution.difficulty,
                             "engine_version": engine.engine_name,
@@ -265,6 +369,7 @@ def generate_puzzles(
                                 "source_hash": source_hash(game),
                                 "shallow": [asdict(line) for line in shallow],
                                 "deep": [asdict(line) for line in deep],
+                                "followups": followups,
                             },
                             "generator_version": GENERATOR_VERSION,
                             "next_review_at": now,

@@ -127,6 +127,9 @@ class Game(Base):
     chess_library_version: Mapped[str | None] = mapped_column(String(32))
     parse_attempted_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     parsed_metadata: Mapped[dict[str, object] | None] = mapped_column(JSON)
+    auto_analysis_pending: Mapped[bool] = mapped_column(
+        default=False, server_default="0"
+    )
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
 
 
@@ -186,6 +189,7 @@ class AnalysisRun(Base):
     started_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     active_duration_ms: Mapped[int | None]
+    puzzle_cursor: Mapped[int | None]
     status: Mapped[AnalysisRunStatus] = mapped_column(
         string_enum(AnalysisRunStatus, "status"), default=AnalysisRunStatus.PENDING
     )
@@ -502,6 +506,7 @@ class Puzzle(Base):
     original_move_uci: Mapped[str] = mapped_column(String(5))
     solution_uci: Mapped[str] = mapped_column(String(5))
     solution_pv_json: Mapped[list[str]] = mapped_column(JSON)
+    solve_plies: Mapped[int] = mapped_column(default=1, server_default="1")
     theme: Mapped[str] = mapped_column(String(32))
     difficulty: Mapped[str] = mapped_column(String(8))
     engine_version: Mapped[str] = mapped_column(String(100))
@@ -532,6 +537,7 @@ class PuzzleAttempt(Base):
     puzzle_id: Mapped[int] = mapped_column(ForeignKey("puzzles.id"))
     submission_id: Mapped[str] = mapped_column(String(36))
     submitted_move_uci: Mapped[str] = mapped_column(String(5))
+    submitted_line_json: Mapped[list[str] | None] = mapped_column(JSON)
     is_correct: Mapped[bool] = mapped_column(
         Boolean(create_constraint=True, name="correct_boolean")
     )

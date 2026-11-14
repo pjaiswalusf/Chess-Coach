@@ -11,6 +11,7 @@ from chess_coach.application.queries import QueryService
 from chess_coach.application.training import (
     AttemptResult,
     NextPuzzle,
+    PuzzleStep,
     TrainingService,
     TrainingStats,
     TransferReport,
@@ -24,6 +25,13 @@ Training = Annotated[TrainingService, Depends(get_training_service)]
 class SubmitAttempt(BaseModel):
     submission_id: UUID
     move_uci: str = Field(pattern=r"^[a-h][1-8][a-h][1-8][qrbn]?$")
+
+
+class PlayPuzzle(BaseModel):
+    submission_id: UUID
+    moves: list[Annotated[str, Field(pattern=r"^[a-h][1-8][a-h][1-8][qrbn]?$")]] = (
+        Field(min_length=1, max_length=4)
+    )
 
 
 def player_id(
@@ -47,6 +55,13 @@ def submit_attempt(
     return service.submit(
         player, puzzle_id, body.submission_id, body.move_uci, utc_now()
     )
+
+
+@router.post("/{puzzle_id}/play")
+def play_puzzle(
+    puzzle_id: int, body: PlayPuzzle, service: Training, player: Player
+) -> PuzzleStep:
+    return service.play(player, puzzle_id, body.submission_id, body.moves, utc_now())
 
 
 @router.get("/stats")

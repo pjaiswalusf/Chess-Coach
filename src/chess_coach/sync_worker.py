@@ -27,8 +27,11 @@ def run_sync_worker(settings: Settings, *, once: bool = False) -> None:
     }
     db = create_database_engine(settings.database_url)
     store = SyncRepository(create_session_factory(db), settings.database_path)
+    parsing = ParseRepository(
+        store.sessions, settings.database_path, lock_already_held=True
+    )
     prepare = ParseImportedGames(
-        ParseRepository(store.sessions, settings.database_path, lock_already_held=True),
+        parsing,
         parse_game,
         max_bytes=settings.pgn_max_bytes,
     )
@@ -36,6 +39,10 @@ def run_sync_worker(settings: Settings, *, once: bool = False) -> None:
         # Recover before polling, even if there are no queued jobs yet.
         with store.guard():
             store.recover(datetime.now(UTC))
+            for username in parsing.interrupted_sync_players():
+                if stop.is_set():
+                    return
+                prepare.run(username)
         with ChessComClient() as provider:
             while not stop.is_set():
                 pending = store.next_pending()

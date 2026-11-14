@@ -2,10 +2,10 @@
 
 import chess
 
-from chess_coach.analytics.features import calculate_material
 from chess_coach.analytics.sample_policy import ADVANTAGE_CP, COLLAPSE_CP
 from chess_coach.domain.analysis import fingerprint
 from chess_coach.domain.coaching_models import MoveCoachingEvidence
+from chess_coach.domain.material import calculate_material
 from chess_coach.domain.motif_models import (
     ChessEvent,
     ChessEventType,

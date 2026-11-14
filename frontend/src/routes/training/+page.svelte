@@ -5,9 +5,10 @@
 		getNextPuzzle,
 		getTrainingProgress,
 		getTrainingStats,
+		playPuzzle,
 		submitPuzzleAttempt,
 		type AttemptResult,
-		type SubmitAttempt
+		type PublicPuzzle
 	} from '#lib/api/training.js';
 	import { asyncRead } from '#lib/async-read.svelte.js';
 	import PuzzleBoard from '#lib/components/training/PuzzleBoard.svelte';
@@ -24,22 +25,41 @@
 	const progress = asyncRead(getTrainingProgress, 'Check the local backend and retry.');
 
 	let move = $state<string | null>(null);
-	let pending = $state<SubmitAttempt | null>(null);
+	let pending = $state<{ submission_id: string; moves: string[] } | null>(null);
+	let played = $state<string[]>([]);
+	let position = $state<Pick<PublicPuzzle, 'fen' | 'legal_moves'> | null>(null);
+	let reply = $state('');
 	let result = $state<AttemptResult | null>(null);
 	let busy = $state(false);
 	let problem = $state('');
 	let stale = $state(false);
 
-	async function submit(id: number) {
+	async function submit(puzzle: PublicPuzzle) {
 		if (!move || busy || result || stale) return;
-		pending ??= { submission_id: crypto.randomUUID(), move_uci: move };
+		pending ??= { submission_id: crypto.randomUUID(), moves: [...played, move] };
 		busy = true;
 		problem = '';
 		try {
-			result = await submitPuzzleAttempt(id, pending);
+			if ((puzzle.solver_moves ?? 1) > 1) {
+				const step = await playPuzzle(puzzle.id, pending);
+				if (step.continuation) {
+					position = step.continuation;
+					reply = step.continuation.reply_san;
+					played = pending.moves;
+				}
+				result = step.result ?? null;
+			} else {
+				result = await submitPuzzleAttempt(puzzle.id, {
+					submission_id: pending.submission_id,
+					move_uci: move
+				});
+			}
 			pending = null;
-			void stats.refresh();
-			void progress.refresh();
+			move = null;
+			if (result) {
+				void stats.refresh();
+				void progress.refresh();
+			}
 		} catch (error) {
 			problem = apiErrorMessage(error, 'Unable to submit your move.');
 			if (error instanceof ApiError) {
@@ -55,35 +75,46 @@
 		move = null;
 		pending = null;
 		result = null;
+		played = [];
+		position = null;
+		reply = '';
 		problem = '';
 		stale = false;
 		void queue.refresh();
 	}
 </script>
 
-<svelte:head><title>Training · Chess Coach</title></svelte:head>
+<svelte:head><title>Puzzles · Chess Coach</title></svelte:head>
 
-<h1 class="text-3xl font-semibold tracking-tight">Training</h1>
-<p class="text-muted">
-	Practice finding the best first move in positions from your completed games.
-</p>
+<h1 class="text-3xl font-semibold tracking-tight">Puzzles</h1>
+<p class="text-muted">Solve tactics from your completed games.</p>
 
 <Card>
 	{#if queue.state.status === 'loading'}
 		<Spinner label="Loading your next puzzle…" />
 	{:else if queue.state.status === 'error'}
-		<ErrorMessage title="Could not load training." message={queue.state.message} retry={next} />
+		<ErrorMessage title="Could not load puzzles." message={queue.state.message} retry={next} />
 	{:else if queue.state.status === 'success' && queue.state.data.puzzle}
 		{@const puzzle = queue.state.data.puzzle}
 		<h2 class="text-lg font-semibold capitalize">{puzzle.side_to_move} to move</h2>
 		<p class="text-sm text-muted capitalize">
 			{words(puzzle.theme)} · {puzzle.difficulty} · {puzzle.attempt_count ? 'Review' : 'New puzzle'}
 		</p>
-		{#key puzzle.id}
+		{#if (puzzle.solver_moves ?? 1) > 1 && !result}
+			<p role="status" class="text-sm">
+				{#if reply}Opponent played {reply}.{/if}
+				Move {played.length + 1} of {puzzle.solver_moves}
+			</p>
+		{/if}
+		{#key `${puzzle.id}:${played.length}:${!!result}`}
 			<PuzzleBoard
-				{puzzle}
+				puzzle={result?.final_fen
+					? { ...puzzle, fen: result.final_fen, legal_moves: [] }
+					: result || !position
+						? puzzle
+						: { ...puzzle, ...position }}
 				disabled={busy || !!pending || !!result}
-				solution={result?.solution_move_uci}
+				solution={result?.final_fen ? undefined : result?.solution_move_uci}
 				onMove={(choice) => {
 					move = choice;
 					problem = '';
@@ -100,7 +131,7 @@
 			{#if stale}
 				<Button onclick={next}>Load current puzzle</Button>
 			{:else}
-				<Button primary disabled={!move} loading={busy} onclick={() => void submit(puzzle.id)}>
+				<Button primary disabled={!move} loading={busy} onclick={() => void submit(puzzle)}>
 					{busy ? 'Submitting…' : pending ? 'Retry submission' : 'Submit move'}
 				</Button>
 			{/if}
@@ -111,7 +142,7 @@
 		<div class="flex flex-wrap items-center gap-3">
 			<Button onclick={next}>Refresh queue</Button>
 			<a class="text-sm font-semibold text-accent underline" href={resolve('/system')}
-				>View training status</a
+				>View puzzle status</a
 			>
 		</div>
 	{/if}

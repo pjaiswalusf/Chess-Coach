@@ -284,6 +284,7 @@ class SyncRepository:
                             **asdict(game),
                             tracked_player_id=run.tracked_player_id,
                             platform=Platform.CHESS_COM,
+                            auto_analysis_pending=True,
                         )
                         .on_conflict_do_nothing()
                         .returning(Game.id)

@@ -176,12 +176,82 @@ def test_generate_is_idempotent_without_starting_engine_again(
         "difficulty",
         "attempt_count",
         "legal_moves",
+        "solver_moves",
     }
     with sessions() as session:
         stored = session.get(Puzzle, puzzle["id"])
         assert stored.source_ply == 3
         assert stored.solution_uci == "e4d5"
         assert stored.verification_json["deep"][0]["score_cp_white"] == 200
+
+
+def test_analysis_worker_retries_a_saved_puzzle_scan(api, training_source, monkeypatch):
+    from chess_coach import analysis_worker
+
+    client, sessions, _, _, settings, profile, _ = api
+    verification = VerificationEngine()
+    settings = settings.model_copy(update={"training_candidate_limit": 1})
+    repository = TrainingRepository(sessions)
+    assert repository.next_scan().puzzle_cursor == 0
+
+    class AnalysisEngine(VerificationEngine):
+        engine_name = profile.engine
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            self.close()
+
+    offline = True
+
+    def start():
+        if offline:
+            raise EngineUnavailableError("fixture offline")
+
+    verification.start = start
+    monkeypatch.setattr(
+        analysis_worker,
+        "StockfishAdapter",
+        lambda config: AnalysisEngine() if config is settings else verification,
+    )
+    analysis_worker.run_worker(settings, once=True)
+    assert repository.next_scan().puzzle_cursor == 0
+    assert client.get(PREFIX + "/next").json()["puzzle"] is None
+
+    offline = False
+    analysis_worker.run_worker(settings, once=True)
+    puzzle = client.get(PREFIX + "/next").json()["puzzle"]
+    assert puzzle["attempt_count"] == 0
+    assert repository.next_scan().puzzle_cursor > 0
+    analysis_worker.run_worker(settings, once=True)
+    assert repository.next_scan() is None
+    assert client.get(PREFIX + "/stats").json()["puzzles_total"] == 1
+    assert verification.calls == 2
+
+
+@pytest.mark.parametrize("last_move, correct", [("d5c6", True), ("d5d6", False)])
+def test_full_puzzle_attempt_is_graded_once(practice, last_move, correct):
+    client, sessions, *_ = practice
+    with sessions.begin() as session:
+        stored = session.scalar(select(Puzzle))
+        stored.solution_pv_json = ["e4d5", "b8c6", "d5c6", "b7c6"]
+        stored.solve_plies = 4
+    puzzle = client.get(PREFIX + "/next").json()["puzzle"]
+    assert puzzle["solver_moves"] == 2
+    path = f"{PREFIX}/{puzzle['id']}/play"
+    assert client.post(attempt_path(client), json=answer("e4d5")).status_code == 422
+    first = {"submission_id": str(uuid4()), "moves": ["e4d5"]}
+    step = client.post(path, json=first).json()
+    assert step["result"] is None and step["continuation"]["reply_san"] == "Nc6"
+    assert "d5c6" in step["continuation"]["legal_moves"]
+    assert client.post(path, json=first).json() == step
+    assert client.get(PREFIX + "/stats").json()["attempts_total"] == 0
+    finish = {"submission_id": str(uuid4()), "moves": ["e4d5", last_move]}
+    result = client.post(path, json=finish).json()
+    assert result["continuation"] is None and result["result"]["correct"] is correct
+    assert client.post(path, json=finish).json() == result
+    assert client.get(PREFIX + "/stats").json()["attempts_total"] == 1
 
 
 @pytest.mark.parametrize("corruption", ["position", "turn", "source"])

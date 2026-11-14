@@ -2,13 +2,13 @@
 
 from datetime import datetime
 
-from sqlalchemy import Select, and_, case, func, or_, select
+from sqlalchemy import Select, and_, case, func, or_, select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql.elements import ColumnElement
 
 from chess_coach.application.errors import OperationError
-from chess_coach.domain.analysis import ANALYSIS_VERSION, DRAW_POLICY
+from chess_coach.domain.analysis import ACTIVE, ANALYSIS_VERSION, DRAW_POLICY
 from chess_coach.domain.game_records import PARSER_VERSION, ParseStatus
 from chess_coach.domain.training import POLICY
 from chess_coach.infrastructure.persistence.models import (
@@ -62,7 +62,13 @@ class TrainingRepository:
         )
 
     def candidates(
-        self, player_id: int, profile: str, after: int, limit: int
+        self,
+        player_id: int,
+        profile: str,
+        after: int,
+        limit: int,
+        *,
+        run_id: int | None = None,
     ) -> tuple[str, list[Candidate]]:
         with self.sessions() as session:
             player = session.get(TrackedPlayer, player_id)
@@ -108,10 +114,34 @@ class TrainingRepository:
                     ),
                 ),
             )
+            if run_id is not None:
+                candidates = candidates.where(AnalysisRun.id == run_id)
             rows = session.execute(candidates.order_by(MoveAnalysis.id).limit(limit))
             return player.username, [
                 (game, move, state, run) for game, move, state, run in rows
             ]
+
+    def next_scan(self) -> AnalysisRun | None:
+        with self.sessions() as session:
+            return session.scalar(
+                select(AnalysisRun)
+                .where(
+                    AnalysisRun.puzzle_cursor.is_not(None),
+                    AnalysisRun.status.not_in(ACTIVE),
+                    AnalysisRun.analysis_version == ANALYSIS_VERSION,
+                    AnalysisRun.draw_policy_version == DRAW_POLICY,
+                )
+                .order_by(AnalysisRun.id)
+                .limit(1)
+            )
+
+    def save_scan(self, run_id: int, cursor: int | None) -> None:
+        with self.sessions.begin() as session:
+            session.execute(
+                update(AnalysisRun)
+                .where(AnalysisRun.id == run_id)
+                .values(puzzle_cursor=cursor)
+            )
 
     def source_positions(
         self, state: GameAnalysisState, ply: int
@@ -123,15 +153,40 @@ class TrainingRepository:
             after = session.get(PositionCache, state.position_ids[ply])
             return (before, after) if before is not None and after is not None else None
 
-    def exists(self, player_id: int, game_id: int, ply: int) -> bool:
+    def existing_puzzle(self, player_id: int, game_id: int, ply: int) -> Puzzle | None:
         with self.sessions() as session:
+            return session.scalar(
+                select(Puzzle).where(
+                    Puzzle.tracked_player_id == player_id,
+                    Puzzle.source_game_id == game_id,
+                    Puzzle.source_ply == ply,
+                )
+            )
+
+    def enable_continuation(
+        self,
+        puzzle: Puzzle,
+        solve_plies: int,
+        theme: str,
+        difficulty: str,
+        verification: dict[str, object],
+    ) -> bool:
+        with self.sessions.begin() as session:
             return (
                 session.scalar(
-                    select(Puzzle.id).where(
-                        Puzzle.tracked_player_id == player_id,
-                        Puzzle.source_game_id == game_id,
-                        Puzzle.source_ply == ply,
+                    update(Puzzle)
+                    .where(
+                        Puzzle.id == puzzle.id,
+                        Puzzle.attempt_count == 0,
+                        Puzzle.solve_plies == 1,
                     )
+                    .values(
+                        solve_plies=solve_plies,
+                        theme=theme,
+                        difficulty=difficulty,
+                        verification_json=verification,
+                    )
+                    .returning(Puzzle.id)
                 )
                 is not None
             )
@@ -153,10 +208,30 @@ class TrainingRepository:
 
     def next(self, player_id: int, now: datetime) -> Puzzle | None:
         with self.sessions() as session:
+            previous_was_line = session.scalar(
+                select(Puzzle.solve_plies > 1)
+                .where(
+                    Puzzle.tracked_player_id == player_id,
+                    Puzzle.last_attempt_at.is_not(None),
+                )
+                .order_by(Puzzle.last_attempt_at.desc(), Puzzle.id.desc())
+                .limit(1)
+            )
             return session.scalar(
                 select(Puzzle)
                 .where(Puzzle.tracked_player_id == player_id, self.due(now))
-                .order_by(Puzzle.attempt_count == 0, Puzzle.next_review_at, Puzzle.id)
+                .order_by(
+                    Puzzle.attempt_count == 0,
+                    case(
+                        (
+                            Puzzle.attempt_count == 0,
+                            (Puzzle.solve_plies > 1) == bool(previous_was_line),
+                        ),
+                        else_=False,
+                    ),
+                    Puzzle.next_review_at,
+                    Puzzle.id,
+                )
                 .limit(1)
             )
 

@@ -38,6 +38,7 @@ class PublicPuzzle(BaseModel):
     difficulty: str
     attempt_count: int
     legal_moves: list[str]
+    solver_moves: int = 1
 
 
 class NextPuzzle(BaseModel):
@@ -58,6 +59,18 @@ class AttemptResult(BaseModel):
     source_profile_hash: str
     attempted_at: datetime
     next_review_at: datetime
+    final_fen: str | None = None
+
+
+class PuzzleContinuation(BaseModel):
+    fen: str
+    legal_moves: list[str]
+    reply_san: str
+
+
+class PuzzleStep(BaseModel):
+    continuation: PuzzleContinuation | None = None
+    result: AttemptResult | None = None
 
 
 class ThemeStats(BaseModel):
@@ -130,12 +143,19 @@ def _feedback(
         ):
             raise ValueError("Inconsistent solution")
         pv = []
-        for uci in puzzle.solution_pv_json:
+        final_fen = None
+        for ply, uci in enumerate(puzzle.solution_pv_json, start=1):
             move = board.parse_uci(uci)
             if not move:
                 raise ValueError("Null move in solution")
             pv.append(board.san(move))
             board.push(move)
+            if (
+                attempt.is_correct
+                and puzzle.solve_plies > 1
+                and ply == puzzle.solve_plies
+            ):
+                final_fen = board.fen()
     except ValueError as exc:
         logger.error("puzzle_invalid_solution", extra={"puzzle_id": puzzle.id})
         raise OperationError(
@@ -154,7 +174,69 @@ def _feedback(
         source_profile_hash=puzzle.source_profile_hash,
         attempted_at=attempt.attempted_at,
         next_review_at=attempt.next_review_at_after,
+        final_fen=final_fen,
     )
+
+
+def _play_line(
+    puzzle: Puzzle, board: chess.Board, moves: list[str]
+) -> tuple[bool, PuzzleContinuation | None]:
+    if not 1 <= puzzle.solve_plies <= len(puzzle.solution_pv_json) or (
+        puzzle.solution_pv_json[0] != puzzle.solution_uci
+    ):
+        raise OperationError(
+            "PUZZLE_DATA_INVALID", "Check the stored solution and backend logs.", 500
+        )
+    replay = board.copy(stack=False)
+    for index, uci in enumerate(moves):
+        ply = index * 2
+        if ply >= puzzle.solve_plies:
+            raise OperationError(
+                "INVALID_SEQUENCE", "Submit only the requested moves.", 422
+            )
+        try:
+            move = chess.Move.from_uci(uci)
+        except ValueError:
+            raise OperationError(
+                "INVALID_MOVE", "Submit a move in UCI notation.", 422
+            ) from None
+        if move not in replay.legal_moves:
+            raise OperationError(
+                "ILLEGAL_MOVE", "Choose a legal move in this position.", 422
+            )
+        last = index == len(moves) - 1
+        if uci != puzzle.solution_pv_json[ply]:
+            if last:
+                return False, None
+            raise OperationError(
+                "INVALID_SEQUENCE", "Replay the puzzle from its starting position.", 422
+            )
+        if ply + 2 >= puzzle.solve_plies:
+            if last:
+                return True, None
+            raise OperationError(
+                "INVALID_SEQUENCE", "Submit only the requested moves.", 422
+            )
+        replay.push(move)
+        try:
+            reply = replay.parse_uci(puzzle.solution_pv_json[ply + 1])
+            if not reply:
+                raise ValueError("Null move")
+            san = replay.san(reply)
+            replay.push(reply)
+        except ValueError as exc:
+            raise OperationError(
+                "PUZZLE_DATA_INVALID",
+                "Check the stored solution and backend logs.",
+                500,
+            ) from exc
+        if last:
+            return True, PuzzleContinuation(
+                fen=replay.fen(),
+                legal_moves=sorted(candidate.uci() for candidate in replay.legal_moves),
+                reply_san=san,
+            )
+    raise OperationError("INVALID_SEQUENCE", "Submit at least one move.", 422)
 
 
 class TrainingService:
@@ -175,6 +257,7 @@ class TrainingService:
                 difficulty=puzzle.difficulty,
                 attempt_count=puzzle.attempt_count,
                 legal_moves=sorted(move.uci() for move in board.legal_moves),
+                solver_moves=(puzzle.solve_plies + 1) // 2,
             )
         )
 
@@ -186,6 +269,32 @@ class TrainingService:
         uci: str,
         now: datetime,
     ) -> AttemptResult:
+        step = self._submit(
+            player_id, puzzle_id, submission_id, [uci], now, single=True
+        )
+        assert step.result is not None
+        return step.result
+
+    def play(
+        self,
+        player_id: int | None,
+        puzzle_id: int,
+        submission_id: UUID,
+        moves: list[str],
+        now: datetime,
+    ) -> PuzzleStep:
+        return self._submit(player_id, puzzle_id, submission_id, moves, now)
+
+    def _submit(
+        self,
+        player_id: int | None,
+        puzzle_id: int,
+        submission_id: UUID,
+        moves: list[str],
+        now: datetime,
+        *,
+        single: bool = False,
+    ) -> PuzzleStep:
         context = {"puzzle_id": puzzle_id}
         duplicate = False
         try:
@@ -204,13 +313,21 @@ class TrainingService:
                 )
                 board = _puzzle_board(puzzle)
                 if attempt is not None:
-                    if attempt.submitted_move_uci != uci:
+                    if (
+                        attempt.submitted_line_json or [attempt.submitted_move_uci]
+                    ) != moves:
                         raise OperationError(
                             "SUBMISSION_ID_CONFLICT",
                             "Use a fresh submission ID for a different move.",
                         )
                     duplicate = True
                 else:
+                    if single and puzzle.solve_plies > 1:
+                        raise OperationError(
+                            "PUZZLE_REQUIRES_SEQUENCE",
+                            "Reload Training to play the full puzzle.",
+                            422,
+                        )
                     if puzzle.status != "active":
                         raise OperationError(
                             "PUZZLE_RETIRED",
@@ -221,22 +338,15 @@ class TrainingService:
                             "PUZZLE_NOT_DUE",
                             "This puzzle is scheduled for a later review. Load another puzzle.",
                         )
-                    try:
-                        move = chess.Move.from_uci(uci)
-                    except ValueError:
-                        raise OperationError(
-                            "INVALID_MOVE", "Submit a move in UCI notation.", 422
-                        ) from None
-                    if move not in board.legal_moves:
-                        raise OperationError(
-                            "ILLEGAL_MOVE", "Choose a legal move in this position.", 422
-                        )
-                    correct = move.uci() == puzzle.solution_uci
+                    correct, following = _play_line(puzzle, board, moves)
+                    if following is not None:
+                        return PuzzleStep(continuation=following)
                     streak, next_review = schedule(now, puzzle.correct_streak, correct)
                     attempt = PuzzleAttempt(
                         puzzle_id=puzzle.id,
                         submission_id=str(submission_id),
-                        submitted_move_uci=uci,
+                        submitted_move_uci=moves[0],
+                        submitted_line_json=moves if len(moves) > 1 else None,
                         is_correct=correct,
                         attempted_at=now,
                         next_review_at_after=next_review,
@@ -266,7 +376,7 @@ class TrainingService:
                     "next_review_at": feedback.next_review_at.isoformat(),
                 },
             )
-        return feedback
+        return PuzzleStep(result=feedback)
 
     def stats(self, player_id: int | None, now: datetime) -> TrainingStats:
         with self.store.sessions() as session:

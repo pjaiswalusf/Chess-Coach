@@ -1,6 +1,7 @@
 """Short SQLite transactions for persistent runs, compatible cache, and finalization."""
 
 import logging
+from collections.abc import Sequence
 from datetime import timedelta
 from pathlib import Path
 
@@ -154,41 +155,83 @@ class AnalysisRepository:
                 .where(Game.tracked_player_id == player_id)
                 .order_by(Game.id)
             ).all()
-            run = AnalysisRun(
-                tracked_player_id=player_id,
-                engine_version=profile.engine,
-                analysis_version=profile.version,
-                engine_config_hash=profile.config_hash,
-                engine_config_json=profile.config,
-                draw_policy_version=profile.draw_policy,
-                profile_hash=profile.hash,
+            return self._create(s, player_id, profile, games)
+
+    def queue_synced_games(self, profile: AnalysisProfile) -> None:
+        pending = select(Game).where(
+            Game.auto_analysis_pending.is_(True),
+            Game.parse_status == ParseStatus.READY,
+            Game.parser_version == PARSER_VERSION,
+            Game.chess_library_version == chess.__version__,
+            Game.parsed_metadata.is_not(None),
+        )
+        # Most polls find no new work and need no SQLite write reservation.
+        with self.sessions() as s:
+            if s.scalar(pending.with_only_columns(Game.id).limit(1)) is None:
+                return
+        with self.sessions.begin() as s:
+            reserve(s)
+            try:
+                ensure_idle(s)
+            except OperationError:
+                return
+            player_id = s.scalar(
+                pending.with_only_columns(Game.tracked_player_id)
+                .order_by(Game.id)
+                .limit(1)
             )
-            s.add(run)
-            s.flush()
-            for g in games:
-                if (
-                    g.parse_status != ParseStatus.READY
-                    or g.parser_version != PARSER_VERSION
-                    or g.chess_library_version != chess.__version__
-                    or not g.parsed_metadata
-                ):
-                    run.games_excluded += 1
-                    continue
-                skipped = self.compatible(s, g, profile)
-                s.add(
-                    AnalysisRunGame(
-                        run_id=run.id,
-                        game_id=g.id,
-                        source_hash=source_hash(g),
-                        status="skipped" if skipped else "pending",
-                    )
+            if player_id is None:
+                return
+            games = s.scalars(
+                pending.where(Game.tracked_player_id == player_id).order_by(Game.id)
+            ).all()
+            self._create(s, player_id, profile, games)
+
+    def _create(
+        self,
+        s: Session,
+        player_id: int,
+        profile: AnalysisProfile,
+        games: Sequence[Game],
+    ) -> int:
+        run = AnalysisRun(
+            tracked_player_id=player_id,
+            engine_version=profile.engine,
+            analysis_version=profile.version,
+            engine_config_hash=profile.config_hash,
+            engine_config_json=profile.config,
+            draw_policy_version=profile.draw_policy,
+            profile_hash=profile.hash,
+        )
+        s.add(run)
+        s.flush()
+        for g in games:
+            if (
+                g.parse_status != ParseStatus.READY
+                or g.parser_version != PARSER_VERSION
+                or g.chess_library_version != chess.__version__
+                or not g.parsed_metadata
+            ):
+                run.games_excluded += 1
+                continue
+            g.auto_analysis_pending = False
+            skipped = self.compatible(s, g, profile)
+            s.add(
+                AnalysisRunGame(
+                    run_id=run.id,
+                    game_id=g.id,
+                    source_hash=source_hash(g),
+                    status="skipped" if skipped else "pending",
                 )
-                run.games_total += 1
-                run.games_skipped += int(skipped)
-            if run.games_total == run.games_skipped:
-                self._transition(run, Status.RUNNING)
-                self._transition(run, Status.DONE)
-            return run.id
+            )
+            run.games_total += 1
+            run.games_skipped += int(skipped)
+        if run.games_total > run.games_skipped:
+            run.puzzle_cursor = 0
+        else:
+            self._transition(run, Status.RUNNING)
+            self._transition(run, Status.DONE)
+        return run.id
 
     @staticmethod
     def compatible(s: Session, game: Game, profile: AnalysisProfile) -> bool:

@@ -6,6 +6,7 @@ export type AttemptResult = components['schemas']['AttemptResult'];
 export type TrainingStats = components['schemas']['TrainingStats'];
 export type TransferReport = components['schemas']['TransferReport'];
 export type SubmitAttempt = components['schemas']['SubmitAttempt'];
+export type PlayPuzzle = components['schemas']['PlayPuzzle'];
 
 const prefix = '/api/v1/training';
 
@@ -18,6 +19,14 @@ export function getNextPuzzle(signal?: AbortSignal) {
 
 export function submitPuzzleAttempt(id: number, attempt: SubmitAttempt) {
 	return apiRequest<AttemptResult>(prefix + '/' + id + '/attempts', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(attempt)
+	});
+}
+
+export function playPuzzle(id: number, attempt: PlayPuzzle) {
+	return apiRequest<components['schemas']['PuzzleStep']>(prefix + '/' + id + '/play', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(attempt)

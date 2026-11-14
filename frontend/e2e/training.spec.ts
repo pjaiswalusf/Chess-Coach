@@ -74,3 +74,66 @@ test('reuses the submission ID when the first response is lost and displays the 
 	await page.reload();
 	await expect(page.getByText('1 attempt · 0 correct · 1 incorrect')).toBeVisible();
 });
+
+test('plays the opponent reply and asks for the second move before grading', async ({ page }) => {
+	const puzzle = {
+		id: 2,
+		fen: 'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2',
+		side_to_move: 'white',
+		theme: 'material_gain',
+		difficulty: 'hard',
+		attempt_count: 0,
+		solver_moves: 2,
+		legal_moves: ['e4d5']
+	};
+	await page.route('**/health', (route) => route.fulfill({ json: { status: 'ok' } }));
+	await page.route('**/api/v1/training/next', (route) => route.fulfill({ json: { puzzle } }));
+	await page.route('**/api/v1/training/progress', (route) =>
+		route.fulfill({ json: { first_attempt_at: null, cohorts: [] } })
+	);
+	await page.route('**/api/v1/training/stats', (route) =>
+		route.fulfill({ json: { puzzles_total: 1, puzzles_due: 1, attempts_total: 0, themes: [] } })
+	);
+	await page.route('**/api/v1/training/2/play', async (route) => {
+		const { moves } = route.request().postDataJSON();
+		if (moves.length === 1) {
+			expect(moves).toEqual(['e4d5']);
+			return route.fulfill({
+				json: {
+					continuation: {
+						fen: 'r1bqkbnr/ppp1pppp/2n5/3P4/8/8/PPPP1PPP/RNBQKBNR w KQkq - 1 3',
+						legal_moves: ['d5c6'],
+						reply_san: 'Nc6'
+					}
+				}
+			});
+		}
+		expect(moves).toEqual(['e4d5', 'd5c6']);
+		return route.fulfill({
+			json: {
+				result: {
+					correct: true,
+					solution_san: 'exd5',
+					solution_pv_san: ['exd5', 'Nc6', 'dxc6', 'bxc6'],
+					source_game_id: 2,
+					source_ply: 3,
+					source_profile_hash: 'a'.repeat(64),
+					next_review_at: '2026-11-17T12:00:00Z',
+					final_fen: 'r1bqkbnr/p1p1pppp/2p5/8/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 4'
+				}
+			}
+		});
+	});
+	await page.goto('/training');
+	await expect(page.getByText('Move 1 of 2')).toBeVisible();
+	await page.locator('[data-square="e4"]').click();
+	await page.locator('[data-square="d5"]').click();
+	await page.getByRole('button', { name: 'Submit move' }).click();
+	await expect(page.getByText(/Opponent played Nc6. Move 2 of 2/)).toBeVisible();
+	await expect(page.getByText('Engine solution')).toHaveCount(0);
+	await page.locator('[data-square="d5"]').click();
+	await page.locator('[data-square="c6"]').click();
+	await page.getByRole('button', { name: 'Submit move' }).click();
+	await expect(page.getByText('Correct', { exact: true })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'c6: Black pawn' })).toBeVisible();
+});

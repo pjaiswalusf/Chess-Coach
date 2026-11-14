@@ -128,7 +128,7 @@
 
 	{#if training}
 		<Card>
-			<h2 class="text-lg font-semibold">Training status</h2>
+			<h2 class="text-lg font-semibold">Puzzle status</h2>
 			<p>Practice {training.practice_status === 'ready' ? 'ready' : 'unavailable'}.</p>
 			{#if training.puzzles_total != null}
 				<p class="text-sm">{training.puzzles_total} stored puzzles · {training.puzzles_due} due</p>

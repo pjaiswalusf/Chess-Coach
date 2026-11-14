@@ -86,7 +86,7 @@ test('recovers in the browser after stopping and restarting real FastAPI', async
 		await page.goto('/');
 		await expect(page.getByText('Backend connected', { exact: true })).toBeVisible();
 		const nav = page.getByRole('navigation');
-		for (const name of ['Sync', 'Games', 'Coach', 'Training', 'System', 'Dashboard']) {
+		for (const name of ['Sync', 'Games', 'Coach', 'Puzzles', 'System', 'Dashboard']) {
 			await nav.getByRole('link', { name, exact: true }).click();
 			await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
 			if (name === 'Games') await expect(page.getByText('No games imported yet.')).toBeVisible();

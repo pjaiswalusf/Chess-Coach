@@ -5,7 +5,7 @@ const routes = [
 	{ label: 'Sync', path: '/sync' },
 	{ label: 'Games', path: '/games' },
 	{ label: 'Coach', path: '/coach' },
-	{ label: 'Training', path: '/training' },
+	{ label: 'Puzzles', path: '/training' },
 	{ label: 'System', path: '/system' }
 ];
 
@@ -53,7 +53,7 @@ test('navigates all six pages with current links, direct entry, and browser hist
 	);
 	await page.goBack();
 	await expect(page).toHaveURL('/training');
-	await expect(nav.getByRole('link', { name: 'Training' })).toHaveAttribute('aria-current', 'page');
+	await expect(nav.getByRole('link', { name: 'Puzzles' })).toHaveAttribute('aria-current', 'page');
 	await page.goForward();
 	await expect(page.getByRole('heading', { name: 'System' })).toBeVisible();
 

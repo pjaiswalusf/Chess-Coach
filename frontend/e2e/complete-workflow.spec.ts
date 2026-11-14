@@ -107,28 +107,14 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 		const games = await context.request.get('/api/v1/games');
 		expect(games.ok()).toBeTruthy();
 		expect((await games.json()).total).toBe(14);
-		await sync.click();
-		const unchanged = page
-			.getByRole('status')
-			.filter({ has: page.getByText('completed', { exact: true }) })
-			.getByText(/New games: 0/);
-		await expect(unchanged).toBeVisible();
-		expect((await (await context.request.get('/api/v1/games')).json()).total).toBe(14);
-		await holdDemoFrame(unchanged);
-
-		const accepted = page.waitForResponse(
-			(response) =>
-				response.url().endsWith('/api/v1/analysis-runs') && response.request().method() === 'POST'
-		);
-		const analyze = page.getByRole('button', { name: 'Analyze Pending Games' });
-		await analyze.click();
-		const run = await accepted;
-		expect(run.status()).toBe(202);
-		const { run_id } = await run.json();
 		await expect.poll(() => existsSync(marker('analysis-paused'))).toBeTruthy();
-		await expect(page.getByText(`Analysis run #${run_id}`)).toBeVisible();
-		await expect(analyze).toBeDisabled();
-		const progress = `/api/v1/analysis-runs/${run_id}/progress`;
+		const latest = await context.request.get('/api/v1/sync-runs/latest-work');
+		const { analysis_run_id } = await latest.json();
+		expect(analysis_run_id).toBeGreaterThan(0);
+		await expect(page.getByText(`Analysis run #${analysis_run_id}`)).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Analyze Pending Games' })).toBeDisabled();
+		await holdDemoFrame(page.getByText(`Analysis run #${analysis_run_id}`));
+		const progress = `/api/v1/analysis-runs/${analysis_run_id}/progress`;
 		expect((await (await context.request.get(progress)).json()).status).toBe('running');
 		if (!demo) await page.close();
 		writeFileSync(marker('continue-analysis'), '');
@@ -140,6 +126,9 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 		if (!demo) observe(reopened);
 		await reopened.goto('/sync');
 		await expect(reopened.getByText(/Analyzed: 13/)).toBeVisible();
+		await reopened.getByRole('button', { name: 'Sync Games' }).click();
+		await expect(reopened.getByText(/New games: 0/)).toBeVisible();
+		expect((await (await context.request.get('/api/v1/games')).json()).total).toBe(14);
 		await navigate(reopened, 'Games');
 		await reopened.getByRole('link', { name: 'vs Fixture_13' }).click();
 		await expect(reopened.getByRole('group', { name: /Chessboard/ })).toBeVisible();
@@ -162,7 +151,7 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 		await expect(reopened.getByText(advice)).toBeVisible();
 		await capture(reopened, 'coaching', reopened.getByText(advice));
 
-		await navigate(reopened, 'Training');
+		await navigate(reopened, 'Puzzles');
 		const board = reopened.getByRole('group', { name: /Chessboard/ });
 		await board.locator('[data-square="f3"]').click();
 		await board.locator('[data-square="f7"]').click();
@@ -196,7 +185,7 @@ test('recovers from source and API outages, then reviews, coaches and practices 
 		expect((await (await context.request.get('/api/v1/system/llm')).json()).status).toBe(
 			'server_unavailable'
 		);
-		await navigate(reopened, 'Training');
+		await navigate(reopened, 'Puzzles');
 		await expect(reopened.getByText(/1 attempt ·/)).toBeVisible();
 		expect(errors).toEqual([]);
 		if (demo) {

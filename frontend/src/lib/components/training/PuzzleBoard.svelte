@@ -60,10 +60,10 @@
 />
 
 {#if !solution}
-	<p role="status" class="text-sm text-muted">
-		{#if to}Selected {from} to {to}.{:else if from}Select a destination for {from}.{:else}Select a
-			piece to move.{/if}
-	</p>
+	{#if puzzle.legal_moves.length > 0}<p role="status" class="text-sm text-muted">
+			{#if to}Selected {from} to {to}.{:else if from}Select a destination for {from}.{:else}Select a
+				piece to move.{/if}
+		</p>{/if}
 	{#if choices.some((move) => move.length === 5)}
 		<label class="flex items-center gap-2 text-sm">
 			Promote to

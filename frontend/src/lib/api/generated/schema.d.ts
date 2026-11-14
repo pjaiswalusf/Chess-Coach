@@ -571,6 +571,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/training/{puzzle_id}/play": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Play Puzzle */
+        post: operations["play_puzzle_api_v1_training__puzzle_id__play_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -724,6 +741,8 @@ export interface components {
             attempted_at: string;
             /** Correct */
             correct: boolean;
+            /** Final Fen */
+            final_fen?: string | null;
             /**
              * Next Review At
              * Format: date-time
@@ -1502,6 +1521,16 @@ export interface components {
             /** Moves */
             moves: number;
         };
+        /** PlayPuzzle */
+        PlayPuzzle: {
+            /** Moves */
+            moves: string[];
+            /**
+             * Submission Id
+             * Format: uuid
+             */
+            submission_id: string;
+        };
         /**
          * PlayerColor
          * @enum {string}
@@ -1542,8 +1571,27 @@ export interface components {
             /** Legal Moves */
             legal_moves: string[];
             side_to_move: components["schemas"]["PlayerColor"];
+            /**
+             * Solver Moves
+             * @default 1
+             */
+            solver_moves: number;
             /** Theme */
             theme: string;
+        };
+        /** PuzzleContinuation */
+        PuzzleContinuation: {
+            /** Fen */
+            fen: string;
+            /** Legal Moves */
+            legal_moves: string[];
+            /** Reply San */
+            reply_san: string;
+        };
+        /** PuzzleStep */
+        PuzzleStep: {
+            continuation?: components["schemas"]["PuzzleContinuation"] | null;
+            result?: components["schemas"]["AttemptResult"] | null;
         };
         /** Rate */
         Rate: {
@@ -5516,6 +5564,95 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AttemptResult"];
+                };
+            };
+            /** @description Invalid local Host header */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Untrusted browser origin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflicting operation or configuration */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unexpected internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Local dependency unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    play_puzzle_api_v1_training__puzzle_id__play_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                puzzle_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlayPuzzle"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PuzzleStep"];
                 };
             };
             /** @description Invalid local Host header */

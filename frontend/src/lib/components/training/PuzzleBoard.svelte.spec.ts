@@ -5,6 +5,7 @@ import PuzzleBoard from './PuzzleBoard.svelte';
 import type { PublicPuzzle } from '#lib/api/training.js';
 
 const puzzle: PublicPuzzle = {
+	solver_moves: 1,
 	id: 1,
 	fen: 'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2',
 	side_to_move: 'white',

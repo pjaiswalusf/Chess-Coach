@@ -318,7 +318,14 @@ def main(argv: list[str] | None = None) -> None:
             store = SyncRepository(
                 create_session_factory(engine), settings.database_path
             )
-            report = SyncGamesService(provider, store).sync(
+            prepare = ParseImportedGames(
+                ParseRepository(
+                    store.sessions, settings.database_path, lock_already_held=True
+                ),
+                parse_game,
+                max_bytes=settings.pgn_max_bytes,
+            )
+            report = SyncGamesService(provider, store, prepare_games=prepare.run).sync(
                 args.username, force=args.force, dry_run=args.dry_run, month=month
             )
         print(json.dumps(asdict(report), indent=2))

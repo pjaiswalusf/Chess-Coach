@@ -60,6 +60,22 @@ class ParseRepository:
                 query = query.where(Game.parse_status == ParseStatus.PENDING)
             return list(session.scalars(query.order_by(Game.id)))
 
+    def interrupted_sync_players(self) -> list[str]:
+        with self.sessions() as session:
+            return list(
+                session.scalars(
+                    select(TrackedPlayer.username)
+                    .join(Game)
+                    .where(
+                        Game.auto_analysis_pending.is_(True),
+                        Game.parse_status.in_(
+                            (ParseStatus.PENDING, ParseStatus.PARSING)
+                        ),
+                    )
+                    .distinct()
+                )
+            )
+
     def begin(self, game_id: int, now: datetime) -> ParseInput:
         with self.sessions.begin() as session:
             game = session.get(Game, game_id)
@@ -89,6 +105,7 @@ class ParseRepository:
             game.parser_version = PARSER_VERSION
             game.chess_library_version = chess.__version__
             if isinstance(outcome, PGNParseError):
+                game.auto_analysis_pending = False
                 game.parse_status = outcome.status
                 game.parse_reason = outcome.reason_code
                 game.parse_error = outcome.safe_error_message

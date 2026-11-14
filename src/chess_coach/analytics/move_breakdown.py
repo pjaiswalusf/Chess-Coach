@@ -2,7 +2,6 @@
 
 import chess
 
-from chess_coach.analytics.feature_config import PIECE_VALUES
 from chess_coach.analytics.move_remarks import move_remark
 from chess_coach.domain.coaching_models import (
     EngineScore,
@@ -10,6 +9,7 @@ from chess_coach.domain.coaching_models import (
     MoveCoachingEvidence,
     MoveLine,
 )
+from chess_coach.domain.material import PIECE_VALUES
 
 _LINE_PLIES = 8
 

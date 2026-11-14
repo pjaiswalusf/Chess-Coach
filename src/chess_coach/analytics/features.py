@@ -7,28 +7,17 @@ import chess
 from chess_coach.analytics.clocks import ClockState
 from chess_coach.analytics.feature_config import (
     DEFAULT_CONFIG,
-    PIECE_VALUES,
 )
 from chess_coach.analytics.phases import classify_phase
 from chess_coach.domain.feature_models import FeatureAnalysis, GamePhase, MoveFeatures
 from chess_coach.domain.game_records import ParsedGame, PlayerColor
+from chess_coach.domain.material import PIECE_VALUES, calculate_material
 
 
 class FeatureInputError(ValueError):
     def __init__(self, code: str, ply: int | None = None):
         self.code, self.ply = code, ply
         super().__init__(f"{code}: inspect stored game/evidence and retry (ply={ply}).")
-
-
-def calculate_material(board: chess.Board) -> tuple[int, int]:
-    totals = [
-        sum(
-            value * len(board.pieces(piece, color))
-            for piece, value in PIECE_VALUES.items()
-        )
-        for color in (chess.WHITE, chess.BLACK)
-    ]
-    return totals[0], totals[1]
 
 
 def tactical(board: chess.Board, move: chess.Move) -> tuple[bool, bool, bool]:

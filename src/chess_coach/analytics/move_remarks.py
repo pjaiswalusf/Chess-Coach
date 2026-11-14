@@ -3,10 +3,9 @@
 import chess
 
 from chess_coach.analytics.contracts import Severity
-from chess_coach.analytics.feature_config import PIECE_VALUES
-from chess_coach.analytics.features import calculate_material
 from chess_coach.analytics.sample_policy import severity
 from chess_coach.domain.coaching_models import MoveCoachingEvidence
+from chess_coach.domain.material import PIECE_VALUES, calculate_material
 
 _CENTER = chess.SquareSet([chess.D4, chess.E4, chess.D5, chess.E5])
 

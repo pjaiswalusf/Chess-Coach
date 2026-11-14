@@ -61,6 +61,29 @@
 		return () => lifetime.abort();
 	});
 
+	$effect(() => {
+		const run = sync.state.data;
+		if (!run || isActive(run.status) || !run.progress.games_inserted) return;
+		const controller = new AbortController();
+		let timer: ReturnType<typeof setTimeout>;
+		async function checkAnalysis() {
+			try {
+				const runs = await jobsApi.latest(controller.signal);
+				if (!controller.signal.aborted && runs.analysis_run_id !== null) {
+					analysisId = runs.analysis_run_id;
+				}
+			} catch {
+				// Retry if the backend is temporarily unavailable.
+			}
+			if (!controller.signal.aborted) timer = setTimeout(() => void checkAnalysis(), 2000);
+		}
+		void checkAnalysis();
+		return () => {
+			controller.abort();
+			clearTimeout(timer);
+		};
+	});
+
 	async function submit(kind: 'sync' | 'analysis') {
 		if (busy || (kind === 'analysis' && !player)) return;
 		const name = (player?.username ?? username).trim();
@@ -104,7 +127,7 @@
 <svelte:head><title>Sync · Chess Coach</title></svelte:head>
 
 <h1 class="text-3xl font-semibold tracking-tight">Sync</h1>
-<p>Import completed Chess.com games, then analyze them with local Stockfish.</p>
+<p>New completed games are automatically queued for Stockfish analysis and puzzle generation.</p>
 
 {#if loading}<Spinner label="Checking tracked player and existing runs…" />{/if}
 {#if discoveryError}
@@ -253,4 +276,5 @@
 		{/if}
 	{/if}
 	<a href={resolve('/games')} class="font-medium text-accent underline">Browse games</a>
+	<a href={resolve('/training')} class="font-medium text-accent underline">Open Puzzles</a>
 </Card>

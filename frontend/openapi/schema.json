@@ -289,6 +289,17 @@
             "title": "Correct",
             "type": "boolean"
           },
+          "final_fen": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final Fen"
+          },
           "next_review_at": {
             "format": "date-time",
             "title": "Next Review At",
@@ -2630,6 +2641,31 @@
         "title": "PeriodEvidence",
         "type": "object"
       },
+      "PlayPuzzle": {
+        "properties": {
+          "moves": {
+            "items": {
+              "pattern": "^[a-h][1-8][a-h][1-8][qrbn]?$",
+              "type": "string"
+            },
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Moves",
+            "type": "array"
+          },
+          "submission_id": {
+            "format": "uuid",
+            "title": "Submission Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "submission_id",
+          "moves"
+        ],
+        "title": "PlayPuzzle",
+        "type": "object"
+      },
       "PlayerColor": {
         "enum": [
           "white",
@@ -2717,6 +2753,11 @@
           "side_to_move": {
             "$ref": "#/components/schemas/PlayerColor"
           },
+          "solver_moves": {
+            "default": 1,
+            "title": "Solver Moves",
+            "type": "integer"
+          },
           "theme": {
             "title": "Theme",
             "type": "string"
@@ -2732,6 +2773,58 @@
           "legal_moves"
         ],
         "title": "PublicPuzzle",
+        "type": "object"
+      },
+      "PuzzleContinuation": {
+        "properties": {
+          "fen": {
+            "title": "Fen",
+            "type": "string"
+          },
+          "legal_moves": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Legal Moves",
+            "type": "array"
+          },
+          "reply_san": {
+            "title": "Reply San",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fen",
+          "legal_moves",
+          "reply_san"
+        ],
+        "title": "PuzzleContinuation",
+        "type": "object"
+      },
+      "PuzzleStep": {
+        "properties": {
+          "continuation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PuzzleContinuation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AttemptResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "PuzzleStep",
         "type": "object"
       },
       "Rate": {
@@ -9367,6 +9460,118 @@
           }
         },
         "summary": "Submit Attempt",
+        "tags": [
+          "training"
+        ]
+      }
+    },
+    "/api/v1/training/{puzzle_id}/play": {
+      "post": {
+        "operationId": "play_puzzle_api_v1_training__puzzle_id__play_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "puzzle_id",
+            "required": true,
+            "schema": {
+              "title": "Puzzle Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlayPuzzle"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PuzzleStep"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid local Host header"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted browser origin"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation or configuration"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Local dependency unavailable"
+          }
+        },
+        "summary": "Play Puzzle",
         "tags": [
           "training"
         ]
